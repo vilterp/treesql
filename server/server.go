@@ -129,17 +129,23 @@ func openDatabases(env *sophia.Environment, dataDir string) map[string]*sophia.D
 
 func insertTestData(dbs map[string]*sophia.Database) {
 	blogPosts := dbs["blog_posts"]
-	blogPost1 := blogPosts.Document()
-	blogPost1.SetInt("id", 0)
-	blogPost1.SetString("title", "Hello world")
-	blogPost1.SetString("body", "whew, making a db is hard work")
-	blogPosts.Set(blogPost1)
 
-	blogPost2 := blogPosts.Document()
-	blogPost2.SetInt("id", 1)
-	blogPost2.SetString("title", "Hello again")
-	blogPost2.SetString("body", "whoah, still here?")
-	blogPosts.Set(blogPost2)
+	for i := 0; i < 100000; i++ {
+		blogPost := blogPosts.Document()
+		blogPost.SetInt("id", int64(i))
+		blogPost.SetString("title", "Hello world")
+		blogPost.SetString("body", "whew, making a db is hard work")
+		err := blogPosts.Set(blogPost)
+		if err != nil {
+			fmt.Println("error writing post:", err)
+		}
+	}
+
+	// blogPost2 := blogPosts.Document()
+	// blogPost2.SetInt("id", 1)
+	// blogPost2.SetString("title", "Hello again")
+	// blogPost2.SetString("body", "whoah, still here?")
+	// blogPosts.Set(blogPost2)
 }
 
 func doConcurrentTx(env *sophia.Environment, db *sophia.Database) {
