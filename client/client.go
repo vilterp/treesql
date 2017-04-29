@@ -23,14 +23,34 @@ func main() {
 		os.Exit(1)
 	}
 
-	reader := bufio.NewReader(os.Stdin)
 	for {
 		fmt.Printf("%s:%d> ", *host, *port)
-		text, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Println("bye!")
-			os.Exit(0)
-		}
-		conn.Write([]byte(text + "\n"))
+		input := readFromPrompt()
+		conn.Write([]byte(input + "\n"))
+		result := readResult(conn)
+		printResult(result)
 	}
+}
+
+func readResult(conn net.Conn) string {
+	message, err := bufio.NewReader(conn).ReadString('\n')
+	if err != nil {
+		fmt.Println("connection error:", err)
+		os.Exit(0)
+	}
+	return message
+}
+
+func printResult(result string) {
+	fmt.Print("< ", result)
+}
+
+func readFromPrompt() string {
+	reader := bufio.NewReader(os.Stdin)
+	text, err := reader.ReadString('\n')
+	if err != nil {
+		fmt.Println("bye!")
+		os.Exit(0)
+	}
+	return text
 }

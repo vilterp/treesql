@@ -5,10 +5,11 @@ import (
 	"flag"
 	"fmt"
 	"net"
-	"strings"
 	"time"
 
+	"github.com/davecgh/go-spew/spew"
 	"github.com/pzhin/go-sophia"
+	treesql "github.com/vilterp/treesql/package"
 )
 
 const (
@@ -45,7 +46,7 @@ func main() {
 	}
 }
 
-func handleConnection(conn net.Conn, connID int, env *sophia.Environment, dbs *map[string]*sophia.Database) {
+func handleConnection(conn net.Conn, connID int, env *sophia.Environment, dbs map[string]*sophia.Database) {
 	fmt.Printf("connection id %d from %s\n", connID, conn.RemoteAddr())
 	for {
 		// will listen for message to process ending in newline (\n)
@@ -56,12 +57,19 @@ func handleConnection(conn net.Conn, connID int, env *sophia.Environment, dbs *m
 			return
 		}
 
+		// parse what was sent to us
+		statement, err := treesql.Parse(message)
+		if err != nil {
+			fmt.Println("parse error:", err)
+			conn.Write([]byte(fmt.Sprintf("parse error: %s\n", err)))
+			continue
+		}
+
 		// output message received
-		fmt.Print("Message Received:", string(message))
-		// sample process for string received
-		newmessage := strings.ToUpper(message)
-		// send new string back to client
-		conn.Write([]byte(newmessage + "\n"))
+		fmt.Print("SQL statement received:", spew.Sdump(statement))
+
+		// execute query
+		treesql.ExecuteQuery(conn, dbs, statement)
 	}
 }
 
@@ -70,7 +78,7 @@ func newEnvironment() *sophia.Environment {
 	return env
 }
 
-func openDatabases(env *sophia.Environment, dataDir string) *map[string]*sophia.Database {
+func openDatabases(env *sophia.Environment, dataDir string) map[string]*sophia.Database {
 	env.Set("sophia.path", dataDir)
 
 	// define hardcoded schemas
@@ -113,7 +121,7 @@ func openDatabases(env *sophia.Environment, dataDir string) *map[string]*sophia.
 	dbs["authors"] = authorsDB
 
 	env.Open()
-	return &dbs
+	return dbs
 }
 
 func doConcurrentTx(env *sophia.Environment, db *sophia.Database) {
