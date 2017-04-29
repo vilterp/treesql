@@ -41,12 +41,6 @@ func (table *Table) ToSophiaSchema() *sophia.Schema {
 	return result
 }
 
-// func addColumn(*sophia.Schema schema, *Column column, string primaryKey) {
-// 	if (column.Name == primaryKey) {
-// 		schema.
-// 	}
-// }
-
 func GetTestSchema() *Schema {
 	tables := map[string]*Table{
 		"blog_posts": &Table{

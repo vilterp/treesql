@@ -33,15 +33,12 @@ func ExecuteQuery(conn *Connection, query *Select) {
 		if nextDoc == nil {
 			break
 		}
-		rowsRead++
-		fmt.Println("next doc")
 		if rowsRead > 0 {
 			resultWriter.Write([]byte(","))
 		}
 		// extract fields
 		output := map[string]interface{}{}
 		for _, columnSpec := range schema.Columns {
-			fmt.Println("extract ")
 			switch columnSpec.Type {
 			case TypeInt:
 				output[columnSpec.Name] = nextDoc.GetInt(columnSpec.Name)
@@ -53,7 +50,8 @@ func ExecuteQuery(conn *Connection, query *Select) {
 		}
 		inJSON, _ := json.Marshal(output)
 		resultWriter.Write(inJSON)
+		rowsRead++
 	}
 	resultWriter.Write([]byte("]\n"))
-	fmt.Println("wrote response")
+	fmt.Println("wrote", rowsRead, "rows")
 }

@@ -61,26 +61,17 @@ func insertTestData(db *treesql.Database) {
 	fmt.Println("writing test data")
 	blogPosts := db.Dbs["blog_posts"]
 
-	blogPost := blogPosts.Document()
-	blogPost.Set("id", fmt.Sprintf("derp%d", 10000))
-	blogPost.Set("title", "Hello world")
-	blogPost.Set("body", "whew, making a db is hard work")
-	// spew.Dump(blogPost)
-	err := blogPosts.Set(blogPost)
-	if err != nil {
-		fmt.Println("error writing post:", err)
+	for i := 0; i < 3; i++ {
+		blogPost := blogPosts.Document()
+		blogPost.Set("id", fmt.Sprintf("derp%d", i))
+		blogPost.Set("title", "Hello world")
+		blogPost.Set("body", "whew, making a db is hard work")
+		// spew.Dump(blogPost)
+		err := blogPosts.Set(blogPost)
+		if err != nil {
+			fmt.Println("error writing post:", err)
+		}
 	}
-	// for i := 0; i < 1; i++ {
-	// 	blogPost := blogPosts.Document()
-	// 	blogPost.SetInt("id", int64(i))
-	// 	blogPost.SetString("title", "Hello world")
-	// 	blogPost.SetString("body", "whew, making a db is hard work")
-	// 	// spew.Dump(blogPost)
-	// 	err := blogPosts.Set(blogPost)
-	// 	if err != nil {
-	// 		fmt.Println("error writing post:", err)
-	// 	}
-	// }
 	fmt.Println("done writing test data")
 }
 

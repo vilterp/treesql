@@ -31,5 +31,7 @@ func Open(dataDir string) (*Database, error) {
 		database.Dbs[tableName] = newDb
 	}
 
+	env.Open()
+
 	return database, nil
 }
