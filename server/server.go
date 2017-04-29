@@ -62,7 +62,7 @@ func insertTestData(db *treesql.Database) {
 	blogPosts := db.Dbs["blog_posts"]
 
 	blogPost := blogPosts.Document()
-	blogPost.Set("id", fmt.Sprintf("%d", 10000))
+	blogPost.Set("id", fmt.Sprintf("derp%d", 10000))
 	blogPost.Set("title", "Hello world")
 	blogPost.Set("body", "whew, making a db is hard work")
 	// spew.Dump(blogPost)
