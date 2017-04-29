@@ -15,7 +15,6 @@ const (
 	KeyTemplate   = "key%v"
 	ValueTemplate = "value%v"
 
-	DBName       = "test"
 	RecordsCount = 500000
 
 	RecordsCountBench = 5000000
@@ -31,7 +30,7 @@ func main() {
 
 	// open Sophia storage layer
 	env := newEnvironment()
-	db := newDatabase(env, *dataDir)
+	dbs := openDatabases(env, *dataDir)
 	fmt.Printf("opened data directory: %s\n", *dataDir)
 
 	// listen & handle connections
@@ -41,12 +40,12 @@ func main() {
 	connectionID := 0
 	for {
 		conn, _ := listeningSock.Accept()
-		go handleConnection(conn, connectionID, env, db)
+		go handleConnection(conn, connectionID, env, dbs)
 		connectionID++
 	}
 }
 
-func handleConnection(conn net.Conn, connID int, env *sophia.Environment, db *sophia.Database) {
+func handleConnection(conn net.Conn, connID int, env *sophia.Environment, dbs *map[string]*sophia.Database) {
 	fmt.Printf("connection id %d from %s\n", connID, conn.RemoteAddr())
 	for {
 		// will listen for message to process ending in newline (\n)
@@ -71,19 +70,50 @@ func newEnvironment() *sophia.Environment {
 	return env
 }
 
-func newDatabase(env *sophia.Environment, dataDir string) *sophia.Database {
+func openDatabases(env *sophia.Environment, dataDir string) *map[string]*sophia.Database {
 	env.Set("sophia.path", dataDir)
 
-	schema := &sophia.Schema{}
-	schema.AddKey("key", sophia.FieldTypeString)
-	schema.AddValue("value", sophia.FieldTypeString)
+	// define hardcoded schemas
+	// (in future will load these from some other DB)
+	blogPostsSchema := &sophia.Schema{}
+	blogPostsSchema.AddKey("id", sophia.FieldTypeUInt32)
+	blogPostsSchema.AddValue("title", sophia.FieldTypeString)
+	blogPostsSchema.AddValue("author_id", sophia.FieldTypeUInt32)
+	blogPostsSchema.AddValue("body", sophia.FieldTypeString) // too bad Sophia doesn't have that Toast
 
-	db, _ := env.NewDatabase(&sophia.DatabaseConfig{
-		Name:   DBName,
-		Schema: schema,
+	commentsSchema := &sophia.Schema{}
+	commentsSchema.AddKey("id", sophia.FieldTypeUInt32)
+	commentsSchema.AddValue("post_id", sophia.FieldTypeUInt32)
+	commentsSchema.AddValue("author_id", sophia.FieldTypeUInt32)
+	commentsSchema.AddValue("body", sophia.FieldTypeString)
+
+	authorsSchema := &sophia.Schema{}
+	authorsSchema.AddKey("id", sophia.FieldTypeUInt32)
+	authorsSchema.AddValue("name", sophia.FieldTypeString)
+
+	// open dbs
+	dbs := make(map[string]*sophia.Database)
+
+	blogPostsDB, _ := env.NewDatabase(&sophia.DatabaseConfig{
+		Name:   "blog_posts",
+		Schema: blogPostsSchema,
 	})
+	dbs["blog_posts"] = blogPostsDB
+
+	commentsDB, _ := env.NewDatabase(&sophia.DatabaseConfig{
+		Name:   "comments",
+		Schema: commentsSchema,
+	})
+	dbs["comments"] = commentsDB
+
+	authorsDB, _ := env.NewDatabase(&sophia.DatabaseConfig{
+		Name:   "authors",
+		Schema: authorsSchema,
+	})
+	dbs["authors"] = authorsDB
+
 	env.Open()
-	return db
+	return &dbs
 }
 
 func doConcurrentTx(env *sophia.Environment, db *sophia.Database) {
