@@ -2,6 +2,7 @@ package main
 
 import (
 	"bufio"
+	"flag"
 	"fmt"
 	"net"
 	"strings"
@@ -14,25 +15,28 @@ const (
 	KeyTemplate   = "key%v"
 	ValueTemplate = "value%v"
 
-	DBPath       = "sophia" // TODO: parse from command-line flag
 	DBName       = "test"
 	RecordsCount = 500000
 
 	RecordsCountBench = 5000000
 )
 
-const Port = "6000" // TODO: parse from command-line flag
-
 func main() {
 	fmt.Println("TreeSQL server")
 
-	fmt.Println("new env")
-	env := newEnvironment()
-	fmt.Println("new db")
-	db := newDatabase(env)
+	// get cmdline flags
+	var port = flag.Int("port", 6000, "port to listen for connections on")
+	var dataDir = flag.String("data-dir", "data", "data directory")
+	flag.Parse()
 
-	listeningSock, _ := net.Listen("tcp", ":"+Port)
-	fmt.Printf("listening on port %s\n", Port)
+	// open Sophia storage layer
+	env := newEnvironment()
+	db := newDatabase(env, *dataDir)
+	fmt.Printf("opened data directory: %s\n", *dataDir)
+
+	// listen & handle connections
+	listeningSock, _ := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	fmt.Printf("listening on port %d\n", *port)
 
 	connectionID := 0
 	for {
@@ -67,8 +71,8 @@ func newEnvironment() *sophia.Environment {
 	return env
 }
 
-func newDatabase(env *sophia.Environment) *sophia.Database {
-	env.Set("sophia.path", DBPath)
+func newDatabase(env *sophia.Environment, dataDir string) *sophia.Database {
+	env.Set("sophia.path", dataDir)
 
 	schema := &sophia.Schema{}
 	schema.AddKey("key", sophia.FieldTypeString)
