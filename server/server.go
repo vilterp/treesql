@@ -128,6 +128,7 @@ func openDatabases(env *sophia.Environment, dataDir string) map[string]*sophia.D
 }
 
 func insertTestData(dbs map[string]*sophia.Database) {
+	fmt.Println("writing test data")
 	blogPosts := dbs["blog_posts"]
 
 	for i := 0; i < 100000; i++ {
@@ -140,6 +141,7 @@ func insertTestData(dbs map[string]*sophia.Database) {
 			fmt.Println("error writing post:", err)
 		}
 	}
+	fmt.Println("done writing test data")
 
 	// blogPost2 := blogPosts.Document()
 	// blogPost2.SetInt("id", 1)

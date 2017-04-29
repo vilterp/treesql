@@ -21,7 +21,6 @@ func ExecuteQuery(resultWriter io.Writer, dbs map[string]*sophia.Database, query
 	rowsRead := 0
 	for {
 		nextDoc := cursor.Next()
-		fmt.Println("next doc")
 		if nextDoc == nil {
 			resultWriter.Write([]byte("done\n"))
 			break
