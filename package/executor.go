@@ -1,14 +1,22 @@
 package treesql
 
 import (
+	"encoding/json"
 	"fmt"
-	"io"
-
-	sophia "github.com/pzhin/go-sophia"
+	"net"
 )
 
-func ExecuteQuery(resultWriter io.Writer, dbs map[string]*sophia.Database, query *Select) {
-	db, ok := dbs[query.From.Table]
+type Connection struct {
+	ClientConn net.Conn
+	ID         int
+	Database   *Database
+}
+
+func ExecuteQuery(conn *Connection, query *Select) {
+	resultWriter := conn.ClientConn
+	// TODO: really have to learn how to use bufio...
+	db, ok := conn.Database.Dbs[query.From.Table]
+	schema, ok := conn.Database.Schema.Tables[query.From.Table]
 	if !ok {
 		errorMsg := fmt.Sprintf("nonexistent table: %s", query.From.Table)
 		resultWriter.Write([]byte(errorMsg + "\n"))
@@ -19,19 +27,31 @@ func ExecuteQuery(resultWriter io.Writer, dbs map[string]*sophia.Database, query
 	doc := db.Document()
 	cursor, _ := db.Cursor(doc)
 	rowsRead := 0
+	resultWriter.Write([]byte("["))
 	for {
 		nextDoc := cursor.Next()
 		if nextDoc == nil {
-			resultWriter.Write([]byte("done\n"))
 			break
 		}
+		if rowsRead > 0 {
+			resultWriter.Write([]byte(","))
+		}
+		// extract fields
+		output := map[string]interface{}{}
+		for _, columnSpec := range schema.Columns {
+			switch columnSpec.Type {
+			case TypeInt:
+				output[columnSpec.Name] = nextDoc.GetInt(columnSpec.Name)
+
+			case TypeString:
+				size := 0
+				output[columnSpec.Name] = nextDoc.GetString(columnSpec.Name, &size)
+			}
+		}
+		inJSON, _ := json.Marshal(output)
+		resultWriter.Write(inJSON)
 		rowsRead++
-		bpId := nextDoc.GetInt("id")
-		bpTitleSize := 0
-		bpTitle := nextDoc.GetString("title", &bpTitleSize)
-		bpBodySize := 0
-		bpBody := nextDoc.GetString("body", &bpBodySize)
-		resultWriter.Write([]byte(fmt.Sprintf("{id:%d,title:%s,body:%s}\n", bpId, bpTitle, bpBody)))
 	}
-	fmt.Println("wrote response")
+	resultWriter.Write([]byte("]\n"))
+	fmt.Println("wrote", rowsRead, "rows")
 }

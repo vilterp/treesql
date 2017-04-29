@@ -6,15 +6,20 @@ import (
 	"fmt"
 	"net"
 	"os"
+
+	"github.com/robertkrimen/isatty"
 )
 
 func main() {
-	fmt.Println("TreeSQL client")
-
 	// get cmdline flags
 	var host = flag.String("host", "localhost", "host to connect to")
 	var port = flag.Int("port", 6000, "port to connect to")
 	flag.Parse()
+	isInputTty := isatty.Check(os.Stdin.Fd())
+
+	if isInputTty {
+		fmt.Println("TreeSQL client")
+	}
 
 	// connect to server
 	conn, err := net.Dial("tcp", fmt.Sprintf("%s:%d", *host, *port))
@@ -24,7 +29,9 @@ func main() {
 	}
 
 	for {
-		fmt.Printf("%s:%d> ", *host, *port)
+		if isInputTty {
+			fmt.Printf("%s:%d> ", *host, *port)
+		}
 		input := readFromPrompt()
 		conn.Write([]byte(input + "\n"))
 		readResult(conn)
@@ -42,12 +49,8 @@ func readResult(conn net.Conn) {
 		if message == "done\n" {
 			return
 		}
-		fmt.Printf("< %s", message)
+		fmt.Printf(message)
 	}
-}
-
-func printResult(result string) {
-	fmt.Print("< ", result)
 }
 
 func readFromPrompt() string {
