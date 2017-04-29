@@ -5,8 +5,9 @@ import (
 )
 
 type Database struct {
-	Schema *Schema
-	Dbs    map[string]*sophia.Database
+	Schema                  *Schema
+	Dbs                     map[string]*sophia.Database
+	queryValidationRequests chan *QueryValidationRequest
 }
 
 func Open(dataDir string) (*Database, error) {
@@ -20,6 +21,7 @@ func Open(dataDir string) (*Database, error) {
 		Dbs:    map[string]*sophia.Database{},
 	}
 
+	// open databases
 	for tableName, table := range testSchema.Tables {
 		newDb, err := env.NewDatabase(&sophia.DatabaseConfig{
 			Name:   tableName,
@@ -30,8 +32,37 @@ func Open(dataDir string) (*Database, error) {
 		}
 		database.Dbs[tableName] = newDb
 	}
-
 	env.Open()
 
+	// serve query validation requests
+	// TODO: a `select` here for schema changes
+	// serializing access to the schema
+	go func() {
+		for {
+			query := <-database.queryValidationRequests
+			database.handleValidationRequest(query)
+		}
+	}()
+
 	return database, nil
+}
+
+// query validation
+
+func (db *Database) handleValidationRequest(request *QueryValidationRequest) {
+	request.responseChan <- nil
+}
+
+type QueryValidationRequest struct {
+	query        *Select
+	responseChan chan error
+}
+
+func (db *Database) ValidateQuery(query *Select) error {
+	responseChan := make(chan error)
+	db.queryValidationRequests <- &QueryValidationRequest{
+		query:        query,
+		responseChan: responseChan,
+	}
+	return <-responseChan
 }
