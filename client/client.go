@@ -27,18 +27,23 @@ func main() {
 		fmt.Printf("%s:%d> ", *host, *port)
 		input := readFromPrompt()
 		conn.Write([]byte(input + "\n"))
-		result := readResult(conn)
-		printResult(result)
+		readResult(conn)
 	}
 }
 
-func readResult(conn net.Conn) string {
-	message, err := bufio.NewReader(conn).ReadString('\n')
-	if err != nil {
-		fmt.Println("connection error:", err)
-		os.Exit(0)
+func readResult(conn net.Conn) {
+	reader := bufio.NewReader(conn)
+	for {
+		message, err := reader.ReadString('\n')
+		if err != nil {
+			fmt.Println("connection error:", err)
+			os.Exit(0)
+		}
+		if message == "done\n" {
+			return
+		}
+		fmt.Printf("< %s", message)
 	}
-	return message
 }
 
 func printResult(result string) {
