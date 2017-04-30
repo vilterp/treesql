@@ -20,7 +20,7 @@ type Select struct {
 	Many       bool         `( @"MANY"`
 	One        bool         `| @"ONE" )`
 	Table      string       `@Ident`
-	Selections []*Selection `"{" @@ [ { "," @@ } ] "}"`
+	Selections []*Selection `"{" @@ [ { "," @@ } ] "}"` // TODO: * for all columns
 }
 
 type Selection struct {

@@ -24,8 +24,6 @@ func main() {
 	}
 	log.Printf("opened data directory: %s\n", *dataDir)
 
-	// insertTestData(database)
-
 	// listen & handle connections
 	listeningSock, _ := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	log.Printf("listening on port %d\n", *port)

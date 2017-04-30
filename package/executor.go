@@ -3,27 +3,13 @@ package treesql
 import (
 	"encoding/json"
 	"fmt"
-	"net"
 )
-
-type Connection struct {
-	ClientConn net.Conn
-	ID         int
-	Database   *Database
-}
 
 func ExecuteQuery(conn *Connection, query *Select) {
 	resultWriter := conn.ClientConn
 	// TODO: really have to learn how to use bufio...
-	db, ok := conn.Database.Dbs[query.Table]
-	schema, ok := conn.Database.Schema.Tables[query.Table]
-	if !ok {
-		errorMsg := fmt.Sprintf("nonexistent table: %s", query.Table)
-		resultWriter.Write([]byte(errorMsg + "\n"))
-		resultWriter.Write([]byte("done"))
-		fmt.Println(errorMsg)
-		return
-	}
+	db := conn.Database.Dbs[query.Table]
+	schema := conn.Database.Schema.Tables[query.Table]
 	doc := db.Document()
 	cursor, _ := db.Cursor(doc)
 	rowsRead := 0

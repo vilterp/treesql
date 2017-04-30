@@ -3,9 +3,16 @@ package treesql
 import (
 	"bufio"
 	"fmt"
+	"net"
 
 	"github.com/davecgh/go-spew/spew"
 )
+
+type Connection struct {
+	ClientConn net.Conn
+	ID         int
+	Database   *Database
+}
 
 func HandleConnection(conn *Connection) {
 	fmt.Printf("connection id %d from %s\n", conn.ID, conn.ClientConn.RemoteAddr())
@@ -28,6 +35,13 @@ func HandleConnection(conn *Connection) {
 
 		// output message received
 		fmt.Print("SQL statement received:", spew.Sdump(statement))
+
+		// validate query
+		queryErr := conn.Database.ValidateSelect(statement)
+		if queryErr != nil {
+			conn.ClientConn.Write([]byte(fmt.Sprintf("query error: %s\n", queryErr)))
+			continue
+		}
 
 		// execute query
 		ExecuteQuery(conn, statement)
