@@ -3,11 +3,13 @@ package treesql
 import (
 	"bufio"
 	"fmt"
+	"strconv"
 
 	sophia "github.com/pzhin/go-sophia"
 )
 
 func ExecuteQuery(conn *Connection, query *Select) {
+	// TODO: put all these reads in a transaction
 	writer := bufio.NewWriter(conn.ClientConn)
 	executeSelect(conn, writer, query, nil)
 	writer.WriteString("\n")
@@ -62,7 +64,7 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 				case TypeString:
 					size := 0
 					val := nextDoc.GetString(columnSpec.Name, &size)
-					resultWriter.WriteString(fmt.Sprintf("\"%s\"", val))
+					resultWriter.WriteString(strconv.Quote(val))
 				}
 			}
 			if selectionIdx < len(query.Selections)-1 {
