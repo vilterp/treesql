@@ -83,6 +83,7 @@ func (db *Database) ValidateSelect(query *Select) error {
 		return &NoSuchTable{TableName: query.Table}
 	}
 	// do columns exist / are subqueries valid?
+	// TODO: dedup
 	for _, selection := range query.Selections {
 		if selection.SubSelect != nil {
 			err := db.ValidateSelect(selection.SubSelect)
