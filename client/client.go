@@ -40,17 +40,15 @@ func main() {
 
 func readResult(conn net.Conn) {
 	reader := bufio.NewReader(conn)
-	for {
-		message, err := reader.ReadString('\n')
-		if err != nil {
-			fmt.Println("connection error:", err)
-			os.Exit(0)
-		}
-		if message == "done\n" {
-			return
-		}
-		fmt.Printf(message)
+	message, err := reader.ReadString('\n')
+	if err != nil {
+		fmt.Println("connection error:", err)
+		os.Exit(0)
 	}
+	if message == "done\n" {
+		return
+	}
+	fmt.Printf(message)
 }
 
 func readFromPrompt() string {

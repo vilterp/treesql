@@ -7,7 +7,7 @@ import (
 
 var (
 	sqlLexer = lexer.Unquote(lexer.Upper(lexer.Must(lexer.Regexp(`(\s+)`+
-		`|(?P<Keyword>(?i)SELECT|FROM|TOP|DISTINCT|ALL|WHERE|GROUP|BY|HAVING|UNION|MINUS|EXCEPT|INTERSECT|ORDER|LIMIT|OFFSET|TRUE|FALSE|NULL|IS|NOT|ANY|SOME|BETWEEN|AND|OR|LIKE|AS|IN)`+
+		`|(?P<Keyword>(?i)SELECT|ONE|MANY|FROM|TOP|DISTINCT|ALL|WHERE|GROUP|BY|HAVING|UNION|MINUS|EXCEPT|INTERSECT|ORDER|LIMIT|OFFSET|TRUE|FALSE|NULL|IS|NOT|ANY|SOME|BETWEEN|AND|OR|LIKE|AS|IN)`+
 		`|(?P<Ident>[a-zA-Z_][a-zA-Z0-9_]*)`+
 		`|(?P<Number>[-+]?\d*\.?\d+([eE][-+]?\d+)?)`+
 		`|(?P<String>'[^']*'|"[^"]*")`+
@@ -17,12 +17,24 @@ var (
 )
 
 type Select struct {
-	From *From `"SELECT" "*" "FROM" @@`
-}
-
-type From struct {
+	Many  bool   `( @"MANY"`
+	One   bool   `| @"ONE" )`
 	Table string `@Ident`
 }
+
+// type SelectOne struct {
+// 	Table      string `@Ident`
+// 	Selections []*Selection
+// }
+
+// type SelectMany struct {
+// 	Table      string `@Ident`
+// 	Selections []*Selection
+// }
+
+// type From struct {
+// 	Table string `@Ident`
+// }
 
 // Parse parses sql
 func Parse(sql string) (*Select, error) {
