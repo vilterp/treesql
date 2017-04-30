@@ -11,30 +11,22 @@ var (
 		`|(?P<Ident>[a-zA-Z_][a-zA-Z0-9_]*)`+
 		`|(?P<Number>[-+]?\d*\.?\d+([eE][-+]?\d+)?)`+
 		`|(?P<String>'[^']*'|"[^"]*")`+
-		`|(?P<Operators><>|!=|<=|>=|[-+*/%,.()=<>])`,
+		`|(?P<Operators><>|!=|<=|>=|[-+*/%,.()\{\}=<>:])`,
 	)), "Keyword"), "String")
 	sqlParser = participle.MustBuild(&Select{}, sqlLexer)
 )
 
 type Select struct {
-	Many  bool   `( @"MANY"`
-	One   bool   `| @"ONE" )`
-	Table string `@Ident`
+	Many       bool         `( @"MANY"`
+	One        bool         `| @"ONE" )`
+	Table      string       `@Ident`
+	Selections []*Selection `"{" @@ [ { "," @@ } ] "}"`
 }
 
-// type SelectOne struct {
-// 	Table      string `@Ident`
-// 	Selections []*Selection
-// }
-
-// type SelectMany struct {
-// 	Table      string `@Ident`
-// 	Selections []*Selection
-// }
-
-// type From struct {
-// 	Table string `@Ident`
-// }
+type Selection struct {
+	Name      string  `@Ident`
+	SubSelect *Select `[ ":" @@ ]`
+}
 
 // Parse parses sql
 func Parse(sql string) (*Select, error) {
