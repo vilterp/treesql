@@ -4,9 +4,11 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
+	"io"
 	"net"
 	"os"
 
+	"github.com/chzyer/readline"
 	"github.com/robertkrimen/isatty"
 )
 
@@ -28,12 +30,36 @@ func main() {
 		os.Exit(1)
 	}
 
+	// initialize readline
+	prompt := ""
+	if isInputTty {
+		prompt = fmt.Sprintf("%s:%d> ", *host, *port)
+	}
+	l, err := readline.NewEx(&readline.Config{
+		Prompt:          prompt,
+		HistoryFile:     "/tmp/.treesql-history",
+		InterruptPrompt: "^C",
+		EOFPrompt:       "bye!",
+
+		HistorySearchFold: true,
+	})
+	if err != nil {
+		panic(err)
+	}
+	defer l.Close()
+
 	for {
-		if isInputTty {
-			fmt.Printf("%s:%d> ", *host, *port)
+		line, err := l.Readline()
+		if err == readline.ErrInterrupt {
+			if len(line) == 0 {
+				break
+			} else {
+				continue
+			}
+		} else if err == io.EOF {
+			break
 		}
-		input := readFromPrompt()
-		conn.Write([]byte(input + "\n"))
+		conn.Write([]byte(line + "\n"))
 		readResult(conn)
 	}
 }
