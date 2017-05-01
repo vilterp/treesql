@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/davecgh/go-spew/spew"
 	sophia "github.com/pzhin/go-sophia"
 )
 
@@ -71,7 +70,6 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 	// doc := table.Document()
 	// cursor, _ := table.Cursor(doc)
 	iterator, _ := conn.Database.getTableIterator(query.Table)
-	fmt.Println("iterator:", spew.Sdump(iterator))
 	rowsRead := 0
 	resultWriter.WriteString("[")
 	for {

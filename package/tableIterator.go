@@ -1,10 +1,8 @@
 package treesql
 
 import (
-	"fmt"
 	"strconv"
 
-	"github.com/davecgh/go-spew/spew"
 	sophia "github.com/pzhin/go-sophia"
 )
 
@@ -42,7 +40,6 @@ func newSophiaIterator(db *Database, tableName string) (*SophiaIterator, error) 
 
 func (it *SophiaIterator) Next() *sophia.Document {
 	result := it.cursor.Next()
-	fmt.Println("next doc", spew.Sdump(result))
 	return result
 }
 

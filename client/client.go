@@ -12,6 +12,8 @@ import (
 
 	"bytes"
 
+	"strings"
+
 	"github.com/chzyer/readline"
 	"github.com/robertkrimen/isatty"
 )
@@ -63,7 +65,22 @@ func main() {
 		} else if err == io.EOF {
 			break
 		}
-		conn.Write([]byte(line + "\n"))
+		if strings.HasPrefix(line, "\\d") {
+			fmt.Println("A")
+			if line == "\\d" {
+				fmt.Println("B")
+				conn.Write([]byte("many __tables__ { name, primary_key }\n"))
+			} else {
+				segments := strings.Split(line, " ")
+				if len(segments) == 2 {
+					conn.Write([]byte(fmt.Sprintf("one __tables__ where name = \"%s\" { columns: many columns { name, references } }\n", segments[1])))
+				} else {
+					fmt.Println("unknown command")
+				}
+			}
+		} else {
+			conn.Write([]byte(line + "\n"))
+		}
 		readResult(conn)
 	}
 }
