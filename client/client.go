@@ -65,6 +65,7 @@ func main() {
 		} else if err == io.EOF {
 			break
 		}
+		// TODO: factor special commands out to somewhere
 		if strings.HasPrefix(line, "\\d") {
 			fmt.Println("A")
 			if line == "\\d" {
@@ -73,7 +74,12 @@ func main() {
 			} else {
 				segments := strings.Split(line, " ")
 				if len(segments) == 2 {
-					conn.Write([]byte(fmt.Sprintf("one __tables__ where name = \"%s\" { columns: many columns { name, references } }\n", segments[1])))
+					conn.Write([]byte(
+						fmt.Sprintf(
+							"one __tables__ where name = \"%s\" { columns: many __columns__ { name, references } }\n",
+							segments[1],
+						),
+					))
 				} else {
 					fmt.Println("unknown command")
 				}

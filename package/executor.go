@@ -66,22 +66,24 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 		columnsMap[column.Name] = column
 	}
 	// start iterating
-	// table := conn.Database.Dbs[query.Table]
-	// doc := table.Document()
-	// cursor, _ := table.Cursor(doc)
 	iterator, _ := conn.Database.getTableIterator(query.Table)
 	rowsRead := 0
 	resultWriter.WriteString("[")
 	for {
 		// get next doc
 		nextDoc := iterator.Next()
-		// nextDoc := cursor.Next()
 		if nextDoc == nil {
 			break
 		}
 		// decide if we want to write it
 		if filterCondition != nil {
 			if !docMatchesFilter(filterCondition, nextDoc, scope.document) {
+				continue
+			}
+		}
+		if query.Where != nil {
+			whereSize := 0
+			if nextDoc.GetString(query.Where.ColumnName, &whereSize) != query.Where.Value {
 				continue
 			}
 		}
@@ -110,6 +112,7 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 				case TypeString:
 					size := 0
 					val := nextDoc.GetString(columnSpec.Name, &size)
+					fmt.Println("extracted field", columnSpec.Name, "as", val)
 					resultWriter.WriteString(strconv.Quote(val))
 				}
 			}

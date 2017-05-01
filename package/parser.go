@@ -20,7 +20,13 @@ type Select struct {
 	Many       bool         `( @"MANY"`
 	One        bool         `| @"ONE" )`
 	Table      string       `@Ident`
+	Where      *Where       `[ "WHERE" @@ ]`
 	Selections []*Selection `"{" @@ [ { "," @@ } ] "}"` // TODO: * for all columns
+}
+
+type Where struct {
+	ColumnName string `@Ident "="`
+	Value      string `@String`
 }
 
 type Selection struct {

@@ -77,6 +77,10 @@ func GetTestSchema() *Schema {
 						TableName: "__tables__",
 					},
 				},
+				&Column{
+					Name: "references",
+					Type: TypeString,
+				},
 			},
 		},
 		"blog_posts": &Table{
