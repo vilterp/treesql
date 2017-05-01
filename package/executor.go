@@ -31,7 +31,6 @@ type FilterCondition struct {
 }
 
 func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, scope *Scope) {
-	table := conn.Database.Dbs[query.Table]
 	tableSchema := conn.Database.Schema.Tables[query.Table]
 	// if we're an inner loop, figure out a condition for our loop
 	var filterCondition *FilterCondition
@@ -69,13 +68,16 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 		columnsMap[column.Name] = column
 	}
 	// start iterating
-	doc := table.Document()
-	cursor, _ := table.Cursor(doc)
+	// table := conn.Database.Dbs[query.Table]
+	// doc := table.Document()
+	// cursor, _ := table.Cursor(doc)
+	iterator, _ := conn.Database.getTableIterator(query.Table)
 	rowsRead := 0
 	resultWriter.WriteString("[")
 	for {
 		// get next doc
-		nextDoc := cursor.Next()
+		nextDoc := iterator.Next()
+		// nextDoc := cursor.Next()
 		if nextDoc == nil {
 			break
 		}
