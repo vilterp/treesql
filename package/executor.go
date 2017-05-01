@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"strconv"
 
+	"github.com/davecgh/go-spew/spew"
 	sophia "github.com/pzhin/go-sophia"
 )
 
@@ -24,37 +25,82 @@ type Scope struct {
 // the question: read everything into memory and serialize at the end,
 // or just write everything to the socket as we go?
 
+type FilterCondition struct {
+	InnerColumnName string
+	OuterColumnName string
+}
+
 func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, scope *Scope) {
-	// TODO: really have to learn how to use resultWriter...
 	table := conn.Database.Dbs[query.Table]
 	tableSchema := conn.Database.Schema.Tables[query.Table]
+	// if we're an inner loop, figure out a condition for our loop
+	var filterCondition *FilterCondition
+	if scope != nil {
+		if query.Many {
+			// find reference from inner table to outer table
+			// TODO: this is the kind of thing that should be done in a query planner,
+			// not in every nested loop
+			for _, columnSpec := range tableSchema.Columns {
+				if columnSpec.ReferencesColumn != nil &&
+					columnSpec.ReferencesColumn.TableName == scope.table.Name {
+					filterCondition = &FilterCondition{
+						InnerColumnName: columnSpec.Name,
+						OuterColumnName: scope.table.PrimaryKey,
+					}
+				}
+			}
+		} else {
+			// find reference from outer table to inner table
+			for _, columnSpec := range scope.table.Columns {
+				if columnSpec.ReferencesColumn != nil &&
+					columnSpec.ReferencesColumn.TableName == tableSchema.Name {
+					filterCondition = &FilterCondition{
+						InnerColumnName: columnSpec.Name,
+						OuterColumnName: tableSchema.PrimaryKey,
+					}
+				}
+			}
+		}
+	}
+	fmt.Println("filter condition:", spew.Sdump(filterCondition))
+	// get schema fields into a map (maybe it should be this in the schema? idk)
+	columnsMap := map[string]*Column{}
+	for _, column := range tableSchema.Columns {
+		columnsMap[column.Name] = column
+	}
+	// start iterating
 	doc := table.Document()
 	cursor, _ := table.Cursor(doc)
 	rowsRead := 0
 	resultWriter.WriteString("[")
 	for {
+		// get next doc
 		nextDoc := cursor.Next()
 		if nextDoc == nil {
 			break
 		}
+		// decide if we want to write it
+		if filterCondition != nil {
+			if !docMatchesFilter(filterCondition, nextDoc, scope.document) {
+				continue
+			}
+		}
+		// start writing it
 		if rowsRead > 0 {
 			resultWriter.WriteString(",")
 		}
 		resultWriter.WriteString("{")
-		// get schema fields into a map (maybe it should be this in the schema? idk)
-		columnsMap := map[string]*Column{}
-		for _, column := range tableSchema.Columns {
-			columnsMap[column.Name] = column
-		}
-		// extract fields
+		// extract & write fields
 		for selectionIdx, selection := range query.Selections {
 			resultWriter.WriteString(fmt.Sprintf("\"%s\":", selection.Name))
 			if selection.SubSelect != nil {
+				// execute subquery
 				executeSelect(conn, resultWriter, selection.SubSelect, &Scope{
 					table:    tableSchema,
 					document: nextDoc,
 				})
 			} else {
+				// write field
 				columnSpec := columnsMap[selection.Name]
 				switch columnSpec.Type {
 				case TypeInt:
@@ -75,4 +121,13 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 		resultWriter.WriteString("}")
 	}
 	resultWriter.WriteString("]")
+}
+
+func docMatchesFilter(condition *FilterCondition, innerDoc *sophia.Document, outerDoc *sophia.Document) bool {
+	// again, ignoring non-string types for now...
+	innerSize := 0
+	innerField := innerDoc.GetString(condition.InnerColumnName, &innerSize)
+	outerSize := 0
+	outerField := outerDoc.GetString(condition.OuterColumnName, &outerSize)
+	return innerField == outerField
 }

@@ -48,5 +48,22 @@ func insertTestData(db *treesql.Database) {
 		}
 	}
 
+	users := db.Dbs["users"]
+	user1 := users.Document()
+	user1.Set("id", fmt.Sprintf("derp%d", 1))
+	user1.Set("name", "Pete")
+	err1 := users.Set(user1)
+	if err1 != nil {
+		fmt.Println("error writing post:", err1)
+	}
+
+	user2 := users.Document()
+	user2.Set("id", fmt.Sprintf("derp%d", 2))
+	user2.Set("name", "Steve")
+	err2 := users.Set(user2)
+	if err2 != nil {
+		fmt.Println("error writing post:", err2)
+	}
+
 	fmt.Println("done writing test data")
 }

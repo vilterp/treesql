@@ -13,8 +13,13 @@ type Table struct {
 }
 
 type Column struct {
-	Name string
-	Type ColumnType
+	Name             string
+	Type             ColumnType
+	ReferencesColumn *ColumnReference
+}
+
+type ColumnReference struct {
+	TableName string // we're gonna assume for now that you can only reference the primary key
 }
 
 type ColumnType byte
@@ -52,6 +57,13 @@ func GetTestSchema() *Schema {
 					Type: TypeString,
 				},
 				&Column{
+					Name: "author_id",
+					Type: TypeString,
+					ReferencesColumn: &ColumnReference{
+						TableName: "users",
+					},
+				},
+				&Column{
 					Name: "title",
 					Type: TypeString,
 				},
@@ -72,9 +84,33 @@ func GetTestSchema() *Schema {
 				&Column{
 					Name: "post_id",
 					Type: TypeString,
+					ReferencesColumn: &ColumnReference{
+						TableName: "blog_posts",
+					},
+				},
+				&Column{
+					Name: "author_id",
+					Type: TypeString,
+					ReferencesColumn: &ColumnReference{
+						TableName: "users",
+					},
 				},
 				&Column{
 					Name: "body",
+					Type: TypeString,
+				},
+			},
+		},
+		"users": &Table{
+			Name:       "users",
+			PrimaryKey: "id",
+			Columns: []*Column{
+				&Column{
+					Name: "id",
+					Type: TypeString,
+				},
+				&Column{
+					Name: "name",
 					Type: TypeString,
 				},
 			},

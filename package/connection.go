@@ -4,8 +4,6 @@ import (
 	"bufio"
 	"fmt"
 	"net"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 type Connection struct {
@@ -34,7 +32,7 @@ func HandleConnection(conn *Connection) {
 		}
 
 		// output message received
-		fmt.Print("SQL statement received:", spew.Sdump(statement))
+		// fmt.Print("SQL statement received:", spew.Sdump(statement))
 
 		// validate query
 		queryErr := conn.Database.ValidateSelect(statement)

@@ -8,6 +8,10 @@ import (
 	"net"
 	"os"
 
+	"encoding/json"
+
+	"bytes"
+
 	"github.com/chzyer/readline"
 	"github.com/robertkrimen/isatty"
 )
@@ -66,15 +70,17 @@ func main() {
 
 func readResult(conn net.Conn) {
 	reader := bufio.NewReader(conn)
-	message, err := reader.ReadString('\n')
+	message, err := reader.ReadBytes('\n')
 	if err != nil {
 		fmt.Println("connection error:", err)
 		os.Exit(0)
 	}
-	if message == "done\n" {
+	if string(message) == "done\n" {
 		return
 	}
-	fmt.Printf(message)
+	var dstBuffer bytes.Buffer
+	json.Indent(&dstBuffer, message, "", "  ")
+	dstBuffer.WriteTo(os.Stdout)
 }
 
 func readFromPrompt() string {
