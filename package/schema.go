@@ -62,6 +62,23 @@ func GetTestSchema() *Schema {
 				},
 			},
 		},
+		"__columns__": &Table{
+			Name:       "__columns__",
+			PrimaryKey: "name",
+			Columns: []*Column{
+				&Column{
+					Name: "name",
+					Type: TypeString,
+				},
+				&Column{
+					Name: "table_name",
+					Type: TypeString,
+					ReferencesColumn: &ColumnReference{
+						TableName: "__tables__",
+					},
+				},
+			},
+		},
 		"blog_posts": &Table{
 			Name:       "blog_posts",
 			PrimaryKey: "id",
