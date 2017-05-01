@@ -74,7 +74,7 @@ func main() {
 				if len(segments) == 2 {
 					conn.Write([]byte(
 						fmt.Sprintf(
-							"one __tables__ where name = \"%s\" { columns: many __columns__ { name, references } }\n",
+							"one __tables__ where name = \"%s\" { name, primary_key, columns: many __columns__ { name, references } }\n",
 							segments[1],
 						),
 					))
