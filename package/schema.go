@@ -48,6 +48,20 @@ func (table *Table) ToSophiaSchema() *sophia.Schema {
 
 func GetTestSchema() *Schema {
 	tables := map[string]*Table{
+		"__tables__": &Table{
+			Name:       "__tables__",
+			PrimaryKey: "name",
+			Columns: []*Column{
+				&Column{
+					Name: "name",
+					Type: TypeString,
+				},
+				&Column{
+					Name: "primary_key",
+					Type: TypeString,
+				},
+			},
+		},
 		"blog_posts": &Table{
 			Name:       "blog_posts",
 			PrimaryKey: "id",

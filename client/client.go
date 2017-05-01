@@ -79,8 +79,12 @@ func readResult(conn net.Conn) {
 		return
 	}
 	var dstBuffer bytes.Buffer
-	json.Indent(&dstBuffer, message, "", "  ")
-	dstBuffer.WriteTo(os.Stdout)
+	jsonErr := json.Indent(&dstBuffer, message, "", "  ")
+	if jsonErr == nil {
+		dstBuffer.WriteTo(os.Stdout)
+	} else {
+		fmt.Println(string(message))
+	}
 }
 
 func readFromPrompt() string {

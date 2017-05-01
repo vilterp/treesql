@@ -41,9 +41,7 @@ func Open(dataDir string) (*Database, error) {
 	// serializing access to the schema
 	go func() {
 		for {
-			fmt.Println("waiting for request")
 			query := <-database.queryValidationRequests
-			fmt.Println("received request")
 			database.handleValidationRequest(query)
 		}
 	}()

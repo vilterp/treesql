@@ -61,7 +61,6 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 			}
 		}
 	}
-	fmt.Println("filter condition:", spew.Sdump(filterCondition))
 	// get schema fields into a map (maybe it should be this in the schema? idk)
 	columnsMap := map[string]*Column{}
 	for _, column := range tableSchema.Columns {
@@ -72,6 +71,7 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 	// doc := table.Document()
 	// cursor, _ := table.Cursor(doc)
 	iterator, _ := conn.Database.getTableIterator(query.Table)
+	fmt.Println("iterator:", spew.Sdump(iterator))
 	rowsRead := 0
 	resultWriter.WriteString("[")
 	for {
