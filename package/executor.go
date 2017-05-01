@@ -112,7 +112,6 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 				case TypeString:
 					size := 0
 					val := nextDoc.GetString(columnSpec.Name, &size)
-					fmt.Println("extracted field", columnSpec.Name, "as", val)
 					resultWriter.WriteString(strconv.Quote(val))
 				}
 			}

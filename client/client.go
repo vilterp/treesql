@@ -67,9 +67,7 @@ func main() {
 		}
 		// TODO: factor special commands out to somewhere
 		if strings.HasPrefix(line, "\\d") {
-			fmt.Println("A")
 			if line == "\\d" {
-				fmt.Println("B")
 				conn.Write([]byte("many __tables__ { name, primary_key }\n"))
 			} else {
 				segments := strings.Split(line, " ")
