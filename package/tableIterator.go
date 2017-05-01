@@ -1,7 +1,6 @@
 package treesql
 
 import (
-	"fmt"
 	"strconv"
 
 	sophia "github.com/pzhin/go-sophia"
@@ -30,17 +29,17 @@ type SophiaIterator struct {
 }
 
 func newSophiaIterator(db *Database, tableName string) (*SophiaIterator, error) {
-	doc := db.Dbs[tableName].Document()
-	cursor, err := db.Dbs[tableName].Cursor(doc)
+	table := db.Dbs[tableName]
+	doc := table.Document()
+	cursor, err := table.Cursor(doc)
 	return &SophiaIterator{
-		table:  db.Dbs[tableName],
+		table:  table,
 		cursor: cursor,
 	}, err
 }
 
 func (it *SophiaIterator) Next() *sophia.Document {
-	fmt.Printf("iterator:::")
-	return it.cursor.Next() // why is there no -> vs . distinction like in C
+	return it.cursor.Next()
 }
 
 func (it *SophiaIterator) Get(key string) (*sophia.Document, error) {
