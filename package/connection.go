@@ -38,6 +38,7 @@ func HandleConnection(conn *Connection) {
 		queryErr := conn.Database.ValidateSelect(statement)
 		if queryErr != nil {
 			conn.ClientConn.Write([]byte(fmt.Sprintf("query error: %s\n", queryErr)))
+			fmt.Println("just wrote error")
 			continue
 		}
 

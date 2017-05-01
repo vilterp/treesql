@@ -5,7 +5,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/davecgh/go-spew/spew"
+	"log"
+
 	sophia "github.com/pzhin/go-sophia"
 )
 
@@ -31,7 +32,6 @@ type FilterCondition struct {
 }
 
 func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, scope *Scope) {
-	table := conn.Database.Dbs[query.Table]
 	tableSchema := conn.Database.Schema.Tables[query.Table]
 	// if we're an inner loop, figure out a condition for our loop
 	var filterCondition *FilterCondition
@@ -62,20 +62,23 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 			}
 		}
 	}
-	fmt.Println("filter condition:", spew.Sdump(filterCondition))
 	// get schema fields into a map (maybe it should be this in the schema? idk)
 	columnsMap := map[string]*Column{}
 	for _, column := range tableSchema.Columns {
 		columnsMap[column.Name] = column
 	}
 	// start iterating
-	doc := table.Document()
-	cursor, _ := table.Cursor(doc)
+	iterator, itErr := conn.Database.getTableIterator(tableSchema.Name)
+	if itErr != nil {
+		// idk man, we could be in the middle of returning query results...
+		resultWriter.Write([]byte("\n"))
+		log.Printf("error opening iterator:", itErr)
+	}
 	rowsRead := 0
 	resultWriter.WriteString("[")
 	for {
 		// get next doc
-		nextDoc := cursor.Next()
+		nextDoc := iterator.Next()
 		if nextDoc == nil {
 			break
 		}

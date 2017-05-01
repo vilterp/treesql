@@ -63,7 +63,11 @@ func main() {
 		} else if err == io.EOF {
 			break
 		}
-		conn.Write([]byte(line + "\n"))
+		if line == "\\d" {
+			conn.Write([]byte("many __tables__ { name, primary_key }\n"))
+		} else {
+			conn.Write([]byte(line + "\n"))
+		}
 		readResult(conn)
 	}
 }
@@ -79,8 +83,14 @@ func readResult(conn net.Conn) {
 		return
 	}
 	var dstBuffer bytes.Buffer
-	json.Indent(&dstBuffer, message, "", "  ")
-	dstBuffer.WriteTo(os.Stdout)
+	jsonErr := json.Indent(&dstBuffer, message, "", "  ")
+	// need some out-of-band way of saying whether it's an error or not
+	// or say in json whether it's an error or not
+	if jsonErr == nil {
+		dstBuffer.WriteTo(os.Stdout)
+	} else {
+		fmt.Print(string(message))
+	}
 }
 
 func readFromPrompt() string {

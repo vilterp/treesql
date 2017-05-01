@@ -41,7 +41,6 @@ func Open(dataDir string) (*Database, error) {
 	// serializing access to the schema
 	go func() {
 		for {
-			fmt.Println("waiting for request")
 			query := <-database.queryValidationRequests
 			fmt.Println("received request")
 			database.handleValidationRequest(query)
@@ -79,7 +78,7 @@ func (db *Database) handleValidationRequest(request *QueryValidationRequest) {
 func (db *Database) ValidateSelect(query *Select) error {
 	// does table exist?
 	_, ok := db.Dbs[query.Table]
-	if !ok {
+	if !ok && query.Table != "__tables__" && query.Table != "__columns__" {
 		return &NoSuchTable{TableName: query.Table}
 	}
 	// do columns exist / are subqueries valid?
