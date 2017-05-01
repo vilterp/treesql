@@ -42,7 +42,6 @@ func Open(dataDir string) (*Database, error) {
 	go func() {
 		for {
 			query := <-database.queryValidationRequests
-			fmt.Println("received request")
 			database.handleValidationRequest(query)
 		}
 	}()

@@ -39,7 +39,8 @@ func newSophiaIterator(db *Database, tableName string) (*SophiaIterator, error) 
 }
 
 func (it *SophiaIterator) Next() *sophia.Document {
-	return it.cursor.Next()
+	result := it.cursor.Next()
+	return result
 }
 
 func (it *SophiaIterator) Get(key string) (*sophia.Document, error) {

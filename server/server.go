@@ -25,7 +25,10 @@ func main() {
 	log.Printf("opened data directory: %s\n", *dataDir)
 
 	// listen & handle connections
-	listeningSock, _ := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	listeningSock, listenErr := net.Listen("tcp", fmt.Sprintf(":%d", *port))
+	if listenErr != nil {
+		log.Fatalln("failed to listen for connections:", listenErr)
+	}
 	log.Printf("listening on port %d\n", *port)
 
 	connectionID := 0

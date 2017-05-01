@@ -12,6 +12,8 @@ import (
 
 	"bytes"
 
+	"strings"
+
 	"github.com/chzyer/readline"
 	"github.com/robertkrimen/isatty"
 )
@@ -63,8 +65,25 @@ func main() {
 		} else if err == io.EOF {
 			break
 		}
-		if line == "\\d" {
-			conn.Write([]byte("many __tables__ { name, primary_key }\n"))
+		// TODO: factor special commands out to somewhere
+		if strings.HasPrefix(line, "\\d") {
+			fmt.Println("A")
+			if line == "\\d" {
+				fmt.Println("B")
+				conn.Write([]byte("many __tables__ { name, primary_key }\n"))
+			} else {
+				segments := strings.Split(line, " ")
+				if len(segments) == 2 {
+					conn.Write([]byte(
+						fmt.Sprintf(
+							"one __tables__ where name = \"%s\" { columns: many __columns__ { name, references } }\n",
+							segments[1],
+						),
+					))
+				} else {
+					fmt.Println("unknown command")
+				}
+			}
 		} else {
 			conn.Write([]byte(line + "\n"))
 		}
@@ -84,12 +103,10 @@ func readResult(conn net.Conn) {
 	}
 	var dstBuffer bytes.Buffer
 	jsonErr := json.Indent(&dstBuffer, message, "", "  ")
-	// need some out-of-band way of saying whether it's an error or not
-	// or say in json whether it's an error or not
 	if jsonErr == nil {
 		dstBuffer.WriteTo(os.Stdout)
 	} else {
-		fmt.Print(string(message))
+		fmt.Println(string(message))
 	}
 }
 

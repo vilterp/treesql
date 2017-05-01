@@ -64,14 +64,10 @@ func GetTestSchema() *Schema {
 		},
 		"__columns__": &Table{
 			Name:       "__columns__",
-			PrimaryKey: "", // columns need oids I guess
+			PrimaryKey: "name",
 			Columns: []*Column{
 				&Column{
 					Name: "name",
-					Type: TypeString,
-				},
-				&Column{
-					Name: "references",
 					Type: TypeString,
 				},
 				&Column{
@@ -80,6 +76,10 @@ func GetTestSchema() *Schema {
 					ReferencesColumn: &ColumnReference{
 						TableName: "__tables__",
 					},
+				},
+				&Column{
+					Name: "references",
+					Type: TypeString,
 				},
 			},
 		},

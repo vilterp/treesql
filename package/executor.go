@@ -5,8 +5,6 @@ import (
 	"fmt"
 	"strconv"
 
-	"log"
-
 	sophia "github.com/pzhin/go-sophia"
 )
 
@@ -68,12 +66,7 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 		columnsMap[column.Name] = column
 	}
 	// start iterating
-	iterator, itErr := conn.Database.getTableIterator(tableSchema.Name)
-	if itErr != nil {
-		// idk man, we could be in the middle of returning query results...
-		resultWriter.Write([]byte("\n"))
-		log.Printf("error opening iterator:", itErr)
-	}
+	iterator, _ := conn.Database.getTableIterator(query.Table)
 	rowsRead := 0
 	resultWriter.WriteString("[")
 	for {
@@ -85,6 +78,12 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 		// decide if we want to write it
 		if filterCondition != nil {
 			if !docMatchesFilter(filterCondition, nextDoc, scope.document) {
+				continue
+			}
+		}
+		if query.Where != nil {
+			whereSize := 0
+			if nextDoc.GetString(query.Where.ColumnName, &whereSize) != query.Where.Value {
 				continue
 			}
 		}
@@ -113,6 +112,7 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 				case TypeString:
 					size := 0
 					val := nextDoc.GetString(columnSpec.Name, &size)
+					fmt.Println("extracted field", columnSpec.Name, "as", val)
 					resultWriter.WriteString(strconv.Quote(val))
 				}
 			}
