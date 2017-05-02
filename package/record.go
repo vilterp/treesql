@@ -3,7 +3,6 @@ package treesql
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"log"
 )
 
@@ -27,7 +26,6 @@ func (table *Table) NewRecord() *Record {
 }
 
 func (table *Table) RecordFromBytes(raw []byte) *Record {
-	fmt.Println("bytes to read", raw)
 	record := &Record{
 		Table:  table,
 		Values: make([]Value, len(table.Columns)),
@@ -35,7 +33,6 @@ func (table *Table) RecordFromBytes(raw []byte) *Record {
 	buffer := bytes.NewBuffer(raw)
 	for valueIdx := 0; valueIdx < len(table.Columns); valueIdx++ {
 		typeCode, _ := buffer.ReadByte()
-		fmt.Println("typecode", typeCode)
 		switch ColumnType(typeCode) {
 		case TypeString:
 			length, _ := readInteger(buffer)
@@ -100,7 +97,6 @@ func (record *Record) fieldIndex(name string) int {
 }
 
 func (record *Record) ToBytes() []byte {
-	fmt.Println("writing record")
 	buffer := NewByteBuffer()
 	for idx, column := range record.Table.Columns {
 		buffer.Write([]byte{byte(column.Type)})
@@ -114,7 +110,6 @@ func (record *Record) ToBytes() []byte {
 		}
 	}
 	result := buffer.GetBytes()
-	fmt.Println("result:", result)
 	return result
 }
 
@@ -122,7 +117,6 @@ func (record *Record) ToBytes() []byte {
 func readInteger(buffer *bytes.Buffer) (int, error) {
 	bytes := make([]byte, 4)
 	buffer.Read(bytes)
-	fmt.Println("bytes in integer", bytes)
 	result := binary.BigEndian.Uint32(bytes)
 	if result > 100000 {
 		log.Println("wut")

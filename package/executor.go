@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/boltdb/bolt"
-	"github.com/davecgh/go-spew/spew"
 )
 
 func ExecuteQuery(conn *Connection, query *Select) {
@@ -47,7 +46,6 @@ type FilterCondition struct {
 }
 
 func executeSelect(ex *QueryExecution, query *Select, scope *Scope) {
-	fmt.Println("===== executeSelect ===============")
 	resultWriter := ex.ResultWriter
 	tableSchema := ex.Connection.Database.Schema.Tables[query.Table]
 	// if we're an inner loop, figure out a condition for our loop
@@ -92,13 +90,9 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) {
 	if query.Many {
 		ex.ResultWriter.WriteString("[")
 	}
-	spew.Dump(query)
-	spew.Dump(filterCondition)
-	fmt.Println(iterator)
 	for {
 		// get next doc
 		nextDoc := iterator.Next()
-		// fmt.Println("nextDoc", nextDoc)
 		if nextDoc == nil {
 			break
 		}
@@ -108,7 +102,6 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) {
 				continue
 			}
 		}
-		fmt.Println("passed filter!")
 		if query.Where != nil {
 			// again ignoring int vals for now...
 			if nextDoc.GetField(query.Where.ColumnName).StringVal != query.Where.Value {
@@ -153,7 +146,6 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) {
 		resultWriter.WriteString("}")
 	}
 	iterator.Close()
-	fmt.Println("/=================", query.Many)
 	if query.Many {
 		resultWriter.WriteString("]")
 	}
