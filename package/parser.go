@@ -7,7 +7,7 @@ import (
 
 var (
 	sqlLexer = lexer.Unquote(lexer.Upper(lexer.Must(lexer.Regexp(`(\s+)`+
-		`|(?P<Keyword>(?i)SELECT|INSERT|INTO|VALUES|ONE|MANY|FROM|TOP|DISTINCT|ALL|WHERE|GROUP|BY|HAVING|UNION|MINUS|EXCEPT|INTERSECT|ORDER|LIMIT|OFFSET|TRUE|FALSE|NULL|IS|NOT|ANY|SOME|BETWEEN|AND|OR|LIKE|AS|IN)`+
+		`|(?P<Keyword>(?i)SELECT|INSERT|INTO|VALUES|CREATE|TABLE|PRIMARY|KEY|ONE|MANY|FROM|TOP|DISTINCT|ALL|WHERE|GROUP|BY|HAVING|UNION|MINUS|EXCEPT|INTERSECT|ORDER|LIMIT|OFFSET|TRUE|FALSE|NULL|IS|NOT|ANY|SOME|BETWEEN|AND|OR|LIKE|AS)`+
 		`|(?P<Ident>[a-zA-Z_][a-zA-Z0-9_]*)`+
 		`|(?P<Number>[-+]?\d*\.?\d+([eE][-+]?\d+)?)`+
 		`|(?P<String>'[^']*'|"[^"]*")`+
@@ -17,8 +17,20 @@ var (
 )
 
 type Statement struct {
-	Select *Select `  @@`
-	Insert *Insert `| @@`
+	Select      *Select      `  @@`
+	Insert      *Insert      `| @@`
+	CreateTable *CreateTable `| @@`
+}
+
+type CreateTable struct {
+	Name    string               `"CREATE" "TABLE" @Ident`
+	Columns []*CreateTableColumn `"(" @@ { "," @@ } ")"`
+}
+
+type CreateTableColumn struct {
+	Name       string `@Ident`
+	TypeName   string `@Ident`
+	PrimaryKey bool   `[@"PRIMARY" "KEY"]`
 }
 
 type Insert struct {

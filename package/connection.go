@@ -7,6 +7,7 @@ import (
 	"net"
 
 	"github.com/boltdb/bolt"
+	"github.com/davecgh/go-spew/spew"
 )
 
 type Connection struct {
@@ -49,6 +50,8 @@ func (conn *Connection) Run() {
 			conn.ExecuteQuery(statement.Select)
 		} else if statement.Insert != nil {
 			conn.ExecuteInsert(statement.Insert)
+		} else if statement.CreateTable != nil {
+			conn.ExecuteCreateTable(statement.CreateTable)
 		}
 	}
 }
@@ -69,4 +72,8 @@ func (conn *Connection) ExecuteInsert(insert *Insert) {
 	})
 	log.Println("connection", conn.ID, "handled insert")
 	conn.ClientConn.Write([]byte("INSERT 1\n")) // heh
+}
+
+func (conn *Connection) ExecuteCreateTable(create *CreateTable) {
+	fmt.Println("create table whooo", spew.Sdump(create))
 }

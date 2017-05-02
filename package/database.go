@@ -75,6 +75,8 @@ func (db *Database) ValidateStatement(statement *Statement) error {
 		return db.validateSelect(statement.Select)
 	} else if statement.Insert != nil {
 		return db.validateInsert(statement.Insert)
+	} else if statement.CreateTable != nil {
+		return db.validateCreateTable(statement.CreateTable)
 	} else {
 		return errors.New("unknown statement type")
 	}
@@ -143,5 +145,32 @@ func (db *Database) validateSelect(query *Select) error {
 			}
 		}
 	}
+	return nil
+}
+
+func (db *Database) validateCreateTable(create *CreateTable) error {
+	// does table already exist?
+	_, ok := db.Schema.Tables[create.Name]
+	if ok {
+		return &TableAlreadyExists{TableName: create.Name}
+	}
+	// types are real
+	for _, column := range create.Columns {
+		knownType := column.TypeName == "string" || column.TypeName == "int"
+		if !knownType {
+			return &NonexistentType{TypeName: column.TypeName}
+		}
+	}
+	// only one primary key
+	primaryKeyCount := 0
+	for _, column := range create.Columns {
+		if column.PrimaryKey {
+			primaryKeyCount++
+		}
+	}
+	if primaryKeyCount != 1 {
+		return &WrongNoPrimaryKey{Count: primaryKeyCount}
+	}
+	// TODO: dedup column names
 	return nil
 }
