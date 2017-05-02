@@ -24,7 +24,9 @@ func (conn *Connection) ExecuteQuery(query *Select) {
 	}
 	executeSelect(execution, query, nil)
 	commitErr := tx.Rollback()
-	fmt.Printf("read commit err:", commitErr)
+	if commitErr != nil {
+		log.Println("read commit err:", commitErr)
+	}
 	writer.WriteString("\n")
 	writer.Flush()
 	endTime := time.Now()

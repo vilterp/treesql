@@ -7,7 +7,6 @@ import (
 	"net"
 
 	"github.com/boltdb/bolt"
-	"github.com/davecgh/go-spew/spew"
 )
 
 type Connection struct {
@@ -56,8 +55,7 @@ func (conn *Connection) Run() {
 
 // TODO: some other file, alongside executor.go? idk
 func (conn *Connection) ExecuteInsert(insert *Insert) {
-	spew.Dump(insert)
-	// TODO: handle more errors
+	// TODO: handle any errors
 	conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(insert.Table))
 		table := conn.Database.Schema.Tables[insert.Table]
@@ -65,12 +63,8 @@ func (conn *Connection) ExecuteInsert(insert *Insert) {
 		for idx, value := range insert.Values {
 			record.SetString(table.Columns[idx].Name, value)
 		}
-		spew.Dump(record)
-		fmt.Println(record.ToBytes())
 		key := record.GetField(table.PrimaryKey).StringVal
-		fmt.Println("about to put")
 		bucket.Put([]byte(key), record.ToBytes())
-		fmt.Println("just put")
 		return nil
 	})
 	log.Println("connection", conn.ID, "handled insert")
