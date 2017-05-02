@@ -3,13 +3,17 @@ package treesql
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"strconv"
+
+	"time"
 
 	"github.com/boltdb/bolt"
 )
 
 func ExecuteQuery(conn *Connection, query *Select) {
 	// TODO: put all these reads in a transaction
+	startTime := time.Now()
 	tx, _ := conn.Database.BoltDB.Begin(false)
 	writer := bufio.NewWriter(conn.ClientConn)
 	execution := &QueryExecution{
@@ -22,6 +26,8 @@ func ExecuteQuery(conn *Connection, query *Select) {
 	tx.Commit()
 	writer.WriteString("\n")
 	writer.Flush()
+	endTime := time.Now()
+	log.Println("connection", conn.ID, "serviced query in", endTime.Sub(startTime))
 }
 
 // maybe this should be called transaction? idk
@@ -30,6 +36,7 @@ type QueryExecution struct {
 	Query        *Select
 	Transaction  *bolt.Tx
 	ResultWriter *bufio.Writer
+	Logger       *log.Logger
 }
 
 type Scope struct {
