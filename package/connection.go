@@ -137,10 +137,16 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable) {
 		nextColumnIdBytes := make([]byte, 4)
 		binary.BigEndian.PutUint32(nextColumnIdBytes, uint32(conn.Database.Schema.NextColumnId))
 		tx.Bucket([]byte("__sequences__")).Put([]byte("__next_column_id__"), nextColumnIdBytes)
+		fmt.Println("at end of create table transaction")
 		return nil
 	})
+	fmt.Println("created table")
 	if updateErr != nil {
 		// TODO: structured errors on the wire...
 		conn.ClientConn.Write([]byte(fmt.Sprintf("error creating table: %s\n", updateErr)))
+		log.Println("connection", conn.ID, "error creating table:", updateErr)
+	} else {
+		fmt.Println("connection", conn.ID, "created table", create.Name)
+		conn.ClientConn.Write([]byte("CREATE TABLE\n"))
 	}
 }
