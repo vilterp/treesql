@@ -1,6 +1,8 @@
 # TreeSQL
 
-A simple database to explore alternative query languages which return trees of data instead of tables (hence the name). Uses [Sophia](http://sophia.systems/) as a storage layer.
+A simple database to explore alternative query languages which return trees of data instead of tables (hence the name).
+
+Currently uses [BoltDB](https://github.com/boltdb/bolt) as a storage layer, which means it can't do concurrent write transactions.
 
 ## Requirements
 
