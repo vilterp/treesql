@@ -1,9 +1,11 @@
 package treesql
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/boltdb/bolt"
+	"github.com/davecgh/go-spew/spew"
 )
 
 type TableIterator interface {
@@ -24,22 +26,44 @@ func (ex *QueryExecution) getTableIterator(tableName string) (TableIterator, err
 // sophia iterator
 
 type BoltIterator struct {
-	cursor *bolt.Cursor
-	table  *Table
+	cursor        *bolt.Cursor
+	seekedToFirst bool
+	table         *Table
 }
 
 func newBoltIterator(ex *QueryExecution, tableName string) (*BoltIterator, error) {
 	tableSchema := ex.Connection.Database.Schema.Tables[tableName]
 	cursor := ex.Transaction.Bucket([]byte(tableName)).Cursor()
 	return &BoltIterator{
-		table:  tableSchema,
-		cursor: cursor,
+		table:         tableSchema,
+		seekedToFirst: false,
+		cursor:        cursor,
 	}, nil
 }
 
 func (it *BoltIterator) Next() *Record {
-	_, rawRecord := it.cursor.Next()
-	return it.table.RecordFromBytes(rawRecord)
+	fmt.Println("======= Next =======")
+	var key []byte
+	var rawRecord []byte
+	if !it.seekedToFirst {
+		fmt.Println("about to call first")
+		key, rawRecord = it.cursor.First()
+		fmt.Println("first key", key)
+		it.seekedToFirst = true
+	} else {
+		fmt.Println("about to call next")
+		key, rawRecord = it.cursor.Next()
+		fmt.Println("next key", key)
+	}
+	if key == nil {
+		fmt.Println("key is nil")
+		return nil
+	} else {
+		fmt.Println("key not nil")
+		record := it.table.RecordFromBytes(rawRecord)
+		spew.Dump(record)
+		return record
+	}
 }
 
 func (it *BoltIterator) Get(key string) (*Record, error) {

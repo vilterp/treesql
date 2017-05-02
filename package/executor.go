@@ -11,7 +11,7 @@ import (
 
 func ExecuteQuery(conn *Connection, query *Select) {
 	// TODO: put all these reads in a transaction
-	tx, _ := conn.Database.boltDB.Begin(false)
+	tx, _ := conn.Database.BoltDB.Begin(false)
 	writer := bufio.NewWriter(conn.ClientConn)
 	execution := &QueryExecution{
 		Connection:   conn,
@@ -98,7 +98,7 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) {
 	for {
 		// get next doc
 		nextDoc := iterator.Next()
-		fmt.Println("nextDoc", nextDoc)
+		// fmt.Println("nextDoc", nextDoc)
 		if nextDoc == nil {
 			break
 		}

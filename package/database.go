@@ -9,7 +9,7 @@ import (
 
 type Database struct {
 	Schema                  *Schema
-	boltDB                  *bolt.DB
+	BoltDB                  *bolt.DB
 	queryValidationRequests chan *QueryValidationRequest
 }
 
@@ -23,12 +23,12 @@ func Open(dataFile string) (*Database, error) {
 	testSchema := GetTestSchema()
 	database := &Database{
 		Schema:                  GetTestSchema(),
-		boltDB:                  boltDB,
+		BoltDB:                  boltDB,
 		queryValidationRequests: make(chan *QueryValidationRequest),
 	}
 
 	// open tables
-	boltDB.Update(func(tx *bolt.Tx) error {
+	createErr := boltDB.Update(func(tx *bolt.Tx) error {
 		for tableName, _ := range testSchema.Tables {
 			_, bucketErr := tx.CreateBucketIfNotExists([]byte(tableName))
 			if bucketErr != nil {
@@ -37,6 +37,9 @@ func Open(dataFile string) (*Database, error) {
 		}
 		return nil
 	})
+	if createErr != nil {
+		return nil, createErr
+	}
 
 	// serve query validation requests
 	// TODO: a `select` here for schema changes
@@ -53,7 +56,7 @@ func Open(dataFile string) (*Database, error) {
 
 func (db *Database) Close() {
 	log.Println("Closing storage layer...")
-	err := db.boltDB.Close()
+	err := db.BoltDB.Close()
 	if err != nil {
 		log.Printf("error closing storage layer:", err)
 	}
