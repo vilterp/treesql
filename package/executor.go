@@ -11,7 +11,7 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-func ExecuteQuery(conn *Connection, query *Select) {
+func (conn *Connection) ExecuteQuery(query *Select) {
 	// TODO: put all these reads in a transaction
 	startTime := time.Now()
 	tx, _ := conn.Database.BoltDB.Begin(false)
@@ -23,7 +23,8 @@ func ExecuteQuery(conn *Connection, query *Select) {
 		ResultWriter: writer,
 	}
 	executeSelect(execution, query, nil)
-	tx.Commit()
+	commitErr := tx.Rollback()
+	fmt.Printf("read commit err:", commitErr)
 	writer.WriteString("\n")
 	writer.Flush()
 	endTime := time.Now()

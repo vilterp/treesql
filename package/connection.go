@@ -5,6 +5,9 @@ import (
 	"fmt"
 	"log"
 	"net"
+
+	"github.com/boltdb/bolt"
+	"github.com/davecgh/go-spew/spew"
 )
 
 type Connection struct {
@@ -13,7 +16,7 @@ type Connection struct {
 	Database   *Database
 }
 
-func HandleConnection(conn *Connection) {
+func (conn *Connection) Run() {
 	log.Printf("connection id %d from %s\n", conn.ID, conn.ClientConn.RemoteAddr())
 	for {
 		// will listen for message to process ending in newline (\n)
@@ -27,7 +30,7 @@ func HandleConnection(conn *Connection) {
 		// parse what was sent to us
 		statement, err := Parse(message)
 		if err != nil {
-			fmt.Println("parse error:", err)
+			log.Println("connection", conn.ID, "parse error:", err)
 			conn.ClientConn.Write([]byte(fmt.Sprintf("parse error: %s\n", err)))
 			continue
 		}
@@ -35,15 +38,41 @@ func HandleConnection(conn *Connection) {
 		// output message received
 		// fmt.Print("SQL statement received:", spew.Sdump(statement))
 
-		// validate query
-		queryErr := conn.Database.ValidateSelect(statement)
+		// validate statement
+		queryErr := conn.Database.ValidateStatement(statement)
 		if queryErr != nil {
-			conn.ClientConn.Write([]byte(fmt.Sprintf("query error: %s\n", queryErr)))
-			fmt.Println("just wrote error")
+			conn.ClientConn.Write([]byte(fmt.Sprintf("statement error: %s\n", queryErr)))
+			log.Println("connection", conn.ID, "statement validation error", queryErr)
 			continue
 		}
-
-		// execute query
-		ExecuteQuery(conn, statement)
+		if statement.Select != nil {
+			// execute query
+			conn.ExecuteQuery(statement.Select)
+		} else if statement.Insert != nil {
+			conn.ExecuteInsert(statement.Insert)
+		}
 	}
+}
+
+// TODO: some other file, alongside executor.go? idk
+func (conn *Connection) ExecuteInsert(insert *Insert) {
+	spew.Dump(insert)
+	// TODO: handle more errors
+	conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(insert.Table))
+		table := conn.Database.Schema.Tables[insert.Table]
+		record := table.NewRecord()
+		for idx, value := range insert.Values {
+			record.SetString(table.Columns[idx].Name, value)
+		}
+		spew.Dump(record)
+		fmt.Println(record.ToBytes())
+		key := record.GetField(table.PrimaryKey).StringVal
+		fmt.Println("about to put")
+		bucket.Put([]byte(key), record.ToBytes())
+		fmt.Println("just put")
+		return nil
+	})
+	log.Println("connection", conn.ID, "handled insert")
+	conn.ClientConn.Write([]byte("INSERT 1\n")) // heh
 }

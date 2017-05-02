@@ -1,7 +1,7 @@
 package treesql
 
 import (
-	"fmt"
+	"errors"
 	"log"
 
 	"github.com/boltdb/bolt"
@@ -44,12 +44,12 @@ func Open(dataFile string) (*Database, error) {
 	// serve query validation requests
 	// TODO: a `select` here for schema changes
 	// serializing access to the schema
-	go func() {
-		for {
-			query := <-database.queryValidationRequests
-			database.handleValidationRequest(query)
-		}
-	}()
+	// go func() {
+	// 	for {
+	// 		query := <-database.queryValidationRequests
+	// 		database.handleValidationRequest(query)
+	// 	}
+	// }()
 
 	return database, nil
 }
@@ -70,24 +70,53 @@ type QueryValidationRequest struct {
 	responseChan chan error
 }
 
-func (db *Database) ValidateQuery(query *Select) error {
-	responseChan := make(chan error)
-	fmt.Println("about to send request")
-	db.queryValidationRequests <- &QueryValidationRequest{
-		query:        query,
-		responseChan: responseChan,
+func (db *Database) ValidateStatement(statement *Statement) error {
+	if statement.Select != nil {
+		return db.validateSelect(statement.Select)
+	} else if statement.Insert != nil {
+		return db.validateInsert(statement.Insert)
+	} else {
+		return errors.New("unknown statement type")
 	}
-	fmt.Println("sent request")
-	return <-responseChan
 }
 
-func (db *Database) handleValidationRequest(request *QueryValidationRequest) {
-	fmt.Printf("hello from handleValidationRequest")
-	request.responseChan <- db.ValidateSelect(request.query)
+// func (db *Database) validateQuery(query *Select) error {
+// 	responseChan := make(chan error)
+// 	fmt.Println("about to send request")
+// 	db.queryValidationRequests <- &QueryValidationRequest{
+// 		query:        query,
+// 		responseChan: responseChan,
+// 	}
+// 	fmt.Println("sent request")
+// 	return <-responseChan
+// }
+
+// func (db *Database) handleValidationRequest(request *QueryValidationRequest) {
+// 	fmt.Printf("hello from handleValidationRequest")
+// 	request.responseChan <- db.ValidateSelect(request.query)
+// }
+
+func (db *Database) validateInsert(insert *Insert) error {
+	// does table exist
+	tableSpec, ok := db.Schema.Tables[insert.Table]
+	if !ok {
+		return &NoSuchTable{TableName: insert.Table}
+	}
+	// can't insert into builtins
+	if insert.Table == "__tables__" || insert.Table == "__columns__" {
+		return &BuiltinWriteAttempt{TableName: insert.Table}
+	}
+	// right # fields (TODO: validate types)
+	wanted := len(tableSpec.Columns)
+	got := len(insert.Values)
+	if wanted != got {
+		return &InsertWrongNumFields{TableName: insert.Table, Wanted: wanted, Got: got}
+	}
+	return nil
 }
 
 // want to not export this and do it via the server, but...
-func (db *Database) ValidateSelect(query *Select) error {
+func (db *Database) validateSelect(query *Select) error {
 	// does table exist?
 	_, ok := db.Schema.Tables[query.Table]
 	if !ok && query.Table != "__tables__" && query.Table != "__columns__" {
@@ -97,7 +126,7 @@ func (db *Database) ValidateSelect(query *Select) error {
 	// TODO: dedup
 	for _, selection := range query.Selections {
 		if selection.SubSelect != nil {
-			err := db.ValidateSelect(selection.SubSelect)
+			err := db.validateSelect(selection.SubSelect)
 			if err != nil {
 				return err
 			}

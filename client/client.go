@@ -126,7 +126,7 @@ func readResult(conn net.Conn) error {
 	if jsonErr == nil {
 		dstBuffer.WriteTo(os.Stdout)
 	} else {
-		fmt.Println(string(message))
+		fmt.Print(string(message))
 	}
 	return nil
 }

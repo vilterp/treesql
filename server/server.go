@@ -54,6 +54,6 @@ func main() {
 			Database:   database,
 		}
 		connectionID++
-		go treesql.HandleConnection(connection)
+		go connection.Run()
 	}
 }

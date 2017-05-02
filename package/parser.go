@@ -7,21 +7,31 @@ import (
 
 var (
 	sqlLexer = lexer.Unquote(lexer.Upper(lexer.Must(lexer.Regexp(`(\s+)`+
-		`|(?P<Keyword>(?i)SELECT|ONE|MANY|FROM|TOP|DISTINCT|ALL|WHERE|GROUP|BY|HAVING|UNION|MINUS|EXCEPT|INTERSECT|ORDER|LIMIT|OFFSET|TRUE|FALSE|NULL|IS|NOT|ANY|SOME|BETWEEN|AND|OR|LIKE|AS|IN)`+
+		`|(?P<Keyword>(?i)SELECT|INSERT|INTO|VALUES|ONE|MANY|FROM|TOP|DISTINCT|ALL|WHERE|GROUP|BY|HAVING|UNION|MINUS|EXCEPT|INTERSECT|ORDER|LIMIT|OFFSET|TRUE|FALSE|NULL|IS|NOT|ANY|SOME|BETWEEN|AND|OR|LIKE|AS|IN)`+
 		`|(?P<Ident>[a-zA-Z_][a-zA-Z0-9_]*)`+
 		`|(?P<Number>[-+]?\d*\.?\d+([eE][-+]?\d+)?)`+
 		`|(?P<String>'[^']*'|"[^"]*")`+
 		`|(?P<Operators><>|!=|<=|>=|[-+*/%,.()\{\}=<>:])`,
 	)), "Keyword"), "String")
-	sqlParser = participle.MustBuild(&Select{}, sqlLexer)
+	sqlParser = participle.MustBuild(&Statement{}, sqlLexer)
 )
+
+type Statement struct {
+	Select *Select `  @@`
+	Insert *Insert `| @@`
+}
+
+type Insert struct {
+	Table  string   `"INSERT" "INTO" @Ident`
+	Values []string `"VALUES" "(" @String { "," @String } ")"`
+}
 
 type Select struct {
 	Many       bool         `( @"MANY"`
 	One        bool         `| @"ONE" )`
 	Table      string       `@Ident`
 	Where      *Where       `[ "WHERE" @@ ]`
-	Selections []*Selection `"{" @@ [ { "," @@ } ] "}"` // TODO: * for all columns
+	Selections []*Selection `"{" @@ { "," @@ } "}"` // TODO: * for all columns
 }
 
 type Where struct {
@@ -35,8 +45,8 @@ type Selection struct {
 }
 
 // Parse parses sql
-func Parse(sql string) (*Select, error) {
-	result := &Select{}
+func Parse(sql string) (*Statement, error) {
+	result := &Statement{}
 	err := sqlParser.ParseString(sql, result)
 	return result, err
 }
