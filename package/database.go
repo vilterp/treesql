@@ -54,7 +54,10 @@ func Open(dataDir string) (*Database, error) {
 
 func (db *Database) Close() {
 	log.Println("Closing storage layer...")
-	db.Env.Close()
+	err := db.Env.Close()
+	if err != nil {
+		log.Printf("error closing storage layer:", err)
+	}
 }
 
 // query validation
