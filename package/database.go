@@ -2,6 +2,7 @@ package treesql
 
 import (
 	"errors"
+	"fmt"
 	"log"
 
 	"github.com/boltdb/bolt"
@@ -20,26 +21,13 @@ func Open(dataFile string) (*Database, error) {
 	}
 
 	// TODO: load this from somewhere in data dir
-	testSchema := GetTestSchema()
 	database := &Database{
-		Schema:                  GetTestSchema(),
+		Schema:                  GetBuiltinSchema(),
 		BoltDB:                  boltDB,
 		queryValidationRequests: make(chan *QueryValidationRequest),
 	}
 
-	// open tables
-	createErr := boltDB.Update(func(tx *bolt.Tx) error {
-		for tableName, _ := range testSchema.Tables {
-			_, bucketErr := tx.CreateBucketIfNotExists([]byte(tableName))
-			if bucketErr != nil {
-				return bucketErr
-			}
-		}
-		return nil
-	})
-	if createErr != nil {
-		return nil, createErr
-	}
+	database.EnsureBuiltinSchema()
 
 	// serve query validation requests
 	// TODO: a `select` here for schema changes
@@ -60,6 +48,11 @@ func (db *Database) Close() {
 	if err != nil {
 		log.Printf("error closing storage layer:", err)
 	}
+}
+
+func readSchema(db *bolt.DB) *Schema {
+	fmt.Println("TODO: read schema from disk")
+	return nil
 }
 
 // query validation
@@ -170,6 +163,16 @@ func (db *Database) validateCreateTable(create *CreateTable) error {
 	}
 	if primaryKeyCount != 1 {
 		return &WrongNoPrimaryKey{Count: primaryKeyCount}
+	}
+	// referenced table exists
+	// TODO: column same type as primary key
+	for _, column := range create.Columns {
+		if column.References != nil {
+			_, tableExists := db.Schema.Tables[*column.References]
+			if !tableExists {
+				return &NoSuchTable{TableName: *column.References}
+			}
+		}
 	}
 	// TODO: dedup column names
 	return nil

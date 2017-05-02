@@ -2,6 +2,7 @@ package treesql
 
 import (
 	"bufio"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"net"
@@ -76,4 +77,70 @@ func (conn *Connection) ExecuteInsert(insert *Insert) {
 
 func (conn *Connection) ExecuteCreateTable(create *CreateTable) {
 	fmt.Println("create table whooo", spew.Sdump(create))
+	updateErr := conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
+		// create bucket for new table
+		tx.CreateBucket([]byte(create.Name))
+		// write to __tables__
+		var primaryKey string
+		for _, column := range create.Columns {
+			if column.PrimaryKey {
+				primaryKey = column.Name
+				break
+			}
+		}
+		tableSpec := &Table{
+			Name:       create.Name,
+			Columns:    make([]*Column, len(create.Columns)),
+			PrimaryKey: primaryKey,
+		}
+		// add to in-memory schema
+		// TODO: synchronize access to this shared mutable data structure!
+		conn.Database.Schema.Tables[tableSpec.Name] = tableSpec
+		// write record
+		tablesBucket := tx.Bucket([]byte("__tables__"))
+		tableRecord := tableSpec.ToRecord(conn.Database)
+		tablesBucket.Put([]byte(create.Name), tableRecord.ToBytes())
+		// write to __columns__
+		for idx, parsedColumn := range create.Columns {
+			// extract type
+			var typ ColumnType
+			switch parsedColumn.TypeName {
+			case "string":
+				typ = TypeString
+			case "int":
+				typ = TypeInt
+			}
+			// extract reference
+			var reference *ColumnReference
+			if parsedColumn.References != nil {
+				reference = &ColumnReference{
+					TableName: *parsedColumn.References,
+				}
+			}
+			// build column spec
+			columnSpec := &Column{
+				Id:               conn.Database.Schema.NextColumnId,
+				Name:             parsedColumn.Name,
+				ReferencesColumn: reference,
+				Type:             typ,
+			}
+			conn.Database.Schema.NextColumnId++
+			// put column spec in in-memory schema copy
+			// TODO: synchronize access to this mutable shared data structure!!
+			tableSpec.Columns[idx] = columnSpec
+			// write record
+			columnRecord := columnSpec.ToRecord(create.Name, conn.Database)
+			columnsBucket := tx.Bucket([]byte("__columns__"))
+			columnsBucket.Put([]byte(fmt.Sprintf("%d", columnSpec.Id)), columnRecord.ToBytes())
+		}
+		// write next column id sequence
+		nextColumnIdBytes := make([]byte, 4)
+		binary.BigEndian.PutUint32(nextColumnIdBytes, uint32(conn.Database.Schema.NextColumnId))
+		tx.Bucket([]byte("__sequences__")).Put([]byte("__next_column_id__"), nextColumnIdBytes)
+		return nil
+	})
+	if updateErr != nil {
+		// TODO: structured errors on the wire...
+		conn.ClientConn.Write([]byte(fmt.Sprintf("error creating table: %s\n", updateErr)))
+	}
 }

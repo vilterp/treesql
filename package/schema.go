@@ -1,9 +1,14 @@
 package treesql
 
-import sophia "github.com/pzhin/go-sophia"
+import (
+	"fmt"
+
+	"github.com/boltdb/bolt"
+)
 
 type Schema struct {
-	Tables map[string]*Table
+	Tables       map[string]*Table
+	NextColumnId int
 }
 
 type Table struct {
@@ -13,6 +18,7 @@ type Table struct {
 }
 
 type Column struct {
+	Id               int
 	Name             string
 	Type             ColumnType
 	ReferencesColumn *ColumnReference
@@ -28,35 +34,62 @@ type ColumnType byte
 const TypeString ColumnType = 0
 const TypeInt ColumnType = 1
 
-var ToSophiaType = map[ColumnType]sophia.FieldType{
-	TypeString: sophia.FieldTypeString,
-	TypeInt:    sophia.FieldTypeUInt32, // what about signed ints? lol
+var TypeNames = map[ColumnType]string{
+	TypeString: "string",
+	TypeInt:    "int",
 }
 
-func (table *Table) ToSophiaSchema() *sophia.Schema {
-	result := &sophia.Schema{}
-	for _, column := range table.Columns {
-		sophiaType := ToSophiaType[column.Type]
-		if column.Name == table.PrimaryKey {
-			result.AddKey(column.Name, sophiaType)
-		} else {
-			result.AddValue(column.Name, sophiaType)
-		}
+func (column *Column) ToRecord(tableName string, db *Database) *Record {
+	columnsTable := db.Schema.Tables["__columns__"]
+	record := columnsTable.NewRecord()
+	record.SetString("id", fmt.Sprintf("%d", column.Id))
+	record.SetString("name", column.Name)
+	record.SetString("table_name", tableName)
+	record.SetString("type", TypeNames[column.Type])
+	if column.ReferencesColumn != nil {
+		record.SetString("references", column.ReferencesColumn.TableName)
 	}
-	return result
+	return record
 }
 
-func GetTestSchema() *Schema {
+func ColumnFromRecord(record *Record) *Column {
+	return nil
+}
+
+func (table *Table) ToRecord(db *Database) *Record {
+	record := db.Schema.Tables["__tables__"].NewRecord()
+	record.SetString("name", table.Name)
+	record.SetString("primary_key", table.PrimaryKey)
+	return record
+}
+
+func TableFromRecord(record *Record) *Table {
+	return nil
+}
+
+func (db *Database) EnsureBuiltinSchema() {
+	db.BoltDB.Update(func(tx *bolt.Tx) error {
+		fmt.Println("TODO: create and populate __tables__ and __columns__ buckets")
+		fmt.Println("TODO: create __sequences__ bucket")
+		tx.CreateBucketIfNotExists([]byte("__sequences__")) // TODO: if it didn't exist, write to it
+		return nil
+	})
+}
+
+func GetBuiltinSchema() *Schema {
+	// doing ids like this is kind of precarious...
 	tables := map[string]*Table{
 		"__tables__": &Table{
 			Name:       "__tables__",
 			PrimaryKey: "name",
 			Columns: []*Column{
 				&Column{
+					Id:   0,
 					Name: "name",
 					Type: TypeString,
 				},
 				&Column{
+					Id:   1,
 					Name: "primary_key",
 					Type: TypeString,
 				},
@@ -67,10 +100,17 @@ func GetTestSchema() *Schema {
 			PrimaryKey: "name",
 			Columns: []*Column{
 				&Column{
+					Id:   2,
+					Name: "id",
+					Type: TypeString, // TODO: switch to int when they work
+				},
+				&Column{
+					Id:   3,
 					Name: "name",
 					Type: TypeString,
 				},
 				&Column{
+					Id:   4,
 					Name: "table_name",
 					Type: TypeString,
 					ReferencesColumn: &ColumnReference{
@@ -78,80 +118,20 @@ func GetTestSchema() *Schema {
 					},
 				},
 				&Column{
-					Name: "references",
-					Type: TypeString,
-				},
-			},
-		},
-		"blog_posts": &Table{
-			Name:       "blog_posts",
-			PrimaryKey: "id",
-			Columns: []*Column{
-				&Column{
-					Name: "id",
+					Id:   5,
+					Name: "type",
 					Type: TypeString,
 				},
 				&Column{
-					Name: "author_id",
-					Type: TypeString,
-					ReferencesColumn: &ColumnReference{
-						TableName: "users",
-					},
-				},
-				&Column{
-					Name: "title",
-					Type: TypeString,
-				},
-				&Column{
-					Name: "body",
-					Type: TypeString,
-				},
-			},
-		},
-		"comments": &Table{
-			Name:       "comments",
-			PrimaryKey: "id",
-			Columns: []*Column{
-				&Column{
-					Name: "id",
-					Type: TypeString,
-				},
-				&Column{
-					Name: "post_id",
-					Type: TypeString,
-					ReferencesColumn: &ColumnReference{
-						TableName: "blog_posts",
-					},
-				},
-				&Column{
-					Name: "author_id",
-					Type: TypeString,
-					ReferencesColumn: &ColumnReference{
-						TableName: "users",
-					},
-				},
-				&Column{
-					Name: "body",
-					Type: TypeString,
-				},
-			},
-		},
-		"users": &Table{
-			Name:       "users",
-			PrimaryKey: "id",
-			Columns: []*Column{
-				&Column{
-					Name: "id",
-					Type: TypeString,
-				},
-				&Column{
-					Name: "name",
+					Id:   6,
+					Name: "references", // TODO: this is a keyword. rename to "references_table"
 					Type: TypeString,
 				},
 			},
 		},
 	}
 	return &Schema{
-		Tables: tables,
+		Tables:       tables,
+		NextColumnId: 7,
 	}
 }

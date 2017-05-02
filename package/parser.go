@@ -7,7 +7,7 @@ import (
 
 var (
 	sqlLexer = lexer.Unquote(lexer.Upper(lexer.Must(lexer.Regexp(`(\s+)`+
-		`|(?P<Keyword>(?i)SELECT|INSERT|INTO|VALUES|CREATE|TABLE|PRIMARY|KEY|ONE|MANY|FROM|TOP|DISTINCT|ALL|WHERE|GROUP|BY|HAVING|UNION|MINUS|EXCEPT|INTERSECT|ORDER|LIMIT|OFFSET|TRUE|FALSE|NULL|IS|NOT|ANY|SOME|BETWEEN|AND|OR|LIKE|AS)`+
+		`|(?P<Keyword>(?i)SELECT|INSERT|INTO|VALUES|CREATETABLE|PRIMARYKEY|REFERENCES|ONE|MANY|FROM|TOP|DISTINCT|ALL|WHERE|GROUP|BY|HAVING|UNION|MINUS|EXCEPT|INTERSECT|ORDER|LIMIT|OFFSET|TRUE|FALSE|NULL|IS|NOT|ANY|SOME|BETWEEN|AND|OR|LIKE|AS)`+
 		`|(?P<Ident>[a-zA-Z_][a-zA-Z0-9_]*)`+
 		`|(?P<Number>[-+]?\d*\.?\d+([eE][-+]?\d+)?)`+
 		`|(?P<String>'[^']*'|"[^"]*")`+
@@ -23,14 +23,15 @@ type Statement struct {
 }
 
 type CreateTable struct {
-	Name    string               `"CREATE" "TABLE" @Ident`
+	Name    string               `"CREATETABLE" @Ident` // parser can't distinguish idents and keywords
 	Columns []*CreateTableColumn `"(" @@ { "," @@ } ")"`
 }
 
 type CreateTableColumn struct {
-	Name       string `@Ident`
-	TypeName   string `@Ident`
-	PrimaryKey bool   `[@"PRIMARY" "KEY"]`
+	Name       string  `@Ident`
+	TypeName   string  `@Ident`
+	PrimaryKey bool    `[ @"PRIMARYKEY"`
+	References *string `| "REFERENCES" @Ident ]`
 }
 
 type Insert struct {
