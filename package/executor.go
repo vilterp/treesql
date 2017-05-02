@@ -5,20 +5,37 @@ import (
 	"fmt"
 	"strconv"
 
-	sophia "github.com/pzhin/go-sophia"
+	"github.com/boltdb/bolt"
+	"github.com/davecgh/go-spew/spew"
 )
 
 func ExecuteQuery(conn *Connection, query *Select) {
 	// TODO: put all these reads in a transaction
+	tx, _ := conn.Database.boltDB.Begin(false)
 	writer := bufio.NewWriter(conn.ClientConn)
-	executeSelect(conn, writer, query, nil)
+	execution := &QueryExecution{
+		Connection:   conn,
+		Query:        query,
+		Transaction:  tx,
+		ResultWriter: writer,
+	}
+	executeSelect(execution, query, nil)
+	tx.Commit()
 	writer.WriteString("\n")
 	writer.Flush()
 }
 
+// maybe this should be called transaction? idk
+type QueryExecution struct {
+	Connection   *Connection
+	Query        *Select
+	Transaction  *bolt.Tx
+	ResultWriter *bufio.Writer
+}
+
 type Scope struct {
 	table    *Table
-	document *sophia.Document
+	document *Record
 }
 
 // the question: read everything into memory and serialize at the end,
@@ -29,8 +46,10 @@ type FilterCondition struct {
 	OuterColumnName string
 }
 
-func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, scope *Scope) {
-	tableSchema := conn.Database.Schema.Tables[query.Table]
+func executeSelect(ex *QueryExecution, query *Select, scope *Scope) {
+	fmt.Println("===== executeSelect ===============")
+	resultWriter := ex.ResultWriter
+	tableSchema := ex.Connection.Database.Schema.Tables[query.Table]
 	// if we're an inner loop, figure out a condition for our loop
 	var filterCondition *FilterCondition
 	if scope != nil {
@@ -49,12 +68,14 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 			}
 		} else {
 			// find reference from outer table to inner table
+			// e.g. one comment { blog_post: one blog_posts }
+			// => inner: id, outer: post_id
 			for _, columnSpec := range scope.table.Columns {
 				if columnSpec.ReferencesColumn != nil &&
 					columnSpec.ReferencesColumn.TableName == tableSchema.Name {
 					filterCondition = &FilterCondition{
-						InnerColumnName: columnSpec.Name,
-						OuterColumnName: tableSchema.PrimaryKey,
+						InnerColumnName: tableSchema.PrimaryKey,
+						OuterColumnName: columnSpec.Name,
 					}
 				}
 			}
@@ -66,54 +87,61 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 		columnsMap[column.Name] = column
 	}
 	// start iterating
-	iterator, _ := conn.Database.getTableIterator(query.Table)
+	iterator, _ := ex.getTableIterator(query.Table)
 	rowsRead := 0
 	if query.Many {
-		resultWriter.WriteString("[")
+		ex.ResultWriter.WriteString("[")
 	}
+	spew.Dump(query)
+	spew.Dump(filterCondition)
+	fmt.Println(iterator)
 	for {
 		// get next doc
 		nextDoc := iterator.Next()
+		fmt.Println("nextDoc", nextDoc)
 		if nextDoc == nil {
 			break
 		}
 		// decide if we want to write it
 		if filterCondition != nil {
-			if !docMatchesFilter(filterCondition, nextDoc, scope.document) {
+			if !recordMatchesFilter(filterCondition, nextDoc, scope.document) {
 				continue
 			}
 		}
+		fmt.Println("passed filter!")
 		if query.Where != nil {
-			whereSize := 0
-			if nextDoc.GetString(query.Where.ColumnName, &whereSize) != query.Where.Value {
+			// again ignoring int vals for now...
+			if nextDoc.GetField(query.Where.ColumnName).StringVal != query.Where.Value {
 				continue
 			}
+		}
+		if rowsRead == 1 && query.One {
+			break
 		}
 		// start writing it
 		if rowsRead > 0 {
-			resultWriter.WriteString(",")
+			ex.ResultWriter.WriteString(",")
 		}
-		resultWriter.WriteString("{")
+		ex.ResultWriter.WriteString("{")
 		// extract & write fields
 		for selectionIdx, selection := range query.Selections {
 			resultWriter.WriteString(fmt.Sprintf("\"%s\":", selection.Name))
 			if selection.SubSelect != nil {
 				// execute subquery
-				executeSelect(conn, resultWriter, selection.SubSelect, &Scope{
+				executeSelect(ex, selection.SubSelect, &Scope{
 					table:    tableSchema,
 					document: nextDoc,
 				})
 			} else {
-				// write field
+				// write field value out to socket
 				columnSpec := columnsMap[selection.Name]
 				switch columnSpec.Type {
 				case TypeInt:
-					val := nextDoc.GetInt(columnSpec.Name)
+					val := nextDoc.GetField(columnSpec.Name).StringVal
 					resultWriter.WriteString(fmt.Sprintf("%d", val))
 
 				case TypeString:
-					size := 0
-					val := nextDoc.GetString(columnSpec.Name, &size)
+					val := nextDoc.GetField(columnSpec.Name).StringVal
 					resultWriter.WriteString(strconv.Quote(val))
 				}
 			}
@@ -125,16 +153,14 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 		resultWriter.WriteString("}")
 	}
 	iterator.Close()
+	fmt.Println("/=================", query.Many)
 	if query.Many {
 		resultWriter.WriteString("]")
 	}
 }
 
-func docMatchesFilter(condition *FilterCondition, innerDoc *sophia.Document, outerDoc *sophia.Document) bool {
-	// again, ignoring non-string types for now...
-	innerSize := 0
-	innerField := innerDoc.GetString(condition.InnerColumnName, &innerSize)
-	outerSize := 0
-	outerField := outerDoc.GetString(condition.OuterColumnName, &outerSize)
-	return innerField == outerField
+func recordMatchesFilter(condition *FilterCondition, innerRec *Record, outerRec *Record) bool {
+	innerField := innerRec.GetField(condition.InnerColumnName)
+	outerField := outerRec.GetField(condition.OuterColumnName)
+	return *innerField == *outerField
 }

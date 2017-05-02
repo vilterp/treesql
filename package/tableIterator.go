@@ -3,53 +3,52 @@ package treesql
 import (
 	"strconv"
 
-	sophia "github.com/pzhin/go-sophia"
+	"github.com/boltdb/bolt"
 )
 
 type TableIterator interface {
-	Next() *sophia.Document
-	Get(key string) (*sophia.Document, error)
+	Next() *Record
+	Get(key string) (*Record, error)
 	Close()
 }
 
-func (db *Database) getTableIterator(tableName string) (TableIterator, error) {
+func (ex *QueryExecution) getTableIterator(tableName string) (TableIterator, error) {
 	if tableName == "__tables__" {
-		return newTablesIterator(db)
+		return newTablesIterator(ex.Connection.Database)
 	} else if tableName == "__columns__" {
-		return newColumnsIterator(db)
+		return newColumnsIterator(ex.Connection.Database)
 	}
-	return newSophiaIterator(db, tableName)
+	return newBoltIterator(ex, tableName)
 }
 
 // sophia iterator
 
-type SophiaIterator struct {
-	table  *sophia.Database
-	cursor sophia.Cursor
+type BoltIterator struct {
+	cursor *bolt.Cursor
+	table  *Table
 }
 
-func newSophiaIterator(db *Database, tableName string) (*SophiaIterator, error) {
-	table := db.Tables[tableName]
-	doc := table.Document()
-	cursor, err := table.Cursor(doc)
-	return &SophiaIterator{
-		table:  table,
+func newBoltIterator(ex *QueryExecution, tableName string) (*BoltIterator, error) {
+	tableSchema := ex.Connection.Database.Schema.Tables[tableName]
+	cursor := ex.Transaction.Bucket([]byte(tableName)).Cursor()
+	return &BoltIterator{
+		table:  tableSchema,
 		cursor: cursor,
-	}, err
+	}, nil
 }
 
-func (it *SophiaIterator) Next() *sophia.Document {
-	result := it.cursor.Next()
-	return result
+func (it *BoltIterator) Next() *Record {
+	_, rawRecord := it.cursor.Next()
+	return it.table.RecordFromBytes(rawRecord)
 }
 
-func (it *SophiaIterator) Get(key string) (*sophia.Document, error) {
-	doc := &sophia.Document{}
-	return it.table.Get(doc)
+func (it *BoltIterator) Get(key string) (*Record, error) {
+	_, rawRecord := it.cursor.Seek([]byte(key))
+	return it.table.RecordFromBytes(rawRecord), nil
 }
 
-func (it *SophiaIterator) Close() {
-	it.cursor.Close()
+func (it *BoltIterator) Close() {
+	// I guess closing this is not a thing
 }
 
 // schema tables iterator
@@ -57,7 +56,7 @@ func (it *SophiaIterator) Close() {
 // oof, what if these change out from underneath the iterators?
 // how do I clone the tables?
 type SchemaTablesIterator struct {
-	table       *sophia.Database
+	tablesTable *Table
 	tablesArray []*Table
 	tablesMap   map[string]*Table
 	idx         int
@@ -71,59 +70,67 @@ func newTablesIterator(db *Database) (*SchemaTablesIterator, error) {
 		i++
 	}
 	return &SchemaTablesIterator{
+		tablesTable: db.Schema.Tables["__tables__"],
 		tablesArray: tables,
 		tablesMap:   db.Schema.Tables,
 		idx:         0,
-		table:       db.Tables["__tables__"],
 	}, nil
 }
 
-func (it *SchemaTablesIterator) Next() *sophia.Document {
+func (it *SchemaTablesIterator) Next() *Record {
 	if it.idx == len(it.tablesArray) {
 		return nil
 	}
 	table := it.tablesArray[it.idx]
 	it.idx++
-	return tableToDocument(it.table, table)
+	return it.tableToRecord(table)
 }
 
-func (it *SchemaTablesIterator) Get(key string) (*sophia.Document, error) {
-	return tableToDocument(it.table, it.tablesMap[key]), nil
+func (it *SchemaTablesIterator) Get(key string) (*Record, error) {
+	return it.tableToRecord(it.tablesMap[key]), nil
 }
 
 func (it *SchemaTablesIterator) Close() {}
 
-func tableToDocument(table *sophia.Database, tableSpec *Table) *sophia.Document {
-	doc := table.Document()
-	doc.SetString("name", tableSpec.Name)
-	doc.SetString("primary_key", tableSpec.PrimaryKey)
-	return doc
+func (it *SchemaTablesIterator) tableToRecord(tableSpec *Table) *Record {
+	return &Record{
+		Table: it.tablesTable,
+		Values: []Value{
+			Value{ // name
+				Type:      TypeString,
+				StringVal: tableSpec.Name,
+			},
+			Value{ // primary_key
+				Type:      TypeString,
+				StringVal: tableSpec.PrimaryKey,
+			},
+		},
+	}
 }
 
 // schema columns iterator
 
 type SchemaColumnsIterator struct {
-	table   *sophia.Database
-	columns []*sophia.Document
+	columns []*Record
 	idx     int
 }
 
 func newColumnsIterator(db *Database) (*SchemaColumnsIterator, error) {
-	columns := make([]*sophia.Document, 0)
+	columnsTable := db.Schema.Tables["__columns__"]
+	columns := make([]*Record, 0)
 	for _, table := range db.Schema.Tables {
 		for _, column := range table.Columns {
-			columnDoc := columnToDocument(db.Tables["__columns__"], column, table)
+			columnDoc := columnToRecord(columnsTable, column, table)
 			columns = append(columns, columnDoc)
 		}
 	}
 	return &SchemaColumnsIterator{
 		columns: columns,
 		idx:     0,
-		table:   db.Tables["__columns__"],
 	}, nil
 }
 
-func (it *SchemaColumnsIterator) Next() *sophia.Document {
+func (it *SchemaColumnsIterator) Next() *Record {
 	if it.idx == len(it.columns) {
 		return nil
 	}
@@ -132,7 +139,7 @@ func (it *SchemaColumnsIterator) Next() *sophia.Document {
 	return columnDoc
 }
 
-func (it *SchemaColumnsIterator) Get(key string) (*sophia.Document, error) {
+func (it *SchemaColumnsIterator) Get(key string) (*Record, error) {
 	// BUG: this is not stable if columns are dropped
 	// need real OIDs
 	// need sequences as a first-class DB object O_o
@@ -145,13 +152,26 @@ func (it *SchemaColumnsIterator) Get(key string) (*sophia.Document, error) {
 
 func (it *SchemaColumnsIterator) Close() {}
 
-func columnToDocument(table *sophia.Database, column *Column, tableSpec *Table) *sophia.Document {
-	doc := table.Document()
-	doc.SetString("name", column.Name)
+func columnToRecord(columnsTable *Table, column *Column, memberOfTable *Table) *Record {
+	var referencesColumn string // jeez, give me a freaking ternary already
 	if column.ReferencesColumn != nil {
-		doc.SetString("references", column.ReferencesColumn.TableName)
+		referencesColumn = column.ReferencesColumn.TableName
 	}
-	// BUG: not having this sets it as empty string, which is not exactly what we want
-	doc.SetString("table_name", tableSpec.Name)
-	return doc
+	return &Record{
+		Table: columnsTable,
+		Values: []Value{
+			Value{ // name
+				Type:      TypeString,
+				StringVal: column.Name,
+			},
+			Value{ // table_name
+				Type:      TypeString,
+				StringVal: memberOfTable.Name,
+			},
+			Value{ // references
+				Type:      TypeString,
+				StringVal: referencesColumn,
+			},
+		},
+	}
 }

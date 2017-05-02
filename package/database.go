@@ -4,40 +4,39 @@ import (
 	"fmt"
 	"log"
 
-	sophia "github.com/pzhin/go-sophia"
+	"github.com/boltdb/bolt"
 )
 
 type Database struct {
 	Schema                  *Schema
-	Env                     *sophia.Environment
-	Tables                  map[string]*sophia.Database
+	boltDB                  *bolt.DB
 	queryValidationRequests chan *QueryValidationRequest
 }
 
-func Open(dataDir string) (*Database, error) {
-	env, _ := sophia.NewEnvironment()
-	env.Set("sophia.path", dataDir)
+func Open(dataFile string) (*Database, error) {
+	boltDB, openErr := bolt.Open(dataFile, 0600, nil)
+	if openErr != nil {
+		return nil, openErr
+	}
 
 	// TODO: load this from somewhere in data dir
 	testSchema := GetTestSchema()
 	database := &Database{
-		Schema: GetTestSchema(),
-		Tables: map[string]*sophia.Database{},
-		Env:    env,
+		Schema:                  GetTestSchema(),
+		boltDB:                  boltDB,
+		queryValidationRequests: make(chan *QueryValidationRequest),
 	}
 
-	// open databases
-	for tableName, table := range testSchema.Tables {
-		newDb, err := env.NewDatabase(&sophia.DatabaseConfig{
-			Name:   tableName,
-			Schema: table.ToSophiaSchema(),
-		})
-		if err != nil {
-			return database, err
+	// open tables
+	boltDB.Update(func(tx *bolt.Tx) error {
+		for tableName, _ := range testSchema.Tables {
+			_, bucketErr := tx.CreateBucketIfNotExists([]byte(tableName))
+			if bucketErr != nil {
+				return bucketErr
+			}
 		}
-		database.Tables[tableName] = newDb
-	}
-	env.Open()
+		return nil
+	})
 
 	// serve query validation requests
 	// TODO: a `select` here for schema changes
@@ -54,7 +53,7 @@ func Open(dataDir string) (*Database, error) {
 
 func (db *Database) Close() {
 	log.Println("Closing storage layer...")
-	err := db.Env.Close()
+	err := db.boltDB.Close()
 	if err != nil {
 		log.Printf("error closing storage layer:", err)
 	}
@@ -87,7 +86,7 @@ func (db *Database) handleValidationRequest(request *QueryValidationRequest) {
 // want to not export this and do it via the server, but...
 func (db *Database) ValidateSelect(query *Select) error {
 	// does table exist?
-	_, ok := db.Tables[query.Table]
+	_, ok := db.Schema.Tables[query.Table]
 	if !ok && query.Table != "__tables__" && query.Table != "__columns__" {
 		return &NoSuchTable{TableName: query.Table}
 	}

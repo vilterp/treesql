@@ -18,15 +18,15 @@ func main() {
 
 	// get cmdline flags
 	var port = flag.Int("port", 6000, "port to listen for connections on")
-	var dataDir = flag.String("data-dir", "data", "data directory")
+	var dataFile = flag.String("data-file", "treesql.data", "data file")
 	flag.Parse()
 
 	// open Sophia storage layer
-	database, err := treesql.Open(*dataDir)
+	database, err := treesql.Open(*dataFile)
 	if err != nil {
 		log.Fatalln("failed to open database:", err)
 	}
-	log.Printf("opened data directory: %s\n", *dataDir)
+	log.Printf("opened data file: %s\n", *dataFile)
 
 	// graceful shutdown on Ctrl-C (hopefully this will stop the routine corruption??)
 	ctrlCChan := make(chan os.Signal, 1)
