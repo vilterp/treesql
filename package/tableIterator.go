@@ -29,7 +29,7 @@ type SophiaIterator struct {
 }
 
 func newSophiaIterator(db *Database, tableName string) (*SophiaIterator, error) {
-	table := db.Dbs[tableName]
+	table := db.Tables[tableName]
 	doc := table.Document()
 	cursor, err := table.Cursor(doc)
 	return &SophiaIterator{
@@ -74,7 +74,7 @@ func newTablesIterator(db *Database) (*SchemaTablesIterator, error) {
 		tablesArray: tables,
 		tablesMap:   db.Schema.Tables,
 		idx:         0,
-		table:       db.Dbs["__tables__"],
+		table:       db.Tables["__tables__"],
 	}, nil
 }
 
@@ -112,14 +112,14 @@ func newColumnsIterator(db *Database) (*SchemaColumnsIterator, error) {
 	columns := make([]*sophia.Document, 0)
 	for _, table := range db.Schema.Tables {
 		for _, column := range table.Columns {
-			columnDoc := columnToDocument(db.Dbs["__columns__"], column, table)
+			columnDoc := columnToDocument(db.Tables["__columns__"], column, table)
 			columns = append(columns, columnDoc)
 		}
 	}
 	return &SchemaColumnsIterator{
 		columns: columns,
 		idx:     0,
-		table:   db.Dbs["__columns__"],
+		table:   db.Tables["__columns__"],
 	}, nil
 }
 

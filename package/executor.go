@@ -68,7 +68,9 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 	// start iterating
 	iterator, _ := conn.Database.getTableIterator(query.Table)
 	rowsRead := 0
-	resultWriter.WriteString("[")
+	if query.Many {
+		resultWriter.WriteString("[")
+	}
 	for {
 		// get next doc
 		nextDoc := iterator.Next()
@@ -122,7 +124,10 @@ func executeSelect(conn *Connection, resultWriter *bufio.Writer, query *Select, 
 		rowsRead++
 		resultWriter.WriteString("}")
 	}
-	resultWriter.WriteString("]")
+	iterator.Close()
+	if query.Many {
+		resultWriter.WriteString("]")
+	}
 }
 
 func docMatchesFilter(condition *FilterCondition, innerDoc *sophia.Document, outerDoc *sophia.Document) bool {

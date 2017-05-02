@@ -6,6 +6,10 @@ import (
 	"log"
 	"net"
 
+	"os"
+	"os/signal"
+	"syscall"
+
 	treesql "github.com/vilterp/treesql/package"
 )
 
@@ -24,13 +28,23 @@ func main() {
 	}
 	log.Printf("opened data directory: %s\n", *dataDir)
 
-	// listen & handle connections
+	// graceful shutdown on Ctrl-C (hopefully this will stop the routine corruption??)
+	ctrlCChan := make(chan os.Signal, 1)
+	signal.Notify(ctrlCChan, os.Interrupt, syscall.SIGTERM)
+	go func() {
+		<-ctrlCChan
+		database.Close()
+		os.Exit(1) // is 1 the proper exit code for Ctrl-C?
+	}()
+
+	// listen for connections
 	listeningSock, listenErr := net.Listen("tcp", fmt.Sprintf(":%d", *port))
 	if listenErr != nil {
 		log.Fatalln("failed to listen for connections:", listenErr)
 	}
 	log.Printf("listening on port %d\n", *port)
 
+	// accept & handle connections
 	connectionID := 0
 	for {
 		conn, _ := listeningSock.Accept()

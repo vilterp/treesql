@@ -24,7 +24,7 @@ func main() {
 func insertTestData(db *treesql.Database) {
 	fmt.Println("writing test data")
 
-	blogPosts := db.Dbs["blog_posts"]
+	blogPosts := db.Tables["blog_posts"]
 	for i := 0; i < 3; i++ {
 		blogPost := blogPosts.Document()
 		blogPost.Set("id", fmt.Sprintf("derp%d", i))
@@ -36,7 +36,7 @@ func insertTestData(db *treesql.Database) {
 		}
 	}
 
-	comments := db.Dbs["comments"]
+	comments := db.Tables["comments"]
 	for i := 0; i < 3; i++ {
 		comment := comments.Document()
 		comment.Set("id", fmt.Sprintf("derp%d", i))
@@ -48,7 +48,7 @@ func insertTestData(db *treesql.Database) {
 		}
 	}
 
-	users := db.Dbs["users"]
+	users := db.Tables["users"]
 	user1 := users.Document()
 	user1.Set("id", fmt.Sprintf("derp%d", 1))
 	user1.Set("name", "Pete")

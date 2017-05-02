@@ -3,6 +3,7 @@ package treesql
 import (
 	"bufio"
 	"fmt"
+	"log"
 	"net"
 )
 
@@ -13,13 +14,13 @@ type Connection struct {
 }
 
 func HandleConnection(conn *Connection) {
-	fmt.Printf("connection id %d from %s\n", conn.ID, conn.ClientConn.RemoteAddr())
+	log.Printf("connection id %d from %s\n", conn.ID, conn.ClientConn.RemoteAddr())
 	for {
 		// will listen for message to process ending in newline (\n)
 		message, err := bufio.NewReader(conn.ClientConn).ReadString('\n')
 
 		if err != nil {
-			fmt.Printf("conn id %d terminated: %v\n", conn.ID, err)
+			log.Printf("conn id %d terminated: %v\n", conn.ID, err)
 			return
 		}
 

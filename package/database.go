@@ -2,13 +2,15 @@ package treesql
 
 import (
 	"fmt"
+	"log"
 
 	sophia "github.com/pzhin/go-sophia"
 )
 
 type Database struct {
 	Schema                  *Schema
-	Dbs                     map[string]*sophia.Database
+	Env                     *sophia.Environment
+	Tables                  map[string]*sophia.Database
 	queryValidationRequests chan *QueryValidationRequest
 }
 
@@ -20,7 +22,8 @@ func Open(dataDir string) (*Database, error) {
 	testSchema := GetTestSchema()
 	database := &Database{
 		Schema: GetTestSchema(),
-		Dbs:    map[string]*sophia.Database{},
+		Tables: map[string]*sophia.Database{},
+		Env:    env,
 	}
 
 	// open databases
@@ -32,7 +35,7 @@ func Open(dataDir string) (*Database, error) {
 		if err != nil {
 			return database, err
 		}
-		database.Dbs[tableName] = newDb
+		database.Tables[tableName] = newDb
 	}
 	env.Open()
 
@@ -47,6 +50,11 @@ func Open(dataDir string) (*Database, error) {
 	}()
 
 	return database, nil
+}
+
+func (db *Database) Close() {
+	log.Println("Closing storage layer...")
+	db.Env.Close()
 }
 
 // query validation
@@ -76,7 +84,7 @@ func (db *Database) handleValidationRequest(request *QueryValidationRequest) {
 // want to not export this and do it via the server, but...
 func (db *Database) ValidateSelect(query *Select) error {
 	// does table exist?
-	_, ok := db.Dbs[query.Table]
+	_, ok := db.Tables[query.Table]
 	if !ok && query.Table != "__tables__" && query.Table != "__columns__" {
 		return &NoSuchTable{TableName: query.Table}
 	}
