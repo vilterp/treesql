@@ -1,9 +1,13 @@
 package treesql
 
 import (
+	"encoding/binary"
 	"fmt"
 
+	"strconv"
+
 	"github.com/boltdb/bolt"
+	"github.com/davecgh/go-spew/spew"
 )
 
 type Schema struct {
@@ -34,9 +38,14 @@ type ColumnType byte
 const TypeString ColumnType = 0
 const TypeInt ColumnType = 1
 
-var TypeNames = map[ColumnType]string{
+var TypeToName = map[ColumnType]string{
 	TypeString: "string",
 	TypeInt:    "int",
+}
+
+var NameToType = map[string]ColumnType{
+	"string": TypeString,
+	"int":    TypeInt,
 }
 
 func (column *Column) ToRecord(tableName string, db *Database) *Record {
@@ -45,7 +54,7 @@ func (column *Column) ToRecord(tableName string, db *Database) *Record {
 	record.SetString("id", fmt.Sprintf("%d", column.Id))
 	record.SetString("name", column.Name)
 	record.SetString("table_name", tableName)
-	record.SetString("type", TypeNames[column.Type])
+	record.SetString("type", TypeToName[column.Type])
 	if column.ReferencesColumn != nil {
 		record.SetString("references", column.ReferencesColumn.TableName)
 	}
@@ -53,7 +62,12 @@ func (column *Column) ToRecord(tableName string, db *Database) *Record {
 }
 
 func ColumnFromRecord(record *Record) *Column {
-	return nil
+	idInt, _ := strconv.Atoi(record.GetField("id").StringVal)
+	return &Column{
+		Id:   idInt,
+		Name: record.GetField("name").StringVal,
+		Type: NameToType[record.GetField("type").StringVal],
+	}
 }
 
 func (table *Table) ToRecord(db *Database) *Record {
@@ -64,19 +78,63 @@ func (table *Table) ToRecord(db *Database) *Record {
 }
 
 func TableFromRecord(record *Record) *Table {
-	return nil
+	return &Table{
+		Columns:    make([]*Column, 0),
+		Name:       record.GetField("name").StringVal,
+		PrimaryKey: record.GetField("primary_key").StringVal,
+	}
 }
 
 func (db *Database) EnsureBuiltinSchema() {
 	db.BoltDB.Update(func(tx *bolt.Tx) error {
-		fmt.Println("TODO: create and populate __tables__ and __columns__ buckets")
-		fmt.Println("TODO: create __sequences__ bucket")
-		tx.CreateBucketIfNotExists([]byte("__sequences__")) // TODO: if it didn't exist, write to it
+		tx.CreateBucketIfNotExists([]byte("__tables__"))
+		tx.CreateBucketIfNotExists([]byte("__columns__"))
+		sequencesBucket, _ := tx.CreateBucketIfNotExists([]byte("__sequences__"))
+		// sync next column id
+		nextColumnIdBytes := sequencesBucket.Get([]byte("__next_column_id__"))
+		if nextColumnIdBytes == nil {
+			// write it
+			nextColumnIdBytes = make([]byte, 4)
+			binary.BigEndian.PutUint32(nextColumnIdBytes, uint32(db.Schema.NextColumnId))
+			sequencesBucket.Put([]byte("__next_column_id__"), nextColumnIdBytes)
+		} else {
+			// read it
+			nextColumnId := binary.BigEndian.Uint32(nextColumnIdBytes)
+			db.Schema.NextColumnId = int(nextColumnId)
+		}
+		return nil
+	})
+}
+
+func (db *Database) LoadUserSchema() {
+	tablesTable := db.Schema.Tables["__tables__"]
+	columnsTable := db.Schema.Tables["__columns__"]
+	db.BoltDB.View(func(tx *bolt.Tx) error {
+		tx.Bucket([]byte("__tables__")).ForEach(func(_ []byte, tableBytes []byte) error {
+			tableRecord := tablesTable.RecordFromBytes(tableBytes)
+			tableSpec := TableFromRecord(tableRecord)
+			db.Schema.Tables[tableSpec.Name] = tableSpec
+			return nil
+		})
+		spew.Dump(db.Schema.Tables)
+		tx.Bucket([]byte("__columns__")).ForEach(func(key []byte, columnBytes []byte) error {
+			fmt.Println("column key", key, "and bytes", columnBytes)
+			columnRecord := columnsTable.RecordFromBytes(columnBytes)
+			spew.Dump(columnRecord)
+			columnSpec := ColumnFromRecord(columnRecord)
+			spew.Dump(columnSpec)
+			tableSpec := db.Schema.Tables[columnRecord.GetField("table_name").StringVal]
+			spew.Dump(tableSpec.Columns)
+			spew.Dump(columnSpec)
+			tableSpec.Columns = append(tableSpec.Columns, columnSpec)
+			return nil
+		})
 		return nil
 	})
 }
 
 func GetBuiltinSchema() *Schema {
+	// these never go in the on-disk __tables__ and __columns__ Bolt buckets
 	// doing ids like this is kind of precarious...
 	tables := map[string]*Table{
 		"__tables__": &Table{

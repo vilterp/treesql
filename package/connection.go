@@ -8,7 +8,6 @@ import (
 	"net"
 
 	"github.com/boltdb/bolt"
-	"github.com/davecgh/go-spew/spew"
 )
 
 type Connection struct {
@@ -76,7 +75,6 @@ func (conn *Connection) ExecuteInsert(insert *Insert) {
 }
 
 func (conn *Connection) ExecuteCreateTable(create *CreateTable) {
-	fmt.Println("create table whooo", spew.Sdump(create))
 	updateErr := conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
 		// create bucket for new table
 		tx.CreateBucket([]byte(create.Name))
@@ -99,17 +97,12 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable) {
 		// write record
 		tablesBucket := tx.Bucket([]byte("__tables__"))
 		tableRecord := tableSpec.ToRecord(conn.Database)
-		tablesBucket.Put([]byte(create.Name), tableRecord.ToBytes())
+		tablePutErr := tablesBucket.Put([]byte(create.Name), tableRecord.ToBytes())
+		if tablePutErr != nil {
+			return tablePutErr
+		}
 		// write to __columns__
 		for idx, parsedColumn := range create.Columns {
-			// extract type
-			var typ ColumnType
-			switch parsedColumn.TypeName {
-			case "string":
-				typ = TypeString
-			case "int":
-				typ = TypeInt
-			}
 			// extract reference
 			var reference *ColumnReference
 			if parsedColumn.References != nil {
@@ -122,7 +115,7 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable) {
 				Id:               conn.Database.Schema.NextColumnId,
 				Name:             parsedColumn.Name,
 				ReferencesColumn: reference,
-				Type:             typ,
+				Type:             NameToType[parsedColumn.TypeName],
 			}
 			conn.Database.Schema.NextColumnId++
 			// put column spec in in-memory schema copy
@@ -131,16 +124,20 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable) {
 			// write record
 			columnRecord := columnSpec.ToRecord(create.Name, conn.Database)
 			columnsBucket := tx.Bucket([]byte("__columns__"))
-			columnsBucket.Put([]byte(fmt.Sprintf("%d", columnSpec.Id)), columnRecord.ToBytes())
+			key := []byte(fmt.Sprintf("%d", columnSpec.Id))
+			value := columnRecord.ToBytes()
+			fmt.Println("key", key, "value", value)
+			columnPutErr := columnsBucket.Put(key, value)
+			if columnPutErr != nil {
+				return columnPutErr
+			}
 		}
 		// write next column id sequence
 		nextColumnIdBytes := make([]byte, 4)
 		binary.BigEndian.PutUint32(nextColumnIdBytes, uint32(conn.Database.Schema.NextColumnId))
 		tx.Bucket([]byte("__sequences__")).Put([]byte("__next_column_id__"), nextColumnIdBytes)
-		fmt.Println("at end of create table transaction")
 		return nil
 	})
-	fmt.Println("created table")
 	if updateErr != nil {
 		// TODO: structured errors on the wire...
 		conn.ClientConn.Write([]byte(fmt.Sprintf("error creating table: %s\n", updateErr)))

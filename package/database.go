@@ -26,8 +26,8 @@ func Open(dataFile string) (*Database, error) {
 		BoltDB:                  boltDB,
 		queryValidationRequests: make(chan *QueryValidationRequest),
 	}
-
 	database.EnsureBuiltinSchema()
+	database.LoadUserSchema()
 
 	// serve query validation requests
 	// TODO: a `select` here for schema changes
