@@ -126,7 +126,6 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable) {
 			columnsBucket := tx.Bucket([]byte("__columns__"))
 			key := []byte(fmt.Sprintf("%d", columnSpec.Id))
 			value := columnRecord.ToBytes()
-			fmt.Println("key", key, "value", value)
 			columnPutErr := columnsBucket.Put(key, value)
 			if columnPutErr != nil {
 				return columnPutErr
@@ -143,7 +142,7 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable) {
 		conn.ClientConn.Write([]byte(fmt.Sprintf("error creating table: %s\n", updateErr)))
 		log.Println("connection", conn.ID, "error creating table:", updateErr)
 	} else {
-		fmt.Println("connection", conn.ID, "created table", create.Name)
+		log.Println("connection", conn.ID, "created table", create.Name)
 		conn.ClientConn.Write([]byte("CREATE TABLE\n"))
 	}
 }
