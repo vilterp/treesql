@@ -23,7 +23,7 @@ func (conn *Connection) Run() {
 		message, err := bufio.NewReader(conn.ClientConn).ReadString('\n')
 
 		if err != nil {
-			log.Printf("conn id %d terminated: %v\n", conn.ID, err)
+			log.Printf("connection %d terminated: %v\n", conn.ID, err)
 			return
 		}
 
