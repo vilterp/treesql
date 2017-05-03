@@ -70,9 +70,8 @@ func (it *BoltIterator) Close() {
 // oof, what if these change out from underneath the iterators?
 // how do I clone the tables?
 type SchemaTablesIterator struct {
-	tablesTable *Table
+	db          *Database
 	tablesArray []*Table
-	tablesMap   map[string]*Table
 	idx         int
 }
 
@@ -84,9 +83,8 @@ func newTablesIterator(db *Database) (*SchemaTablesIterator, error) {
 		i++
 	}
 	return &SchemaTablesIterator{
-		tablesTable: db.Schema.Tables["__tables__"],
+		db:          db,
 		tablesArray: tables,
-		tablesMap:   db.Schema.Tables,
 		idx:         0,
 	}, nil
 }
@@ -97,48 +95,34 @@ func (it *SchemaTablesIterator) Next() *Record {
 	}
 	table := it.tablesArray[it.idx]
 	it.idx++
-	return it.tableToRecord(table)
+	return table.ToRecord(it.db)
 }
 
 func (it *SchemaTablesIterator) Get(key string) (*Record, error) {
-	return it.tableToRecord(it.tablesMap[key]), nil
+	table := it.db.Schema.Tables[key]
+	return table.ToRecord(it.db), nil
 }
 
 func (it *SchemaTablesIterator) Close() {}
 
-func (it *SchemaTablesIterator) tableToRecord(tableSpec *Table) *Record {
-	return &Record{
-		Table: it.tablesTable,
-		Values: []Value{
-			Value{ // name
-				Type:      TypeString,
-				StringVal: tableSpec.Name,
-			},
-			Value{ // primary_key
-				Type:      TypeString,
-				StringVal: tableSpec.PrimaryKey,
-			},
-		},
-	}
-}
-
 // schema columns iterator
 
 type SchemaColumnsIterator struct {
+	db      *Database
 	columns []*Record
 	idx     int
 }
 
 func newColumnsIterator(db *Database) (*SchemaColumnsIterator, error) {
-	columnsTable := db.Schema.Tables["__columns__"]
 	columns := make([]*Record, 0)
 	for _, table := range db.Schema.Tables {
 		for _, column := range table.Columns {
-			columnDoc := columnToRecord(columnsTable, column, table)
+			columnDoc := column.ToRecord(table.Name, db)
 			columns = append(columns, columnDoc)
 		}
 	}
 	return &SchemaColumnsIterator{
+		db:      db,
 		columns: columns,
 		idx:     0,
 	}, nil
@@ -165,27 +149,3 @@ func (it *SchemaColumnsIterator) Get(key string) (*Record, error) {
 }
 
 func (it *SchemaColumnsIterator) Close() {}
-
-func columnToRecord(columnsTable *Table, column *Column, memberOfTable *Table) *Record {
-	var referencesColumn string // jeez, give me a freaking ternary already
-	if column.ReferencesColumn != nil {
-		referencesColumn = column.ReferencesColumn.TableName
-	}
-	return &Record{
-		Table: columnsTable,
-		Values: []Value{
-			Value{ // name
-				Type:      TypeString,
-				StringVal: column.Name,
-			},
-			Value{ // table_name
-				Type:      TypeString,
-				StringVal: memberOfTable.Name,
-			},
-			Value{ // references
-				Type:      TypeString,
-				StringVal: referencesColumn,
-			},
-		},
-	}
-}

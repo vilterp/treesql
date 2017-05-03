@@ -36,3 +36,27 @@ type InsertWrongNumFields struct {
 func (e *InsertWrongNumFields) Error() string {
 	return fmt.Sprintf("table %s has %d columns, but insert statement provided %d", e.TableName, e.Wanted, e.Got)
 }
+
+type TableAlreadyExists struct {
+	TableName string
+}
+
+func (e *TableAlreadyExists) Error() string {
+	return fmt.Sprintf("table already exists: %s", e.TableName)
+}
+
+type NonexistentType struct {
+	TypeName string
+}
+
+func (e *NonexistentType) Error() string {
+	return fmt.Sprintf("nonexistent type:", e.TypeName)
+}
+
+type WrongNoPrimaryKey struct {
+	Count int
+}
+
+func (e *WrongNoPrimaryKey) Error() string {
+	return fmt.Sprintf("tables should have exactly one column marked \"primary key\"; given %d", e.Count)
+}

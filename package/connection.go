@@ -2,6 +2,7 @@ package treesql
 
 import (
 	"bufio"
+	"encoding/binary"
 	"fmt"
 	"log"
 	"net"
@@ -49,6 +50,8 @@ func (conn *Connection) Run() {
 			conn.ExecuteQuery(statement.Select)
 		} else if statement.Insert != nil {
 			conn.ExecuteInsert(statement.Insert)
+		} else if statement.CreateTable != nil {
+			conn.ExecuteCreateTable(statement.CreateTable)
 		}
 	}
 }
@@ -69,4 +72,77 @@ func (conn *Connection) ExecuteInsert(insert *Insert) {
 	})
 	log.Println("connection", conn.ID, "handled insert")
 	conn.ClientConn.Write([]byte("INSERT 1\n")) // heh
+}
+
+func (conn *Connection) ExecuteCreateTable(create *CreateTable) {
+	updateErr := conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
+		// create bucket for new table
+		tx.CreateBucket([]byte(create.Name))
+		// write to __tables__
+		var primaryKey string
+		for _, column := range create.Columns {
+			if column.PrimaryKey {
+				primaryKey = column.Name
+				break
+			}
+		}
+		tableSpec := &Table{
+			Name:       create.Name,
+			Columns:    make([]*Column, len(create.Columns)),
+			PrimaryKey: primaryKey,
+		}
+		// add to in-memory schema
+		// TODO: synchronize access to this shared mutable data structure!
+		conn.Database.Schema.Tables[tableSpec.Name] = tableSpec
+		// write record
+		tablesBucket := tx.Bucket([]byte("__tables__"))
+		tableRecord := tableSpec.ToRecord(conn.Database)
+		tablePutErr := tablesBucket.Put([]byte(create.Name), tableRecord.ToBytes())
+		if tablePutErr != nil {
+			return tablePutErr
+		}
+		// write to __columns__
+		for idx, parsedColumn := range create.Columns {
+			// extract reference
+			var reference *ColumnReference
+			if parsedColumn.References != nil {
+				reference = &ColumnReference{
+					TableName: *parsedColumn.References,
+				}
+			}
+			// build column spec
+			columnSpec := &Column{
+				Id:               conn.Database.Schema.NextColumnId,
+				Name:             parsedColumn.Name,
+				ReferencesColumn: reference,
+				Type:             NameToType[parsedColumn.TypeName],
+			}
+			conn.Database.Schema.NextColumnId++
+			// put column spec in in-memory schema copy
+			// TODO: synchronize access to this mutable shared data structure!!
+			tableSpec.Columns[idx] = columnSpec
+			// write record
+			columnRecord := columnSpec.ToRecord(create.Name, conn.Database)
+			columnsBucket := tx.Bucket([]byte("__columns__"))
+			key := []byte(fmt.Sprintf("%d", columnSpec.Id))
+			value := columnRecord.ToBytes()
+			columnPutErr := columnsBucket.Put(key, value)
+			if columnPutErr != nil {
+				return columnPutErr
+			}
+		}
+		// write next column id sequence
+		nextColumnIdBytes := make([]byte, 4)
+		binary.BigEndian.PutUint32(nextColumnIdBytes, uint32(conn.Database.Schema.NextColumnId))
+		tx.Bucket([]byte("__sequences__")).Put([]byte("__next_column_id__"), nextColumnIdBytes)
+		return nil
+	})
+	if updateErr != nil {
+		// TODO: structured errors on the wire...
+		conn.ClientConn.Write([]byte(fmt.Sprintf("error creating table: %s\n", updateErr)))
+		log.Println("connection", conn.ID, "error creating table:", updateErr)
+	} else {
+		log.Println("connection", conn.ID, "created table", create.Name)
+		conn.ClientConn.Write([]byte("CREATE TABLE\n"))
+	}
 }
