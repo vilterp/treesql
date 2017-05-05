@@ -5,13 +5,13 @@ import (
 	"fmt"
 	"log"
 	"strconv"
-
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/davecgh/go-spew/spew"
 )
 
-func (conn *Connection) ExecuteQuery(query *Select) {
+func (conn *Connection) ExecuteQuery(query *Select, queryID int) {
 	// TODO: put all these reads in a transaction
 	startTime := time.Now()
 	tx, _ := conn.Database.BoltDB.Begin(false)
@@ -21,6 +21,7 @@ func (conn *Connection) ExecuteQuery(query *Select) {
 		Query:        query,
 		Transaction:  tx,
 		ResultWriter: writer,
+		QueryId:      queryID,
 	}
 	executeSelect(execution, query, nil)
 	commitErr := tx.Rollback()
@@ -30,16 +31,20 @@ func (conn *Connection) ExecuteQuery(query *Select) {
 	writer.WriteString("\n")
 	writer.Flush()
 	endTime := time.Now()
-	log.Println("connection", conn.ID, "serviced query in", endTime.Sub(startTime))
+
+	log.Println(
+		"connection", conn.ID, "serviced query", queryID, "in", endTime.Sub(startTime),
+		"live:", query.Live,
+	) // TODO: structured logging XD
 }
 
 // maybe this should be called transaction? idk
 type QueryExecution struct {
 	Connection   *Connection
 	Query        *Select
+	QueryId      int // unique per connection
 	Transaction  *bolt.Tx
 	ResultWriter *bufio.Writer
-	Logger       *log.Logger
 }
 
 type Scope struct {
@@ -59,6 +64,107 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) {
 	resultWriter := ex.ResultWriter
 	tableSchema := ex.Connection.Database.Schema.Tables[query.Table]
 	// if we're an inner loop, figure out a condition for our loop
+	filterCondition := getFilterCondition(query, tableSchema, scope)
+	// get schema fields into a map (maybe it should be this in the schema? idk)
+	columnsMap := map[string]*Column{}
+	for _, column := range tableSchema.Columns {
+		columnsMap[column.Name] = column
+	}
+	// start iterating
+	iterator, _ := ex.getTableIterator(query.Table)
+	rowsRead := 0
+	if query.Many {
+		ex.ResultWriter.WriteString("[")
+	}
+	for {
+		// get next doc
+		record := iterator.Next()
+		if record == nil {
+			break
+		}
+		// decide if we want to write it
+		if filterCondition != nil {
+			if !recordMatchesFilter(filterCondition, record, scope.document) {
+				continue
+			}
+		}
+		if query.Where != nil {
+			// again ignoring int vals for now...
+			if record.GetField(query.Where.ColumnName).StringVal != query.Where.Value {
+				continue
+			}
+		}
+		if rowsRead == 1 && query.One {
+			break // TODO: actually error if > 1
+		}
+		// we are interested in this record... let's subscribe to it
+		if ex.Query.Live {
+			ex.Connection.Database.TableListeners[tableSchema.Name].SubscriberEvents <- &SubscriberEvent{
+				ColumnName:     tableSchema.PrimaryKey,
+				QueryExecution: ex,
+				Value:          record.GetField(tableSchema.PrimaryKey),
+			}
+		}
+		// start writing it
+		if rowsRead > 0 {
+			ex.ResultWriter.WriteString(",")
+		}
+		ex.ResultWriter.WriteString("{")
+		// extract & write fields
+		for selectionIdx, selection := range query.Selections {
+			resultWriter.WriteString(fmt.Sprintf("\"%s\":", selection.Name))
+			if selection.SubSelect != nil {
+				// execute subquery
+				nextScope := &Scope{
+					table:    tableSchema,
+					document: record,
+				}
+				executeSelect(ex, selection.SubSelect, nextScope)
+				// if live, subscribe to that
+				if ex.Query.Live && scope != nil { // really, should unify FilterCond and Where
+					// ugh... need to compute filter condition here?
+					innerTable := ex.Connection.Database.Schema.Tables[selection.SubSelect.Table]
+					nextFilterCondition := getFilterCondition(selection.SubSelect, innerTable, nextScope)
+					fmt.Println("nextFilterCondition", spew.Sdump(nextFilterCondition))
+					ex.Connection.Database.TableListeners[tableSchema.Name].SubscriberEvents <- &SubscriberEvent{
+						ColumnName:     nextFilterCondition.InnerColumnName,
+						QueryExecution: ex,
+						Value:          record.GetField(nextFilterCondition.OuterColumnName),
+					}
+				}
+			} else {
+				// write field value out to socket
+				columnSpec := columnsMap[selection.Name]
+				switch columnSpec.Type {
+				case TypeInt:
+					val := record.GetField(columnSpec.Name).StringVal
+					resultWriter.WriteString(fmt.Sprintf("%d", val))
+
+				case TypeString:
+					val := record.GetField(columnSpec.Name).StringVal
+					resultWriter.WriteString(strconv.Quote(val))
+				}
+			}
+			if selectionIdx < len(query.Selections)-1 {
+				resultWriter.WriteString(",")
+			}
+		}
+		rowsRead++
+		resultWriter.WriteString("}")
+	}
+	iterator.Close()
+	if query.Many {
+		resultWriter.WriteString("]")
+	}
+}
+
+func recordMatchesFilter(condition *FilterCondition, innerRec *Record, outerRec *Record) bool {
+	innerField := innerRec.GetField(condition.InnerColumnName)
+	outerField := outerRec.GetField(condition.OuterColumnName)
+	return *innerField == *outerField
+}
+
+func getFilterCondition(query *Select, tableSchema *Table, scope *Scope) *FilterCondition {
 	var filterCondition *FilterCondition
 	if scope != nil {
 		if query.Many {
@@ -89,80 +195,5 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) {
 			}
 		}
 	}
-	// get schema fields into a map (maybe it should be this in the schema? idk)
-	columnsMap := map[string]*Column{}
-	for _, column := range tableSchema.Columns {
-		columnsMap[column.Name] = column
-	}
-	// start iterating
-	iterator, _ := ex.getTableIterator(query.Table)
-	rowsRead := 0
-	if query.Many {
-		ex.ResultWriter.WriteString("[")
-	}
-	for {
-		// get next doc
-		nextDoc := iterator.Next()
-		if nextDoc == nil {
-			break
-		}
-		// decide if we want to write it
-		if filterCondition != nil {
-			if !recordMatchesFilter(filterCondition, nextDoc, scope.document) {
-				continue
-			}
-		}
-		if query.Where != nil {
-			// again ignoring int vals for now...
-			if nextDoc.GetField(query.Where.ColumnName).StringVal != query.Where.Value {
-				continue
-			}
-		}
-		if rowsRead == 1 && query.One {
-			break
-		}
-		// start writing it
-		if rowsRead > 0 {
-			ex.ResultWriter.WriteString(",")
-		}
-		ex.ResultWriter.WriteString("{")
-		// extract & write fields
-		for selectionIdx, selection := range query.Selections {
-			resultWriter.WriteString(fmt.Sprintf("\"%s\":", selection.Name))
-			if selection.SubSelect != nil {
-				// execute subquery
-				executeSelect(ex, selection.SubSelect, &Scope{
-					table:    tableSchema,
-					document: nextDoc,
-				})
-			} else {
-				// write field value out to socket
-				columnSpec := columnsMap[selection.Name]
-				switch columnSpec.Type {
-				case TypeInt:
-					val := nextDoc.GetField(columnSpec.Name).StringVal
-					resultWriter.WriteString(fmt.Sprintf("%d", val))
-
-				case TypeString:
-					val := nextDoc.GetField(columnSpec.Name).StringVal
-					resultWriter.WriteString(strconv.Quote(val))
-				}
-			}
-			if selectionIdx < len(query.Selections)-1 {
-				resultWriter.WriteString(",")
-			}
-		}
-		rowsRead++
-		resultWriter.WriteString("}")
-	}
-	iterator.Close()
-	if query.Many {
-		resultWriter.WriteString("]")
-	}
-}
-
-func recordMatchesFilter(condition *FilterCondition, innerRec *Record, outerRec *Record) bool {
-	innerField := innerRec.GetField(condition.InnerColumnName)
-	outerField := outerRec.GetField(condition.OuterColumnName)
-	return *innerField == *outerField
+	return filterCondition
 }

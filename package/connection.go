@@ -11,9 +11,10 @@ import (
 )
 
 type Connection struct {
-	ClientConn net.Conn
-	ID         int
-	Database   *Database
+	ClientConn  net.Conn
+	ID          int
+	Database    *Database
+	NextQueryId int
 }
 
 func (conn *Connection) Run() {
@@ -47,7 +48,8 @@ func (conn *Connection) Run() {
 		}
 		if statement.Select != nil {
 			// execute query
-			conn.ExecuteQuery(statement.Select)
+			conn.ExecuteQuery(statement.Select, conn.NextQueryId)
+			conn.NextQueryId++
 		} else if statement.Insert != nil {
 			conn.ExecuteInsert(statement.Insert)
 		} else if statement.CreateTable != nil {
@@ -75,26 +77,25 @@ func (conn *Connection) ExecuteInsert(insert *Insert) {
 }
 
 func (conn *Connection) ExecuteCreateTable(create *CreateTable) {
+	var primaryKey string
+	for _, column := range create.Columns {
+		if column.PrimaryKey {
+			primaryKey = column.Name
+			break
+		}
+	}
+	tableSpec := &Table{
+		Name:       create.Name,
+		Columns:    make([]*Column, len(create.Columns)),
+		PrimaryKey: primaryKey,
+	}
 	updateErr := conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
 		// create bucket for new table
 		tx.CreateBucket([]byte(create.Name))
-		// write to __tables__
-		var primaryKey string
-		for _, column := range create.Columns {
-			if column.PrimaryKey {
-				primaryKey = column.Name
-				break
-			}
-		}
-		tableSpec := &Table{
-			Name:       create.Name,
-			Columns:    make([]*Column, len(create.Columns)),
-			PrimaryKey: primaryKey,
-		}
 		// add to in-memory schema
 		// TODO: synchronize access to this shared mutable data structure!
 		conn.Database.Schema.Tables[tableSpec.Name] = tableSpec
-		// write record
+		// write record to __tables__
 		tablesBucket := tx.Bucket([]byte("__tables__"))
 		tableRecord := tableSpec.ToRecord(conn.Database)
 		tablePutErr := tablesBucket.Put([]byte(create.Name), tableRecord.ToBytes())
@@ -137,6 +138,7 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable) {
 		tx.Bucket([]byte("__sequences__")).Put([]byte("__next_column_id__"), nextColumnIdBytes)
 		return nil
 	})
+	conn.Database.AddTableListener(tableSpec)
 	if updateErr != nil {
 		// TODO: structured errors on the wire...
 		conn.ClientConn.Write([]byte(fmt.Sprintf("error creating table: %s\n", updateErr)))

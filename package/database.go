@@ -11,7 +11,8 @@ import (
 type Database struct {
 	Schema                  *Schema
 	BoltDB                  *bolt.DB
-	queryValidationRequests chan *QueryValidationRequest
+	QueryValidationRequests chan *QueryValidationRequest
+	TableListeners          map[string]*TableListener
 }
 
 func Open(dataFile string) (*Database, error) {
@@ -24,17 +25,19 @@ func Open(dataFile string) (*Database, error) {
 	database := &Database{
 		Schema:                  GetBuiltinSchema(),
 		BoltDB:                  boltDB,
-		queryValidationRequests: make(chan *QueryValidationRequest),
+		QueryValidationRequests: make(chan *QueryValidationRequest),
+		TableListeners:          map[string]*TableListener{},
 	}
 	database.EnsureBuiltinSchema()
 	database.LoadUserSchema()
+	database.MakeTableListeners()
 
 	// serve query validation requests
 	// TODO: a `select` here for schema changes
 	// serializing access to the schema
 	// go func() {
 	// 	for {
-	// 		query := <-database.queryValidationRequests
+	// 		query := <-database.QueryValidationRequests
 	// 		database.handleValidationRequest(query)
 	// 	}
 	// }()
@@ -78,7 +81,7 @@ func (db *Database) ValidateStatement(statement *Statement) error {
 // func (db *Database) validateQuery(query *Select) error {
 // 	responseChan := make(chan error)
 // 	fmt.Println("about to send request")
-// 	db.queryValidationRequests <- &QueryValidationRequest{
+// 	db.QueryValidationRequests <- &QueryValidationRequest{
 // 		query:        query,
 // 		responseChan: responseChan,
 // 	}

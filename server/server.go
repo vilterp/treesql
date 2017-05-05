@@ -49,9 +49,10 @@ func main() {
 	for {
 		conn, _ := listeningSock.Accept()
 		connection := &treesql.Connection{
-			ClientConn: conn,
-			ID:         connectionID,
-			Database:   database,
+			ClientConn:  conn,
+			ID:          connectionID,
+			Database:    database,
+			NextQueryId: 0,
 		}
 		connectionID++
 		go connection.Run()
