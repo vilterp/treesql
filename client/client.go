@@ -80,9 +80,16 @@ func repl(reader *readline.Instance, mx *yamux.Session) {
 			fmt.Println(commandErr)
 		} else if len(line) > 0 {
 			queryChannel, _ := mx.Open()
+			reader := bufio.NewReader(queryChannel)
 			queryChannel.Write([]byte(line + "\n"))
 			live := strings.HasSuffix(strings.ToLower(line), "live")
-			go readResults(queryId, queryChannel, live)
+			if live {
+				go readResults(queryId, reader)
+			} else {
+				result, err := readOneResult(queryId, reader)
+				printResult(queryId, result, err)
+			}
+			go readResults(queryId, reader)
 		}
 	}
 }
@@ -112,24 +119,29 @@ func maybeTranslateBuiltinCommand(line string) (string, error) {
 	}
 }
 
-func readResults(queryId int, queryChannel net.Conn, live bool) {
+func readResults(queryId int, reader *bufio.Reader) {
 	resultsRead := 0
-	reader := bufio.NewReader(queryChannel)
 	for {
-		message, err := reader.ReadBytes('\n')
-		if err != nil {
-			fmt.Printf("error from query %d: %s", queryId, message)
-			return
+		if resultsRead > 0 {
+			fmt.Println()
 		}
-		var dstBuffer bytes.Buffer
-		jsonErr := json.Indent(&dstBuffer, message, "", "  ")
-		fmt.Printf("query %d: ", queryId)
-		if jsonErr == nil {
-			dstBuffer.WriteTo(os.Stdout)
-		} else {
-			fmt.Print(string(message))
-		}
+		result, readErr := readOneResult(queryId, reader)
+		printResult(queryId, result, readErr)
 		resultsRead++
+	}
+}
+
+func readOneResult(queryId int, reader *bufio.Reader) (string, error) {
+	message, err := reader.ReadBytes('\n')
+	if err != nil {
+		return "", err
+	}
+	var dstBuffer bytes.Buffer
+	jsonErr := json.Indent(&dstBuffer, message, "", "  ")
+	if jsonErr == nil {
+		return dstBuffer.String(), nil
+	} else {
+		return string(message), nil
 	}
 }
 
@@ -141,4 +153,12 @@ func readFromPrompt() string {
 		os.Exit(0)
 	}
 	return text
+}
+
+func printResult(queryId int, result string, err error) {
+	if err != nil {
+		fmt.Printf("error from query %d: %s\n", queryId, err)
+		return
+	}
+	fmt.Printf("query %d: %s", queryId, result)
 }
