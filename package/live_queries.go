@@ -1,6 +1,7 @@
 package treesql
 
 import (
+	"bufio"
 	"fmt"
 
 	"github.com/davecgh/go-spew/spew"
@@ -13,6 +14,7 @@ func (db *Database) MakeTableListeners() {
 }
 
 type TableListener struct {
+	Table            *Table
 	TableEvents      chan *TableEvent
 	SubscriberEvents chan *SubscriberEvent
 	// PointListeners map[Value]*PointListener // this is just a field listener on the primary key...
@@ -32,6 +34,7 @@ type SubscriberEvent struct {
 
 func (db *Database) AddTableListener(table *Table) {
 	listener := &TableListener{
+		Table:                table,
 		TableEvents:          make(chan *TableEvent),
 		SubscriberEvents:     make(chan *SubscriberEvent),
 		ColumnValueListeners: map[string](map[string]*ColumnValueListener){},
@@ -48,17 +51,18 @@ func tableListenerLoop(listener *TableListener) {
 	for {
 		select {
 		case subEvent := <-listener.SubscriberEvents:
-			fmt.Printf("subscriber event", spew.Sdump(subEvent))
+			fmt.Println("subscriber event for table", listener.Table.Name, "column", subEvent.ColumnName, "value", subEvent.Value)
 			columnListeners := listener.ColumnValueListeners[subEvent.ColumnName]
 			columnValueListener, ok := columnListeners[subEvent.Value.StringVal]
 			if !ok {
-				columnListeners[subEvent.Value.StringVal] = newColumnValueListener(subEvent)
-			} else {
-				columnValueListener.LiveQueries = append(columnValueListener.LiveQueries, subEvent.QueryExecution)
+				columnValueListener = newColumnValueListener(subEvent)
+				columnListeners[subEvent.Value.StringVal] = columnValueListener
 			}
+			columnValueListener.LiveQueries = append(columnValueListener.LiveQueries, subEvent.QueryExecution)
 		case tableEvent := <-listener.TableEvents:
-			fmt.Printf("table event", spew.Sdump(tableEvent))
+			fmt.Println("table event", spew.Sdump(tableEvent))
 			for columnName, columnValueListeners := range listener.ColumnValueListeners {
+				fmt.Println("listeners for column", columnName, ":", columnValueListeners)
 				// TODO: integers, someday
 				columnValueListener, ok := columnValueListeners[tableEvent.NewRecord.GetField(columnName).StringVal]
 				if ok {
@@ -90,6 +94,26 @@ func newColumnValueListener(subEvt *SubscriberEvent) *ColumnValueListener {
 func columnValueListenerLoop(listener *ColumnValueListener) {
 	for {
 		tableEvent := <-listener.TableEvents
-		fmt.Println("column listener event:", spew.Sdump(tableEvent), spew.Sdump(listener))
+		fmt.Println("column listener event:", spew.Sdump(tableEvent), listener)
+		for _, liveQuery := range listener.LiveQueries {
+			writeNotificationAsJson(tableEvent, liveQuery.ResultWriter)
+		}
 	}
+}
+
+func writeNotificationAsJson(event *TableEvent, writer *bufio.Writer) {
+	writer.WriteString("{\"old_record\":")
+	if event.OldRecord == nil {
+		writer.WriteString("null")
+	} else {
+		writer.WriteString(event.OldRecord.ToJson())
+	}
+	writer.WriteString(",\"new_record\":")
+	if event.NewRecord == nil {
+		writer.WriteString("null")
+	} else {
+		writer.WriteString(event.NewRecord.ToJson())
+	}
+	writer.WriteString("}\n")
+	writer.Flush()
 }

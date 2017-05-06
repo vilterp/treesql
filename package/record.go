@@ -3,7 +3,9 @@ package treesql
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"log"
+	"strconv"
 )
 
 type Record struct {
@@ -111,6 +113,18 @@ func (record *Record) ToBytes() []byte {
 	}
 	result := buffer.GetBytes()
 	return result
+}
+
+func (record *Record) ToJson() string {
+	out := "{"
+	for idx, column := range record.Table.Columns {
+		if idx > 0 {
+			out += ","
+		}
+		out += fmt.Sprintf("%s:%s", strconv.Quote(column.Name), strconv.Quote(record.GetField(column.Name).StringVal))
+	}
+	out += "}"
+	return out
 }
 
 // these are only uints

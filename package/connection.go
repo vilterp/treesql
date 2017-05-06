@@ -8,10 +8,11 @@ import (
 	"net"
 
 	"github.com/boltdb/bolt"
+	"github.com/hashicorp/yamux"
 )
 
 type Connection struct {
-	ClientConn  net.Conn
+	ClientConn  *yamux.Session
 	ID          int
 	Database    *Database
 	NextQueryId int
@@ -20,11 +21,16 @@ type Connection struct {
 func (conn *Connection) Run() {
 	log.Printf("connection id %d from %s\n", conn.ID, conn.ClientConn.RemoteAddr())
 	for {
-		// will listen for message to process ending in newline (\n)
-		message, err := bufio.NewReader(conn.ClientConn).ReadString('\n')
+		channel, acceptErr := conn.ClientConn.Accept()
+		if acceptErr != nil {
+			log.Printf("connection %d terminated: %v\n", conn.ID, acceptErr)
+			return
+		}
 
-		if err != nil {
-			log.Printf("connection %d terminated: %v\n", conn.ID, err)
+		// will listen for message to process ending in newline (\n)
+		message, readErr := bufio.NewReader(channel).ReadString('\n')
+		if readErr != nil {
+			log.Printf("connection %d terminated: %v\n", conn.ID, readErr)
 			return
 		}
 
@@ -32,7 +38,7 @@ func (conn *Connection) Run() {
 		statement, err := Parse(message)
 		if err != nil {
 			log.Println("connection", conn.ID, "parse error:", err)
-			conn.ClientConn.Write([]byte(fmt.Sprintf("parse error: %s\n", err)))
+			channel.Write([]byte(fmt.Sprintf("parse error: %s\n", err)))
 			continue
 		}
 
@@ -42,41 +48,47 @@ func (conn *Connection) Run() {
 		// validate statement
 		queryErr := conn.Database.ValidateStatement(statement)
 		if queryErr != nil {
-			conn.ClientConn.Write([]byte(fmt.Sprintf("statement error: %s\n", queryErr)))
+			channel.Write([]byte(fmt.Sprintf("statement error: %s\n", queryErr)))
 			log.Println("connection", conn.ID, "statement validation error", queryErr)
 			continue
 		}
 		if statement.Select != nil {
 			// execute query
-			conn.ExecuteQuery(statement.Select, conn.NextQueryId)
+			conn.ExecuteQuery(statement.Select, conn.NextQueryId, channel)
 			conn.NextQueryId++
 		} else if statement.Insert != nil {
-			conn.ExecuteInsert(statement.Insert)
+			conn.ExecuteInsert(statement.Insert, channel)
 		} else if statement.CreateTable != nil {
-			conn.ExecuteCreateTable(statement.CreateTable)
+			conn.ExecuteCreateTable(statement.CreateTable, channel)
 		}
 	}
 }
 
 // TODO: some other file, alongside executor.go? idk
-func (conn *Connection) ExecuteInsert(insert *Insert) {
+func (conn *Connection) ExecuteInsert(insert *Insert, channel net.Conn) {
+	table := conn.Database.Schema.Tables[insert.Table]
+	record := table.NewRecord()
+	for idx, value := range insert.Values {
+		record.SetString(table.Columns[idx].Name, value)
+	}
+	key := record.GetField(table.PrimaryKey).StringVal
+	// write to table
 	// TODO: handle any errors
 	conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(insert.Table))
-		table := conn.Database.Schema.Tables[insert.Table]
-		record := table.NewRecord()
-		for idx, value := range insert.Values {
-			record.SetString(table.Columns[idx].Name, value)
-		}
-		key := record.GetField(table.PrimaryKey).StringVal
 		bucket.Put([]byte(key), record.ToBytes())
 		return nil
 	})
+	// push to live query listeners
+	conn.Database.TableListeners[insert.Table].TableEvents <- &TableEvent{
+		NewRecord: record,
+		OldRecord: nil,
+	}
 	log.Println("connection", conn.ID, "handled insert")
-	conn.ClientConn.Write([]byte("INSERT 1\n")) // heh
+	channel.Write([]byte("INSERT 1\n")) // heh
 }
 
-func (conn *Connection) ExecuteCreateTable(create *CreateTable) {
+func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel net.Conn) {
 	var primaryKey string
 	for _, column := range create.Columns {
 		if column.PrimaryKey {
@@ -141,10 +153,10 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable) {
 	conn.Database.AddTableListener(tableSpec)
 	if updateErr != nil {
 		// TODO: structured errors on the wire...
-		conn.ClientConn.Write([]byte(fmt.Sprintf("error creating table: %s\n", updateErr)))
+		channel.Write([]byte(fmt.Sprintf("error creating table: %s\n", updateErr)))
 		log.Println("connection", conn.ID, "error creating table:", updateErr)
 	} else {
 		log.Println("connection", conn.ID, "created table", create.Name)
-		conn.ClientConn.Write([]byte("CREATE TABLE\n"))
+		channel.Write([]byte("CREATE TABLE\n"))
 	}
 }

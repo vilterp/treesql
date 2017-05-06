@@ -10,6 +10,7 @@ import (
 	"os/signal"
 	"syscall"
 
+	"github.com/hashicorp/yamux"
 	treesql "github.com/vilterp/treesql/package"
 )
 
@@ -48,8 +49,9 @@ func main() {
 	connectionID := 0
 	for {
 		conn, _ := listeningSock.Accept()
+		mx, _ := yamux.Server(conn, nil)
 		connection := &treesql.Connection{
-			ClientConn:  conn,
+			ClientConn:  mx,
 			ID:          connectionID,
 			Database:    database,
 			NextQueryId: 0,

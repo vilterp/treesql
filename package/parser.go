@@ -48,12 +48,12 @@ type Insert struct {
 }
 
 type Select struct {
-	Live       bool         `[ @"LIVE" ]`
 	Many       bool         `( @"MANY"`
 	One        bool         `| @"ONE" )`
 	Table      string       `@Ident`
 	Where      *Where       `[ "WHERE" @@ ]`
 	Selections []*Selection `"{" @@ { "," @@ } "}"` // TODO: * for all columns
+	Live       bool         `[ @"LIVE" ]`           // would put this at the beginning but it seems to cause indeterminancy
 }
 
 type Where struct {

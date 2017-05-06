@@ -50,10 +50,9 @@ func (it *BoltIterator) Next() *Record {
 	}
 	if key == nil {
 		return nil
-	} else {
-		record := it.table.RecordFromBytes(rawRecord)
-		return record
 	}
+	record := it.table.RecordFromBytes(rawRecord)
+	return record
 }
 
 func (it *BoltIterator) Get(key string) (*Record, error) {

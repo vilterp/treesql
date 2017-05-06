@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"log"
+	"net"
 	"strconv"
 	"time"
 
@@ -11,11 +12,11 @@ import (
 	"github.com/davecgh/go-spew/spew"
 )
 
-func (conn *Connection) ExecuteQuery(query *Select, queryID int) {
+func (conn *Connection) ExecuteQuery(query *Select, queryID int, channel net.Conn) {
 	// TODO: put all these reads in a transaction
 	startTime := time.Now()
 	tx, _ := conn.Database.BoltDB.Begin(false)
-	writer := bufio.NewWriter(conn.ClientConn)
+	writer := bufio.NewWriter(channel)
 	execution := &QueryExecution{
 		Connection:   conn,
 		Query:        query,
@@ -64,7 +65,21 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) {
 	resultWriter := ex.ResultWriter
 	tableSchema := ex.Connection.Database.Schema.Tables[query.Table]
 	// if we're an inner loop, figure out a condition for our loop
-	filterCondition := getFilterCondition(query, tableSchema, scope)
+	var filterCondition *FilterCondition
+	if scope != nil {
+		filterCondition = getFilterCondition(query, tableSchema, scope)
+
+		fmt.Println("filter condition for table", query.Table, ":", spew.Sdump(filterCondition))
+		if ex.Query.Live {
+			// ugh... need to compute filter condition here?
+			innerTable := ex.Connection.Database.Schema.Tables[query.Table]
+			ex.Connection.Database.TableListeners[innerTable.Name].SubscriberEvents <- &SubscriberEvent{
+				ColumnName:     filterCondition.InnerColumnName,
+				QueryExecution: ex,
+				Value:          scope.document.GetField(filterCondition.OuterColumnName),
+			}
+		}
+	}
 	// get schema fields into a map (maybe it should be this in the schema? idk)
 	columnsMap := map[string]*Column{}
 	for _, column := range tableSchema.Columns {
@@ -120,18 +135,6 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) {
 					document: record,
 				}
 				executeSelect(ex, selection.SubSelect, nextScope)
-				// if live, subscribe to that
-				if ex.Query.Live && scope != nil { // really, should unify FilterCond and Where
-					// ugh... need to compute filter condition here?
-					innerTable := ex.Connection.Database.Schema.Tables[selection.SubSelect.Table]
-					nextFilterCondition := getFilterCondition(selection.SubSelect, innerTable, nextScope)
-					fmt.Println("nextFilterCondition", spew.Sdump(nextFilterCondition))
-					ex.Connection.Database.TableListeners[tableSchema.Name].SubscriberEvents <- &SubscriberEvent{
-						ColumnName:     nextFilterCondition.InnerColumnName,
-						QueryExecution: ex,
-						Value:          record.GetField(nextFilterCondition.OuterColumnName),
-					}
-				}
 			} else {
 				// write field value out to socket
 				columnSpec := columnsMap[selection.Name]
@@ -156,6 +159,10 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) {
 	if query.Many {
 		resultWriter.WriteString("]")
 	}
+	if query.One && rowsRead == 0 {
+		resultWriter.Write([]byte("error: requested one row, but none found"))
+		// TODO: this could be in the middle of a result set, lol
+	}
 }
 
 func recordMatchesFilter(condition *FilterCondition, innerRec *Record, outerRec *Record) bool {
@@ -166,31 +173,32 @@ func recordMatchesFilter(condition *FilterCondition, innerRec *Record, outerRec 
 
 func getFilterCondition(query *Select, tableSchema *Table, scope *Scope) *FilterCondition {
 	var filterCondition *FilterCondition
-	if scope != nil {
-		if query.Many {
-			// find reference from inner table to outer table
-			// TODO: this is the kind of thing that should be done in a query planner,
-			// not in every nested loop
-			for _, columnSpec := range tableSchema.Columns {
-				if columnSpec.ReferencesColumn != nil &&
-					columnSpec.ReferencesColumn.TableName == scope.table.Name {
-					filterCondition = &FilterCondition{
-						InnerColumnName: columnSpec.Name,
-						OuterColumnName: scope.table.PrimaryKey,
-					}
+	if query.Many {
+		fmt.Println("query many")
+		// find reference from inner table to outer table
+		// TODO: this is the kind of thing that should be done in a query planner,
+		// not in every nested loop
+		for _, columnSpec := range tableSchema.Columns {
+			fmt.Println("column spec", columnSpec)
+			if columnSpec.ReferencesColumn != nil &&
+				columnSpec.ReferencesColumn.TableName == scope.table.Name {
+				filterCondition = &FilterCondition{
+					InnerColumnName: columnSpec.Name,
+					OuterColumnName: scope.table.PrimaryKey,
 				}
+				fmt.Println("filter condition", filterCondition)
 			}
-		} else {
-			// find reference from outer table to inner table
-			// e.g. one comment { blog_post: one blog_posts }
-			// => inner: id, outer: post_id
-			for _, columnSpec := range scope.table.Columns {
-				if columnSpec.ReferencesColumn != nil &&
-					columnSpec.ReferencesColumn.TableName == tableSchema.Name {
-					filterCondition = &FilterCondition{
-						InnerColumnName: tableSchema.PrimaryKey,
-						OuterColumnName: columnSpec.Name,
-					}
+		}
+	} else {
+		// find reference from outer table to inner table
+		// e.g. one comment { blog_post: one blog_posts }
+		// => inner: id, outer: post_id
+		for _, columnSpec := range scope.table.Columns {
+			if columnSpec.ReferencesColumn != nil &&
+				columnSpec.ReferencesColumn.TableName == tableSchema.Name {
+				filterCondition = &FilterCondition{
+					InnerColumnName: tableSchema.PrimaryKey,
+					OuterColumnName: columnSpec.Name,
 				}
 			}
 		}

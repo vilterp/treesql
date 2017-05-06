@@ -13,6 +13,7 @@ import (
 	"strings"
 
 	"github.com/chzyer/readline"
+	"github.com/hashicorp/yamux"
 	"github.com/robertkrimen/isatty"
 )
 
@@ -54,17 +55,14 @@ func main() {
 		}
 		fmt.Printf("connected to %s:%d\n", *host, *port)
 
+		mx, _ := yamux.Client(conn, nil)
 		// once we're connected, repl it up
-		replErr := repl(l, conn)
-
-		// if we get disconnected, go around the loop again
-		if replErr == io.EOF {
-			fmt.Println("connection error; trying to reconnect...")
-		}
+		repl(l, mx)
 	}
 }
 
-func repl(reader *readline.Instance, conn net.Conn) error {
+func repl(reader *readline.Instance, mx *yamux.Session) {
+	queryId := 0
 	for {
 		line, err := reader.Readline()
 		if err == readline.ErrInterrupt {
@@ -76,21 +74,20 @@ func repl(reader *readline.Instance, conn net.Conn) error {
 		} else if err == io.EOF {
 			os.Exit(0)
 		}
-		// TODO: factor special commands out to somewhere
-		line, commandErr := translateOrExecuteCommand(line)
+		queryId++
+		line, commandErr := maybeTranslateBuiltinCommand(line)
 		if commandErr != nil {
 			fmt.Println(commandErr)
 		} else if len(line) > 0 {
-			conn.Write([]byte(line + "\n"))
-			readErr := readResult(conn)
-			if readErr != nil {
-				return readErr
-			}
+			queryChannel, _ := mx.Open()
+			queryChannel.Write([]byte(line + "\n"))
+			live := strings.HasSuffix(strings.ToLower(line), "live")
+			go readResults(queryId, queryChannel, live)
 		}
 	}
 }
 
-func translateOrExecuteCommand(line string) (string, error) {
+func maybeTranslateBuiltinCommand(line string) (string, error) {
 	if line == "\\h" {
 		fmt.Println("Help:")
 		fmt.Println("  \\d:               list tables")
@@ -115,20 +112,25 @@ func translateOrExecuteCommand(line string) (string, error) {
 	}
 }
 
-func readResult(conn net.Conn) error {
-	reader := bufio.NewReader(conn)
-	message, err := reader.ReadBytes('\n')
-	if err != nil {
-		return err
+func readResults(queryId int, queryChannel net.Conn, live bool) {
+	resultsRead := 0
+	reader := bufio.NewReader(queryChannel)
+	for {
+		message, err := reader.ReadBytes('\n')
+		if err != nil {
+			fmt.Printf("error from query %d: %s", queryId, message)
+			return
+		}
+		var dstBuffer bytes.Buffer
+		jsonErr := json.Indent(&dstBuffer, message, "", "  ")
+		fmt.Printf("query %d: ", queryId)
+		if jsonErr == nil {
+			dstBuffer.WriteTo(os.Stdout)
+		} else {
+			fmt.Print(string(message))
+		}
+		resultsRead++
 	}
-	var dstBuffer bytes.Buffer
-	jsonErr := json.Indent(&dstBuffer, message, "", "  ")
-	if jsonErr == nil {
-		dstBuffer.WriteTo(os.Stdout)
-	} else {
-		fmt.Print(string(message))
-	}
-	return nil
 }
 
 func readFromPrompt() string {

@@ -3,7 +3,6 @@ package treesql
 import (
 	"encoding/binary"
 	"fmt"
-
 	"strconv"
 
 	"github.com/boltdb/bolt"
