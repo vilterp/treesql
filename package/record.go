@@ -127,6 +127,10 @@ func (record *Record) ToJson() string {
 	return out
 }
 
+func (record *Record) Clone() *Record {
+	return record.Table.RecordFromBytes(record.ToBytes())
+}
+
 // these are only uints
 func readInteger(buffer *bytes.Buffer) (int, error) {
 	bytes := make([]byte, 4)
