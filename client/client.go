@@ -89,7 +89,6 @@ func repl(reader *readline.Instance, mx *yamux.Session) {
 				result, err := readOneResult(queryId, reader)
 				printResult(queryId, result, err)
 			}
-			go readResults(queryId, reader)
 		}
 	}
 }

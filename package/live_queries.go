@@ -2,9 +2,6 @@ package treesql
 
 import (
 	"bufio"
-	"fmt"
-
-	"github.com/davecgh/go-spew/spew"
 )
 
 func (db *Database) MakeTableListeners() {
@@ -51,7 +48,6 @@ func tableListenerLoop(listener *TableListener) {
 	for {
 		select {
 		case subEvent := <-listener.SubscriberEvents:
-			fmt.Println("subscriber event for table", listener.Table.Name, "column", subEvent.ColumnName, "value", subEvent.Value)
 			columnListeners := listener.ColumnValueListeners[subEvent.ColumnName]
 			columnValueListener, ok := columnListeners[subEvent.Value.StringVal]
 			if !ok {
@@ -60,9 +56,7 @@ func tableListenerLoop(listener *TableListener) {
 			}
 			columnValueListener.LiveQueries = append(columnValueListener.LiveQueries, subEvent.QueryExecution)
 		case tableEvent := <-listener.TableEvents:
-			fmt.Println("table event", spew.Sdump(tableEvent))
 			for columnName, columnValueListeners := range listener.ColumnValueListeners {
-				fmt.Println("listeners for column", columnName, ":", columnValueListeners)
 				// TODO: integers, someday
 				columnValueListener, ok := columnValueListeners[tableEvent.NewRecord.GetField(columnName).StringVal]
 				if ok {
@@ -94,7 +88,6 @@ func newColumnValueListener(subEvt *SubscriberEvent) *ColumnValueListener {
 func columnValueListenerLoop(listener *ColumnValueListener) {
 	for {
 		tableEvent := <-listener.TableEvents
-		fmt.Println("column listener event:", spew.Sdump(tableEvent), listener)
 		for _, liveQuery := range listener.LiveQueries {
 			writeNotificationAsJson(tableEvent, liveQuery.ResultWriter)
 		}

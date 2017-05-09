@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"log"
 	"net"
+	"time"
 
 	"github.com/boltdb/bolt"
 	"github.com/hashicorp/yamux"
@@ -49,7 +50,7 @@ func (conn *Connection) Run() {
 		queryErr := conn.Database.ValidateStatement(statement)
 		if queryErr != nil {
 			channel.Write([]byte(fmt.Sprintf("statement error: %s\n", queryErr)))
-			log.Println("connection", conn.ID, "statement validation error", queryErr)
+			log.Println("connection", conn.ID, "statement validation error:", queryErr)
 			continue
 		}
 		if statement.Select != nil {
@@ -60,6 +61,10 @@ func (conn *Connection) Run() {
 			conn.ExecuteInsert(statement.Insert, channel)
 		} else if statement.CreateTable != nil {
 			conn.ExecuteCreateTable(statement.CreateTable, channel)
+		} else if statement.Update != nil {
+			conn.ExecuteUpdate(statement.Update, channel)
+		} else {
+			panic(fmt.Sprintf("unknown statement %v", statement))
 		}
 	}
 }
@@ -158,5 +163,34 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel net.Conn
 	} else {
 		log.Println("connection", conn.ID, "created table", create.Name)
 		channel.Write([]byte("CREATE TABLE\n"))
+	}
+}
+
+func (conn *Connection) ExecuteUpdate(update *Update, channel net.Conn) {
+	startTime := time.Now()
+	table := conn.Database.Schema.Tables[update.Table]
+	rowsUpdated := 0
+	updateErr := conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
+		bucket := tx.Bucket([]byte(update.Table))
+		bucket.ForEach(func(key []byte, value []byte) error {
+			record := table.RecordFromBytes(value)
+			if record.GetField(update.WhereColumnName).StringVal == update.EqualsValue {
+				record.SetString(update.ColumnName, update.Value)
+				rowUpdateErr := bucket.Put(key, record.ToBytes())
+				if rowUpdateErr != nil {
+					return rowUpdateErr
+				}
+				rowsUpdated++
+			}
+			return nil
+		})
+		return nil
+	})
+	if updateErr != nil {
+		channel.Write([]byte(fmt.Sprintf("error executing update: %s\n", updateErr)))
+	} else {
+		channel.Write([]byte(fmt.Sprintf("UPDATE %d\n", rowsUpdated)))
+		endTime := time.Now()
+		log.Println("connection", conn.ID, "handled update in", endTime.Sub(startTime))
 	}
 }

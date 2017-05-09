@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
-	"github.com/davecgh/go-spew/spew"
 )
 
 func (conn *Connection) ExecuteQuery(query *Select, queryID int, channel net.Conn) {
@@ -69,7 +68,6 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) {
 	if scope != nil {
 		filterCondition = getFilterCondition(query, tableSchema, scope)
 
-		fmt.Println("filter condition for table", query.Table, ":", spew.Sdump(filterCondition))
 		if ex.Query.Live {
 			// ugh... need to compute filter condition here?
 			innerTable := ex.Connection.Database.Schema.Tables[query.Table]
@@ -174,19 +172,16 @@ func recordMatchesFilter(condition *FilterCondition, innerRec *Record, outerRec 
 func getFilterCondition(query *Select, tableSchema *Table, scope *Scope) *FilterCondition {
 	var filterCondition *FilterCondition
 	if query.Many {
-		fmt.Println("query many")
 		// find reference from inner table to outer table
 		// TODO: this is the kind of thing that should be done in a query planner,
 		// not in every nested loop
 		for _, columnSpec := range tableSchema.Columns {
-			fmt.Println("column spec", columnSpec)
 			if columnSpec.ReferencesColumn != nil &&
 				columnSpec.ReferencesColumn.TableName == scope.table.Name {
 				filterCondition = &FilterCondition{
 					InnerColumnName: columnSpec.Name,
 					OuterColumnName: scope.table.PrimaryKey,
 				}
-				fmt.Println("filter condition", filterCondition)
 			}
 		}
 	} else {
