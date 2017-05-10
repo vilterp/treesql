@@ -20,6 +20,11 @@
   font-family: monospace;
 }
 
+#command-input-container {
+  margin-bottom: 300px;
+  display: inline-block;
+}
+
 .command-choice {
   font-family: monospace;
 }

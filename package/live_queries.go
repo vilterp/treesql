@@ -1,9 +1,5 @@
 package treesql
 
-import (
-	"bufio"
-)
-
 func (db *Database) MakeTableListeners() {
 	for _, table := range db.Schema.Tables {
 		db.AddTableListener(table)
@@ -88,24 +84,7 @@ func columnValueListenerLoop(listener *ColumnValueListener) {
 	for {
 		tableEvent := <-listener.TableEvents
 		for _, liveQuery := range listener.LiveQueries {
-			writeNotificationAsJson(tableEvent, liveQuery.ResultWriter)
+			liveQuery.Connection.ClientConn.WriteJSON(tableEvent)
 		}
 	}
-}
-
-func writeNotificationAsJson(event *TableEvent, writer *bufio.Writer) {
-	writer.WriteString("{\"old_record\":")
-	if event.OldRecord == nil {
-		writer.WriteString("null")
-	} else {
-		writer.WriteString(event.OldRecord.ToJson())
-	}
-	writer.WriteString(",\"new_record\":")
-	if event.NewRecord == nil {
-		writer.WriteString("null")
-	} else {
-		writer.WriteString(event.NewRecord.ToJson())
-	}
-	writer.WriteString("}\n")
-	writer.Flush()
 }

@@ -44,18 +44,20 @@ class App extends Component {
           </tbody>
         </table>
         <form onSubmit={this.props.onSubmit}>
-          <Autocomplete
-            value={this.props.ui.command}
-            onChange={(evt, value) => this.props.updateCommand(value)}
-            onSelect={(value) => this.props.updateCommand(value)}
-            items={_.reverse(this.props.ui.commandHistory)}
-            shouldItemRender={(item, value) => (item.indexOf(value) !== -1)}
-            renderItem={(item, isHighlighted) => (
-              <div className={classNames('command-choice', { selected: isHighlighted })}>
-                {item}
-              </div>)}
-            getItemValue={_.identity}
-            inputProps={{ size: 100, id: 'command-input' }} />
+          <div id="command-input-container">
+            <Autocomplete
+              value={this.props.ui.command}
+              onChange={(evt, value) => this.props.updateCommand(value)}
+              onSelect={(value) => this.props.updateCommand(value)}
+              items={_.reverse(this.props.ui.commandHistory)}
+              shouldItemRender={(item, value) => (item.indexOf(value) !== -1)}
+              renderItem={(item, isHighlighted) => (
+                <div className={classNames('command-choice', { selected: isHighlighted })}>
+                  {item}
+                </div>)}
+              getItemValue={_.identity}
+              inputProps={{ size: 100, id: 'command-input' }} />
+          </div>
           <button>Send</button>
         </form>
       </div>

@@ -115,7 +115,7 @@ func (record *Record) ToBytes() []byte {
 	return result
 }
 
-func (record *Record) ToJson() string {
+func (record *Record) MarshalJSON() ([]byte, error) {
 	out := "{"
 	for idx, column := range record.Table.Columns {
 		if idx > 0 {
@@ -124,7 +124,7 @@ func (record *Record) ToJson() string {
 		out += fmt.Sprintf("%s:%s", strconv.Quote(column.Name), strconv.Quote(record.GetField(column.Name).StringVal))
 	}
 	out += "}"
-	return out
+	return []byte(out), nil
 }
 
 func (record *Record) Clone() *Record {
