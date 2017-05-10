@@ -3,11 +3,20 @@
   <head>
     <title>TreeSQL</title>
     <style>
+      #messages {
+        width: 100%;
+      }
+      #messages tr {
+        font-family: monospace;
+      }
       tr.source-server {
-        background-color: lightgreen;
+        background-color: white;
       }
       tr.source-client {
-        background-color: white;
+        background-color: lightgreen;
+      }
+      #command-area {
+        font-family: monospace;
       }
     </style>
   </head>
@@ -17,16 +26,18 @@
       <tr>
         <th>Source</th>
         <th>Message</th>
-        <th>Date</th>
+        <th>Timestamp</th>
       </tr>
     </table>
-    <textarea id="command-area"></textarea>
-    <br />
-    <button id="send-button">Send</button>
+    <form id="send-form">
+      <input type="text" id="command-area" size="100" />
+      <button id="send-button">Send</button>
+    </form>
     <script>
       const ws = new WebSocket("ws://localhost:9000/ws")
       const messagesTable = document.getElementById('messages');
       const commandArea = document.getElementById('command-area');
+      commandArea.focus();
       function addToLog(message, source) {
         const tr = document.createElement('tr');
         tr.className = `source-${source}`
@@ -48,7 +59,8 @@
       ws.addEventListener('message', (message) => {
         addToLog(message.data, 'server');
       });
-      document.getElementById('send-button').addEventListener('click', () => {
+      document.getElementById('send-form').addEventListener('submit', (evt) => {
+        evt.preventDefault()
         const command = commandArea.value;
         commandArea.value = '';
         addToLog(command, 'client');

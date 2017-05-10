@@ -40,7 +40,7 @@ func main() {
 	// set up HTTP server
 	http.HandleFunc("/", func(resp http.ResponseWriter, req *http.Request) {
 		log.Println("serving index.html")
-		http.ServeFile(resp, req, "index.html")
+		http.ServeFile(resp, req, "server/index.html")
 	})
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,

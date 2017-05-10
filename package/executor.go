@@ -2,34 +2,35 @@ package treesql
 
 import (
 	"bufio"
-	"fmt"
+	"errors"
 	"log"
-	"net"
-	"strconv"
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/gorilla/websocket"
 )
 
-func (conn *Connection) ExecuteQuery(query *Select, queryID int, channel net.Conn) {
+func (conn *Connection) ExecuteQuery(query *Select, queryID int, channel *websocket.Conn) {
 	// TODO: put all these reads in a transaction
 	startTime := time.Now()
 	tx, _ := conn.Database.BoltDB.Begin(false)
-	writer := bufio.NewWriter(channel)
 	execution := &QueryExecution{
-		Connection:   conn,
-		Query:        query,
-		Transaction:  tx,
-		ResultWriter: writer,
-		QueryId:      queryID,
+		Connection:  conn,
+		Query:       query,
+		Transaction: tx,
+		QueryId:     queryID,
 	}
-	executeSelect(execution, query, nil)
+	result, selectErr := executeSelect(execution, query, nil)
+	if selectErr != nil {
+		conn.ClientConn.WriteMessage(websocket.TextMessage, []byte(selectErr.Error()))
+		log.Println("connection", conn.ID, "query error:", selectErr.Error())
+	} else {
+		conn.ClientConn.WriteJSON(result)
+	}
 	commitErr := tx.Rollback()
 	if commitErr != nil {
 		log.Println("read commit err:", commitErr)
 	}
-	writer.WriteString("\n")
-	writer.Flush()
 	endTime := time.Now()
 
 	log.Println(
@@ -60,8 +61,11 @@ type FilterCondition struct {
 	OuterColumnName string
 }
 
-func executeSelect(ex *QueryExecution, query *Select, scope *Scope) {
-	resultWriter := ex.ResultWriter
+// responsibility of serializer to write result[0] for ONE queries
+type SelectResult [](map[string]interface{})
+
+func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResult, error) {
+	result := make([](map[string]interface{}), 0)
 	tableSchema := ex.Connection.Database.Schema.Tables[query.Table]
 	// if we're an inner loop, figure out a condition for our loop
 	var filterCondition *FilterCondition
@@ -86,9 +90,6 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) {
 	// start iterating
 	iterator, _ := ex.getTableIterator(query.Table)
 	rowsRead := 0
-	if query.Many {
-		ex.ResultWriter.WriteString("[")
-	}
 	for {
 		// get next doc
 		record := iterator.Next()
@@ -119,48 +120,43 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) {
 			}
 		}
 		// start writing it
-		if rowsRead > 0 {
-			ex.ResultWriter.WriteString(",")
-		}
-		ex.ResultWriter.WriteString("{")
+		recordResults := map[string]interface{}{}
 		// extract & write fields
-		for selectionIdx, selection := range query.Selections {
-			resultWriter.WriteString(fmt.Sprintf("\"%s\":", selection.Name))
+		for _, selection := range query.Selections {
 			if selection.SubSelect != nil {
 				// execute subquery
 				nextScope := &Scope{
 					table:    tableSchema,
 					document: record,
 				}
-				executeSelect(ex, selection.SubSelect, nextScope)
+				subselectResult, subselectErr := executeSelect(ex, selection.SubSelect, nextScope)
+				if subselectErr != nil {
+					return nil, subselectErr
+				}
+				recordResults[selection.Name] = subselectResult
 			} else {
 				// write field value out to socket
 				columnSpec := columnsMap[selection.Name]
 				switch columnSpec.Type {
 				case TypeInt:
 					val := record.GetField(columnSpec.Name).StringVal
-					resultWriter.WriteString(fmt.Sprintf("%d", val))
+					recordResults[columnSpec.Name] = val
 
 				case TypeString:
 					val := record.GetField(columnSpec.Name).StringVal
-					resultWriter.WriteString(strconv.Quote(val))
+					recordResults[columnSpec.Name] = val
 				}
-			}
-			if selectionIdx < len(query.Selections)-1 {
-				resultWriter.WriteString(",")
 			}
 		}
 		rowsRead++
-		resultWriter.WriteString("}")
+		result = append(result, recordResults)
 	}
 	iterator.Close()
-	if query.Many {
-		resultWriter.WriteString("]")
-	}
 	if query.One && rowsRead == 0 {
-		resultWriter.Write([]byte("error: requested one row, but none found"))
+		return nil, errors.New("error: requested one row, but none found")
 		// TODO: this could be in the middle of a result set, lol
 	}
+	return result, nil
 }
 
 func recordMatchesFilter(condition *FilterCondition, innerRec *Record, outerRec *Record) bool {

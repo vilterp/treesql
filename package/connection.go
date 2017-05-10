@@ -1,17 +1,13 @@
 package treesql
 
 import (
-	"bufio"
 	"encoding/binary"
-	"encoding/json"
 	"fmt"
 	"log"
-	"net"
 	"time"
 
-	"golang.org/x/net/websocket"
-
 	"github.com/boltdb/bolt"
+	"github.com/gorilla/websocket"
 )
 
 func (db *Database) NewConnection(conn *websocket.Conn) *Connection {
@@ -33,26 +29,19 @@ type Connection struct {
 }
 
 func (conn *Connection) Run() {
-	log.Printf("connection id %d from %s\n", conn.ID, conn.ClientConn.RemoteAddr())
+	log.Println("connection id", conn.ID, " from", conn.ClientConn.RemoteAddr())
 	for {
-		channel, acceptErr := conn.ClientConn.Accept()
-		if acceptErr != nil {
-			log.Printf("connection %d terminated: %v\n", conn.ID, acceptErr)
-			return
-		}
-
-		// will listen for message to process ending in newline (\n)
-		message, readErr := bufio.NewReader(channel).ReadString('\n')
+		_, message, readErr := conn.ClientConn.ReadMessage()
 		if readErr != nil {
-			log.Printf("connection %d terminated: %v\n", conn.ID, readErr)
+			log.Println("connection", conn.ID, "terminated:", readErr)
 			return
 		}
 
 		// parse what was sent to us
-		statement, err := json.Unmarshal(message, &Statement{})
+		statement, err := Parse(string(message))
 		if err != nil {
 			log.Println("connection", conn.ID, "parse error:", err)
-			channel.Write([]byte(fmt.Sprintf("parse error: %s\n", err)))
+			conn.ClientConn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("parse error: %s", err)))
 			continue
 		}
 
@@ -62,20 +51,20 @@ func (conn *Connection) Run() {
 		// validate statement
 		queryErr := conn.Database.ValidateStatement(statement)
 		if queryErr != nil {
-			channel.Write([]byte(fmt.Sprintf("statement error: %s\n", queryErr)))
+			conn.ClientConn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("parse error: %s", err)))
 			log.Println("connection", conn.ID, "statement validation error:", queryErr)
 			continue
 		}
 		if statement.Select != nil {
 			// execute query
-			conn.ExecuteQuery(statement.Select, conn.NextQueryId, channel)
+			conn.ExecuteQuery(statement.Select, conn.NextQueryId, conn.ClientConn)
 			conn.NextQueryId++
 		} else if statement.Insert != nil {
-			conn.ExecuteInsert(statement.Insert, channel)
+			conn.ExecuteInsert(statement.Insert, conn.ClientConn)
 		} else if statement.CreateTable != nil {
-			conn.ExecuteCreateTable(statement.CreateTable, channel)
+			conn.ExecuteCreateTable(statement.CreateTable, conn.ClientConn)
 		} else if statement.Update != nil {
-			conn.ExecuteUpdate(statement.Update, channel)
+			conn.ExecuteUpdate(statement.Update, conn.ClientConn)
 		} else {
 			panic(fmt.Sprintf("unknown statement %v", statement))
 		}
@@ -83,7 +72,7 @@ func (conn *Connection) Run() {
 }
 
 // TODO: some other file, alongside executor.go? idk
-func (conn *Connection) ExecuteInsert(insert *Insert, channel net.Conn) {
+func (conn *Connection) ExecuteInsert(insert *Insert, channel *websocket.Conn) {
 	table := conn.Database.Schema.Tables[insert.Table]
 	record := table.NewRecord()
 	for idx, value := range insert.Values {
@@ -103,10 +92,10 @@ func (conn *Connection) ExecuteInsert(insert *Insert, channel net.Conn) {
 		OldRecord: nil,
 	}
 	log.Println("connection", conn.ID, "handled insert")
-	channel.Write([]byte("INSERT 1\n")) // heh
+	channel.WriteMessage(websocket.TextMessage, []byte("INSERT 1\n")) // heh
 }
 
-func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel net.Conn) {
+func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *websocket.Conn) {
 	var primaryKey string
 	for _, column := range create.Columns {
 		if column.PrimaryKey {
@@ -171,15 +160,15 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel net.Conn
 	conn.Database.AddTableListener(tableSpec)
 	if updateErr != nil {
 		// TODO: structured errors on the wire...
-		channel.Write([]byte(fmt.Sprintf("error creating table: %s\n", updateErr)))
+		channel.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("error creating table: %s", updateErr)))
 		log.Println("connection", conn.ID, "error creating table:", updateErr)
 	} else {
 		log.Println("connection", conn.ID, "created table", create.Name)
-		channel.Write([]byte("CREATE TABLE\n"))
+		channel.WriteMessage(websocket.TextMessage, []byte("CREATE TABLE"))
 	}
 }
 
-func (conn *Connection) ExecuteUpdate(update *Update, channel net.Conn) {
+func (conn *Connection) ExecuteUpdate(update *Update, channel *websocket.Conn) {
 	startTime := time.Now()
 	table := conn.Database.Schema.Tables[update.Table]
 	rowsUpdated := 0
@@ -200,9 +189,9 @@ func (conn *Connection) ExecuteUpdate(update *Update, channel net.Conn) {
 		return nil
 	})
 	if updateErr != nil {
-		channel.Write([]byte(fmt.Sprintf("error executing update: %s\n", updateErr)))
+		channel.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("error executing update: %s", updateErr)))
 	} else {
-		channel.Write([]byte(fmt.Sprintf("UPDATE %d\n", rowsUpdated)))
+		channel.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("UPDATE %d", rowsUpdated)))
 		endTime := time.Now()
 		log.Println("connection", conn.ID, "handled update in", endTime.Sub(startTime))
 	}
