@@ -15,6 +15,9 @@
       tr.source-client {
         background-color: lightgreen;
       }
+      td.message {
+        white-space: pre-wrap;
+      }
       #command-area {
         font-family: monospace;
       }
@@ -47,6 +50,12 @@
         tr.appendChild(sourceTd);
         
         const td = document.createElement('td');
+        td.className = 'message';
+        try {
+          td.innerText = JSON.stringify(JSON.parse(message), null, 2);
+        } catch (e) {
+          td.innerText = message;
+        }
         td.innerText = message;
         tr.appendChild(td);
 

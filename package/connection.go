@@ -51,7 +51,7 @@ func (conn *Connection) Run() {
 		// validate statement
 		queryErr := conn.Database.ValidateStatement(statement)
 		if queryErr != nil {
-			conn.ClientConn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("parse error: %s", err)))
+			conn.ClientConn.WriteMessage(websocket.TextMessage, []byte(fmt.Sprintf("validation error: %s", queryErr)))
 			log.Println("connection", conn.ID, "statement validation error:", queryErr)
 			continue
 		}
