@@ -125,6 +125,10 @@ func readResults(queryId int, reader *bufio.Reader) {
 			fmt.Println()
 		}
 		result, readErr := readOneResult(queryId, reader)
+		if readErr == io.EOF {
+			fmt.Println("server connection terminated")
+			return
+		}
 		printResult(queryId, result, readErr)
 		resultsRead++
 	}

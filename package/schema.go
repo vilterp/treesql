@@ -61,10 +61,18 @@ func (column *Column) ToRecord(tableName string, db *Database) *Record {
 
 func ColumnFromRecord(record *Record) *Column {
 	idInt, _ := strconv.Atoi(record.GetField("id").StringVal)
+	references := record.GetField("references").StringVal
+	var columnReference *ColumnReference
+	if len(references) > 0 { // should things be nullable? idk
+		columnReference = &ColumnReference{
+			TableName: references,
+		}
+	}
 	return &Column{
-		Id:   idInt,
-		Name: record.GetField("name").StringVal,
-		Type: NameToType[record.GetField("type").StringVal],
+		Id:               idInt,
+		Name:             record.GetField("name").StringVal,
+		Type:             NameToType[record.GetField("type").StringVal],
+		ReferencesColumn: columnReference,
 	}
 }
 
