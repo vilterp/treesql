@@ -14,15 +14,21 @@ export function sendCommand() {
 }
 
 export function addMessage(message, source) {
-  var maybeJSON;
-  try {
-    maybeJSON = JSON.parse(message)
-  } catch (e) {
-    maybeJSON = message
+  return function(dispatch) {
+    var maybeJSON;
+    try {
+      maybeJSON = JSON.parse(message)
+    } catch (e) {
+      maybeJSON = message
+    }
+    dispatch({
+      type: 'ADD_MESSAGE',
+      message: maybeJSON,
+      source
+    });
+    if (source === 'server') {
+      console.log('scroll', document.body.scrollHeight);
+      window.scrollTo(0, document.body.scrollHeight - window.innerHeight - 250);
+    }
   }
-  return {
-    type: 'ADD_MESSAGE',
-    message: maybeJSON,
-    source
-  };
 }
