@@ -72,7 +72,6 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) {
 		if ex.Query.Live {
 			// ugh... need to compute filter condition here?
 			innerTable := ex.Connection.Database.Schema.Tables[query.Table]
-			spew.Dump(query)
 			ex.Connection.Database.TableListeners[innerTable.Name].SubscriberEvents <- &SubscriberEvent{
 				ColumnName:     filterCondition.InnerColumnName,
 				QueryExecution: ex,

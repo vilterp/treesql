@@ -6,7 +6,6 @@ import (
 	"strconv"
 
 	"github.com/boltdb/bolt"
-	"github.com/davecgh/go-spew/spew"
 )
 
 type Schema struct {
@@ -126,9 +125,6 @@ func (db *Database) LoadUserSchema() {
 		tx.Bucket([]byte("__columns__")).ForEach(func(key []byte, columnBytes []byte) error {
 			columnRecord := columnsTable.RecordFromBytes(columnBytes)
 			columnSpec := ColumnFromRecord(columnRecord)
-			if columnRecord.GetField("name").StringVal == "post_id" {
-				spew.Dump(columnSpec)
-			}
 			tableSpec := db.Schema.Tables[columnRecord.GetField("table_name").StringVal]
 			tableSpec.Columns = append(tableSpec.Columns, columnSpec)
 			return nil
