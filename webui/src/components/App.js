@@ -1,9 +1,10 @@
+import _ from 'lodash';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import classNames from 'classnames';
-import ReactJson from 'react-json-view'
 import Autocomplete from 'react-autocomplete';
-import { sendCommand } from './actions.js';
+import { sendCommand } from '../actions.js';
+import Message from './Message';
 import './App.css';
 
 const WEBSOCKET_STATES = {
@@ -14,6 +15,10 @@ const WEBSOCKET_STATES = {
 }
 
 class App extends Component {
+  componentDidMount() {
+    document.getElementById('command-input').focus(); // I forget how to do refs
+  }
+
   render() {
     return (
       <div className="App">
@@ -32,35 +37,24 @@ class App extends Component {
             {this.props.db.messages.map((message, idx) => (
               <tr key={idx} className={`source-${message.source}`}>
                 <td>{message.source}</td>
-                <td>{typeof(message.message) === 'object'
-                  ? <ReactJson
-                      src={message.message}
-                      displayDataTypes={false}
-                      displayObjectSize={false} />
-                  : message.message}</td>
+                <td><Message message={message.message} /></td>
                 <td>{message.timestamp.toISOString()}</td>
               </tr>
             ))}
           </tbody>
         </table>
         <form onSubmit={this.props.onSubmit}>
-          {/*<input
-            id="command-input"
-            type="text"
-            size="50"
-            autoComplete="off"
-            onInput={(evt) => this.props.updateCommand(evt.target.value)}
-            value={this.props.ui.command} />*/}
           <Autocomplete
             value={this.props.ui.command}
             onChange={(evt, value) => this.props.updateCommand(value)}
             onSelect={(value) => this.props.updateCommand(value)}
-            items={this.props.ui.commandHistory}
+            items={_.reverse(this.props.ui.commandHistory)}
+            shouldItemRender={(item, value) => (item.indexOf(value) !== -1)}
             renderItem={(item, isHighlighted) => (
               <div className={classNames('command-choice', { selected: isHighlighted })}>
                 {item}
               </div>)}
-            getItemValue={(x) => x}
+            getItemValue={_.identity}
             inputProps={{ size: 100, id: 'command-input' }} />
           <button>Send</button>
         </form>
