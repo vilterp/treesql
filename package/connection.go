@@ -175,10 +175,18 @@ func (conn *Connection) ExecuteUpdate(update *Update, channel net.Conn) {
 		bucket.ForEach(func(key []byte, value []byte) error {
 			record := table.RecordFromBytes(value)
 			if record.GetField(update.WhereColumnName).StringVal == update.EqualsValue {
+				clonedOldRecord := record.Clone()
 				record.SetString(update.ColumnName, update.Value)
+				clonedNewRecord := record.Clone()
 				rowUpdateErr := bucket.Put(key, record.ToBytes())
 				if rowUpdateErr != nil {
 					return rowUpdateErr
+				}
+				// send live query updates
+				tableListener := conn.Database.TableListeners[update.Table]
+				tableListener.TableEvents <- &TableEvent{
+					OldRecord: clonedOldRecord,
+					NewRecord: clonedNewRecord,
 				}
 				rowsUpdated++
 			}

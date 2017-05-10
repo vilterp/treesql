@@ -62,7 +62,7 @@ type QueryValidationRequest struct {
 
 func (db *Database) ValidateStatement(statement *Statement) error {
 	if statement.Select != nil {
-		return db.validateSelect(statement.Select)
+		return db.validateSelect(statement.Select, nil)
 	} else if statement.Insert != nil {
 		return db.validateInsert(statement.Insert)
 	} else if statement.CreateTable != nil {
@@ -110,17 +110,46 @@ func (db *Database) validateInsert(insert *Insert) error {
 }
 
 // want to not export this and do it via the server, but...
-func (db *Database) validateSelect(query *Select) error {
+func (db *Database) validateSelect(query *Select, tableAbove *string) error {
 	// does table exist?
 	_, ok := db.Schema.Tables[query.Table]
 	if !ok && query.Table != "__tables__" && query.Table != "__columns__" {
 		return &NoSuchTable{TableName: query.Table}
 	}
+	// is there a reference from this table to table above or vice versa?
+	if tableAbove != nil {
+		var fromTable string
+		var toTable string
+		// ugh I want f*cking checked switch statements
+		if query.Many {
+			// reference from inner to outer
+			fromTable = query.Table
+			toTable = *tableAbove
+		} else if query.One {
+			// reference from outer to inner
+			fromTable = *tableAbove
+			toTable = query.Table
+		}
+		referenceFound := false
+		for _, column := range db.Schema.Tables[fromTable].Columns {
+			if column.ReferencesColumn != nil {
+				if column.ReferencesColumn.TableName == toTable {
+					referenceFound = true
+				}
+			}
+		}
+		if !referenceFound {
+			return &NoReferenceForJoin{
+				FromTable: fromTable,
+				ToTable:   toTable,
+			}
+		}
+	}
 	// do columns exist / are subqueries valid?
 	// TODO: dedup
 	for _, selection := range query.Selections {
 		if selection.SubSelect != nil {
-			err := db.validateSelect(selection.SubSelect)
+			err := db.validateSelect(selection.SubSelect, &query.Table)
 			if err != nil {
 				return err
 			}
