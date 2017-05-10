@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/davecgh/go-spew/spew"
 )
 
 func (conn *Connection) ExecuteQuery(query *Select, queryID int, channel net.Conn) {
@@ -71,6 +72,7 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) {
 		if ex.Query.Live {
 			// ugh... need to compute filter condition here?
 			innerTable := ex.Connection.Database.Schema.Tables[query.Table]
+			spew.Dump(query)
 			ex.Connection.Database.TableListeners[innerTable.Name].SubscriberEvents <- &SubscriberEvent{
 				ColumnName:     filterCondition.InnerColumnName,
 				QueryExecution: ex,

@@ -60,3 +60,12 @@ type WrongNoPrimaryKey struct {
 func (e *WrongNoPrimaryKey) Error() string {
 	return fmt.Sprintf("tables should have exactly one column marked \"primary key\"; given %d", e.Count)
 }
+
+type NoReferenceForJoin struct {
+	FromTable string
+	ToTable   string
+}
+
+func (e *NoReferenceForJoin) Error() string {
+	return fmt.Sprintf("query requires a column in table `%s` referencing table `%s`; none found", e.FromTable, e.ToTable)
+}
