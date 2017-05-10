@@ -7,3 +7,5 @@ insert into comments values ("1", "0", "bloop doop another comment")
 insert into comments values ("2", "1", "yooooo")
 many blog_posts { id, title, body, comments: many comments { id, post_id, body } } live
 insert into comments values ("3", "1", "live comment")
+update comments set body = "yooooo!" where id = "2"
+update blog_posts set title = "test post?" where id = "0"

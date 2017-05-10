@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
-	"github.com/davecgh/go-spew/spew"
 )
 
 func (conn *Connection) ExecuteQuery(query *Select, queryID int, channel net.Conn) {
