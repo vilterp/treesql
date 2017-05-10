@@ -11,7 +11,7 @@ import (
 	"syscall"
 
 	"github.com/hashicorp/yamux"
-	treesql "github.com/vilterp/treesql/package"
+	treesql "gitlab.com/vilterp/treesql/package"
 )
 
 func main() {

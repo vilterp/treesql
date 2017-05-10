@@ -41,10 +41,13 @@ localhost:9000> MANY blog_posts { id, title, body, comments: MANY comments { id,
 localhost:9000>
 ```
 
+See `test_script.treesql` for more.
+
 ## Requirements
 
 - Go 1.8
-- `go get`ing a bunch of stuff (idk how you are supposed to manage deps in go)
+- [`godep`](https://github.com/tools/godep) (install with `go get github.com/tools/godep`)
+- ```$ godep restore```
 
 ## Usage
 
@@ -53,7 +56,7 @@ localhost:9000>
 Start the server:
 
 ```
-$ go run server/server.go --port 9000 --data-dir data
+$ go run server/server.go --port 9000 --data-file treesql.data
 ```
 
 Start the client:
