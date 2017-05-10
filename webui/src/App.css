@@ -1,0 +1,21 @@
+#messages {
+  font-family: monospace;
+  width: 100%;
+}
+
+#messages, #messages th, #messages td {
+  border-collapse: collapse;
+  border: 1px solid black;
+}
+
+#messages tr.source-client {
+  background-color: lightgreen;
+}
+
+#messages td {
+  padding: 5px;
+}
+
+#command-input {
+  font-family: monospace;
+}

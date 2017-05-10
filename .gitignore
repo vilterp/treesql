@@ -2,3 +2,6 @@
 journal.txt
 treesql.data
 vendor/
+
+treesql-client
+treesql-server

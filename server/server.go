@@ -37,14 +37,19 @@ func main() {
 		os.Exit(1) // is 1 the proper exit code for Ctrl-C?
 	}()
 
-	// set up HTTP server
+	// set up HTTP server for static files
+	fileServer := http.FileServer(http.Dir("webui/build/static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fileServer))
 	http.HandleFunc("/", func(resp http.ResponseWriter, req *http.Request) {
 		log.Println("serving index.html")
-		http.ServeFile(resp, req, "server/index.html")
+		http.ServeFile(resp, req, "webui/build/index.html")
 	})
+
+	// set up web server
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
+		CheckOrigin:     func(_ *http.Request) bool { return true },
 	}
 	http.HandleFunc("/ws", func(resp http.ResponseWriter, req *http.Request) {
 		conn, err := upgrader.Upgrade(resp, req, nil)
