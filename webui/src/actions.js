@@ -1,7 +1,10 @@
+import { storeCommand } from './commandStorage';
+
 export function sendCommand() {
   return (dispatch, getState) => {
     const command = getState().ui.command;
-    dispatch(addMessage(command, 'client'))
+    dispatch(addMessage(command, 'client'));
+    storeCommand(command);
     dispatch({
       type: 'UPDATE_COMMAND',
       newValue: ''

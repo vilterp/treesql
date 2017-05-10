@@ -1,7 +1,8 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
-// import JSONTree from 'react-json-tree'
+import classNames from 'classnames';
 import ReactJson from 'react-json-view'
+import Autocomplete from 'react-autocomplete';
 import { sendCommand } from './actions.js';
 import './App.css';
 
@@ -43,13 +44,24 @@ class App extends Component {
           </tbody>
         </table>
         <form onSubmit={this.props.onSubmit}>
-          <input
+          {/*<input
             id="command-input"
             type="text"
             size="50"
             autoComplete="off"
             onInput={(evt) => this.props.updateCommand(evt.target.value)}
-            value={this.props.ui.command} />
+            value={this.props.ui.command} />*/}
+          <Autocomplete
+            value={this.props.ui.command}
+            onChange={(evt, value) => this.props.updateCommand(value)}
+            onSelect={(value) => this.props.updateCommand(value)}
+            items={this.props.ui.commandHistory}
+            renderItem={(item, isHighlighted) => (
+              <div className={classNames('command-choice', { selected: isHighlighted })}>
+                {item}
+              </div>)}
+            getItemValue={(x) => x}
+            inputProps={{ size: 100, id: 'command-input' }} />
           <button>Send</button>
         </form>
       </div>

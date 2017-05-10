@@ -19,3 +19,11 @@
 #command-input {
   font-family: monospace;
 }
+
+.command-choice {
+  font-family: monospace;
+}
+
+.command-choice.selected {
+  background-color: lightgrey;
+}
