@@ -2,10 +2,11 @@ import React from 'react';
 import ReactDOM from 'react-dom';
 import { Provider } from 'react-redux'
 import { createStore, applyMiddleware } from 'redux'
-import App from './App';
 import reducer from './reducer';
 import thunk from 'redux-thunk';
 import logger from 'redux-logger';
+import { addMessage } from './actions';
+import App from './App';
 import './index.css';
 
 window.SOCKET = new WebSocket('ws://localhost:9000/ws'); // TODO: make this configurable I guess
@@ -27,11 +28,7 @@ window.SOCKET.addEventListener('open', dispatchSocketState);
 window.SOCKET.addEventListener('error', dispatchSocketState);
 
 window.SOCKET.addEventListener('message', (msg) => {
-  store.dispatch({
-    type: 'ADD_MESSAGE',
-    source: 'server',
-    message: msg.data
-  });
+  store.dispatch(addMessage(msg.data, 'server'));
 });
 
 ReactDOM.render(

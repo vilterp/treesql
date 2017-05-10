@@ -1,5 +1,7 @@
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
+// import JSONTree from 'react-json-tree'
+import ReactJson from 'react-json-view'
 import { sendCommand } from './actions.js';
 import './App.css';
 
@@ -29,7 +31,12 @@ class App extends Component {
             {this.props.db.messages.map((message, idx) => (
               <tr key={idx} className={`source-${message.source}`}>
                 <td>{message.source}</td>
-                <td>{message.message}</td>
+                <td>{typeof(message.message) === 'object'
+                  ? <ReactJson
+                      src={message.message}
+                      displayDataTypes={false}
+                      displayObjectSize={false} />
+                  : message.message}</td>
                 <td>{message.timestamp.toISOString()}</td>
               </tr>
             ))}
