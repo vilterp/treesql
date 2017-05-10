@@ -28,7 +28,8 @@ window.SOCKET.addEventListener('open', dispatchSocketState);
 window.SOCKET.addEventListener('error', dispatchSocketState);
 
 window.SOCKET.addEventListener('message', (msg) => {
-  store.dispatch(addMessage(msg.data, 'server'));
+  const json = JSON.parse(msg.data);
+  store.dispatch(addMessage(json.Message, json.StatementID, 'server'));
 });
 
 ReactDOM.render(

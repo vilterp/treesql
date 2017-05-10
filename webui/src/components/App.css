@@ -3,6 +3,10 @@
   width: 100%;
 }
 
+#messages thead tr {
+  background-color: lightgrey;
+}
+
 #messages, #messages th, #messages td {
   border-collapse: collapse;
   border: 1px solid black;

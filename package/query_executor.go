@@ -1,31 +1,28 @@
 package treesql
 
 import (
-	"bufio"
 	"errors"
 	"log"
 	"time"
 
 	"github.com/boltdb/bolt"
-	"github.com/gorilla/websocket"
 )
 
-func (conn *Connection) ExecuteQuery(query *Select, queryID int, channel *websocket.Conn) {
+func (conn *Connection) ExecuteQuery(query *Select, queryID int, channel *Channel) {
 	// TODO: put all these reads in a transaction
 	startTime := time.Now()
 	tx, _ := conn.Database.BoltDB.Begin(false)
 	execution := &QueryExecution{
-		Connection:  conn,
+		Channel:     channel,
 		Query:       query,
 		Transaction: tx,
-		QueryId:     queryID,
 	}
 	result, selectErr := executeSelect(execution, query, nil)
 	if selectErr != nil {
-		conn.ClientConn.WriteMessage(websocket.TextMessage, []byte(selectErr.Error()))
+		channel.WriteMessage(selectErr.Error())
 		log.Println("connection", conn.ID, "query error:", selectErr.Error())
 	} else {
-		conn.ClientConn.WriteJSON(result)
+		channel.WriteMessage(result)
 	}
 	commitErr := tx.Rollback()
 	if commitErr != nil {
@@ -41,11 +38,9 @@ func (conn *Connection) ExecuteQuery(query *Select, queryID int, channel *websoc
 
 // maybe this should be called transaction? idk
 type QueryExecution struct {
-	Connection   *Connection
-	Query        *Select
-	QueryId      int // unique per connection
-	Transaction  *bolt.Tx
-	ResultWriter *bufio.Writer
+	Channel     *Channel
+	Query       *Select
+	Transaction *bolt.Tx
 }
 
 type Scope struct {
@@ -66,7 +61,8 @@ type SelectResult [](map[string]interface{})
 
 func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResult, error) {
 	result := make([](map[string]interface{}), 0)
-	tableSchema := ex.Connection.Database.Schema.Tables[query.Table]
+	database := ex.Channel.Connection.Database
+	tableSchema := database.Schema.Tables[query.Table]
 	// if we're an inner loop, figure out a condition for our loop
 	var filterCondition *FilterCondition
 	if scope != nil {
@@ -74,8 +70,8 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResul
 
 		if ex.Query.Live {
 			// ugh... need to compute filter condition here?
-			innerTable := ex.Connection.Database.Schema.Tables[query.Table]
-			ex.Connection.Database.TableListeners[innerTable.Name].SubscriberEvents <- &SubscriberEvent{
+			innerTable := database.Schema.Tables[query.Table]
+			database.TableListeners[innerTable.Name].SubscriberEvents <- &SubscriberEvent{
 				ColumnName:     filterCondition.InnerColumnName,
 				QueryExecution: ex,
 				Value:          scope.document.GetField(filterCondition.OuterColumnName),
@@ -113,7 +109,7 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResul
 		}
 		// we are interested in this record... let's subscribe to it
 		if ex.Query.Live {
-			ex.Connection.Database.TableListeners[tableSchema.Name].SubscriberEvents <- &SubscriberEvent{
+			database.TableListeners[tableSchema.Name].SubscriberEvents <- &SubscriberEvent{
 				ColumnName:     tableSchema.PrimaryKey,
 				QueryExecution: ex,
 				Value:          record.GetField(tableSchema.PrimaryKey),

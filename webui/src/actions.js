@@ -3,7 +3,7 @@ import { storeCommand } from './commandStorage';
 export function sendCommand() {
   return (dispatch, getState) => {
     const command = getState().ui.command;
-    dispatch(addMessage(command, 'client'));
+    dispatch(addMessage(command, getState().ui.nextStatementId, 'client'));
     storeCommand(command);
     dispatch({
       type: 'UPDATE_COMMAND',
@@ -13,7 +13,7 @@ export function sendCommand() {
   };
 }
 
-export function addMessage(message, source) {
+export function addMessage(message, statementId, source) {
   return function(dispatch) {
     var maybeJSON;
     try {
@@ -24,10 +24,10 @@ export function addMessage(message, source) {
     dispatch({
       type: 'ADD_MESSAGE',
       message: maybeJSON,
+      statementId,
       source
     });
     if (source === 'server') {
-      console.log('scroll', document.body.scrollHeight);
       window.scrollTo(0, document.body.scrollHeight - window.innerHeight - 250);
     }
   }

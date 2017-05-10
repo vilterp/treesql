@@ -30,6 +30,7 @@ class App extends Component {
             <tr>
               <td>Source</td>
               <td>Message</td>
+              <td>Statement ID</td>
               <td>Timestamp</td>
             </tr>
           </thead>
@@ -38,6 +39,7 @@ class App extends Component {
               <tr key={idx} className={`source-${message.source}`}>
                 <td>{message.source}</td>
                 <td><Message message={message.message} /></td>
+                <td>{message.statementId}</td>
                 <td>{message.timestamp.toISOString()}</td>
               </tr>
             ))}
@@ -58,7 +60,10 @@ class App extends Component {
               getItemValue={_.identity}
               inputProps={{ size: 100, id: 'command-input' }} />
           </div>
-          <button>Send</button>
+          <button
+            disabled={this.props.ui.websocketState !== WebSocket.OPEN}>
+            Send
+          </button>
         </form>
       </div>
     );

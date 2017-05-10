@@ -6,24 +6,32 @@ const initialState = {
   ui: {
     command: '',
     websocketState: WebSocket.CONNECTING,
-    commandHistory: getCommandHistory()
+    commandHistory: getCommandHistory(),
+    nextStatementId: 0
   },
   db: {
     messages: []
   }
 };
 
-let nextMessageId = 0;
-
 export default function update(state = initialState, action) {
   switch (action.type) {
     case 'ADD_MESSAGE': {
-      const addedToMessages = immutable.set(state, `db.messages.${nextMessageId++}`, {
-        id: nextMessageId,
-        source: action.source,
-        message: action.message,
-        timestamp: new Date()
-      });
+      const addedToMessages = {
+        ...state,
+        db: {
+          ...state.db,
+          messages: [
+            ...state.db.messages,
+            {
+              source: action.source,
+              message: action.message,
+              timestamp: new Date(),
+              statementId: action.statementId
+            }
+          ]
+        }
+      }
       // this should be split into a different reducer...
       if (action.source === 'client') {
         return {
@@ -33,7 +41,8 @@ export default function update(state = initialState, action) {
             commandHistory: _.uniq([
               ...state.ui.commandHistory,
               action.message
-            ])
+            ]),
+            nextStatementId: state.ui.nextStatementId + 1
           }
         }
       } else {

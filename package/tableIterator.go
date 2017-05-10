@@ -14,9 +14,9 @@ type TableIterator interface {
 
 func (ex *QueryExecution) getTableIterator(tableName string) (TableIterator, error) {
 	if tableName == "__tables__" {
-		return newTablesIterator(ex.Connection.Database)
+		return newTablesIterator(ex.Channel.Connection.Database)
 	} else if tableName == "__columns__" {
-		return newColumnsIterator(ex.Connection.Database)
+		return newColumnsIterator(ex.Channel.Connection.Database)
 	}
 	return newBoltIterator(ex, tableName)
 }
@@ -30,7 +30,7 @@ type BoltIterator struct {
 }
 
 func newBoltIterator(ex *QueryExecution, tableName string) (*BoltIterator, error) {
-	tableSchema := ex.Connection.Database.Schema.Tables[tableName]
+	tableSchema := ex.Channel.Connection.Database.Schema.Tables[tableName]
 	cursor := ex.Transaction.Bucket([]byte(tableName)).Cursor()
 	return &BoltIterator{
 		table:         tableSchema,

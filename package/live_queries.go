@@ -84,7 +84,7 @@ func columnValueListenerLoop(listener *ColumnValueListener) {
 	for {
 		tableEvent := <-listener.TableEvents
 		for _, liveQuery := range listener.LiveQueries {
-			liveQuery.Connection.ClientConn.WriteJSON(tableEvent)
+			liveQuery.Channel.WriteMessage(tableEvent)
 		}
 	}
 }
