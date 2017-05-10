@@ -1,0 +1,44 @@
+{
+	"ImportPath": "gitlab.com/vilterp/treesql",
+	"GoVersion": "go1.8",
+	"GodepVersion": "v79",
+	"Packages": [
+		"./..."
+	],
+	"Deps": [
+		{
+			"ImportPath": "github.com/alecthomas/participle",
+			"Rev": "8e70e19ffcc2f8814393324377b242ad63dc3476"
+		},
+		{
+			"ImportPath": "github.com/alecthomas/participle/lexer",
+			"Rev": "8e70e19ffcc2f8814393324377b242ad63dc3476"
+		},
+		{
+			"ImportPath": "github.com/boltdb/bolt",
+			"Comment": "v1.3.0-29-g4b1ebc1",
+			"Rev": "4b1ebc1869ad66568b313d0dc410e2be72670dda"
+		},
+		{
+			"ImportPath": "github.com/chzyer/readline",
+			"Comment": "v1.4-24-g41eea22",
+			"Rev": "41eea22f717c616615e1e59aa06cf831f9901f35"
+		},
+		{
+			"ImportPath": "github.com/hashicorp/yamux",
+			"Rev": "d1caa6c97c9fc1cc9e83bbe34d0603f9ff0ce8bd"
+		},
+		{
+			"ImportPath": "github.com/robertkrimen/isatty",
+			"Rev": "e10c441e3f8c38a3adca3297f533d4ec6be6f683"
+		},
+		{
+			"ImportPath": "golang.org/x/exp/ebnf",
+			"Rev": "239d448f23a0d683c1ab7225da01af038355f5e9"
+		},
+		{
+			"ImportPath": "golang.org/x/sys/unix",
+			"Rev": "9ccfe848b9db8435a24c424abbc07a921adf1df5"
+		}
+	]
+}

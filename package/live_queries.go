@@ -11,10 +11,9 @@ func (db *Database) MakeTableListeners() {
 }
 
 type TableListener struct {
-	Table            *Table
-	TableEvents      chan *TableEvent
-	SubscriberEvents chan *SubscriberEvent
-	// PointListeners map[Value]*PointListener // this is just a field listener on the primary key...
+	Table                *Table
+	TableEvents          chan *TableEvent
+	SubscriberEvents     chan *SubscriberEvent
 	ColumnValueListeners map[string](map[string]*ColumnValueListener) // column name => value => listener
 }
 

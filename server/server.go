@@ -4,15 +4,13 @@ import (
 	"flag"
 	"fmt"
 	"log"
-
+	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"net/http"
-
 	"github.com/gorilla/websocket"
-	treesql "github.com/vilterp/treesql/package"
+	treesql "gitlab.com/vilterp/treesql/package"
 )
 
 func main() {
