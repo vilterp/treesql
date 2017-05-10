@@ -15,6 +15,17 @@ const store = createStore(
   applyMiddleware(thunk, logger)
 );
 
+function dispatchSocketState() {
+  store.dispatch({
+    type: 'WEBSOCKET_STATE_TRANSITION',
+    newState: window.SOCKET.readyState
+  });
+}
+
+window.SOCKET.addEventListener('close', dispatchSocketState);
+window.SOCKET.addEventListener('open', dispatchSocketState);
+window.SOCKET.addEventListener('error', dispatchSocketState);
+
 window.SOCKET.addEventListener('message', (msg) => {
   store.dispatch({
     type: 'ADD_MESSAGE',

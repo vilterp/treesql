@@ -2,7 +2,8 @@ import immutable from 'dot-prop-immutable';
 
 const initialState = {
   ui: {
-    command: ''
+    command: '',
+    websocketState: WebSocket.CONNECTING
   },
   db: {
     messages: []
@@ -22,7 +23,10 @@ export default function update(state = initialState, action) {
       });
     
     case 'UPDATE_COMMAND':
-      return immutable.set(state, `ui.command`, action.newValue);
+      return immutable.set(state, 'ui.command', action.newValue);
+    
+    case 'WEBSOCKET_STATE_TRANSITION':
+      return immutable.set(state, 'ui.websocketState', action.newState);
 
     default:
       return state;

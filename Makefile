@@ -3,6 +3,9 @@ all: treesql-client treesql-server webui
 start:
 	go run server/server.go
 
+start-dev-server:
+	cd webui && PORT=9001 npm run start
+
 deps:
 	godep restore
 	cd webui && npm install

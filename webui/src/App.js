@@ -3,10 +3,20 @@ import { connect } from 'react-redux';
 import { sendCommand } from './actions.js';
 import './App.css';
 
+const WEBSOCKET_STATES = {
+  [WebSocket.CLOSED]: 'CLOSED',
+  [WebSocket.CONNECTING]: 'CONNECTING',
+  [WebSocket.OPEN]: 'OPEN',
+  [WebSocket.CLOSING]: 'CLOSING'
+}
+
 class App extends Component {
   render() {
     return (
       <div className="App">
+        <div>
+          Websocket state: {WEBSOCKET_STATES[this.props.ui.websocketState]}
+        </div>
         <table id="messages">
           <thead>
             <tr>

@@ -49,7 +49,7 @@ func main() {
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,
-		CheckOrigin:     func(_ *http.Request) bool { return true },
+		CheckOrigin:     func(_ *http.Request) bool { return true }, // TODO: security... only do this in dev mode (...)
 	}
 	http.HandleFunc("/ws", func(resp http.ResponseWriter, req *http.Request) {
 		conn, err := upgrader.Upgrade(resp, req, nil)
