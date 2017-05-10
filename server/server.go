@@ -39,7 +39,8 @@ func main() {
 
 	// set up HTTP server
 	http.HandleFunc("/", func(resp http.ResponseWriter, req *http.Request) {
-		resp.Write([]byte("Hello from TreeSQL. The action is at /ws"))
+		log.Println("serving index.html")
+		http.ServeFile(resp, req, "index.html")
 	})
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
@@ -51,12 +52,7 @@ func main() {
 			log.Println(err)
 			return
 		}
-		conn.WriteMessage(websocket.TextMessage, []byte("hello on a websocket"))
-		_, data, messageErr := conn.ReadMessage()
-		if messageErr != nil {
-			log.Println("websocket message error:", messageErr)
-		}
-		log.Println("WS message received:", string(data))
+		database.NewConnection(conn).Run()
 	})
 	log.Println("serving HTTP at", fmt.Sprintf("http://localhost:%d/", *port))
 	listenErr := http.ListenAndServe(fmt.Sprintf(":%d", *port), nil)

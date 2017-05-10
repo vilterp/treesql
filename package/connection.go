@@ -3,17 +3,30 @@ package treesql
 import (
 	"bufio"
 	"encoding/binary"
+	"encoding/json"
 	"fmt"
 	"log"
 	"net"
 	"time"
 
+	"golang.org/x/net/websocket"
+
 	"github.com/boltdb/bolt"
-	"github.com/hashicorp/yamux"
 )
 
+func (db *Database) NewConnection(conn *websocket.Conn) *Connection {
+	dbConn := &Connection{
+		ClientConn:  conn,
+		ID:          db.NextConnectionId,
+		Database:    db,
+		NextQueryId: 0,
+	}
+	dbConn.NextQueryId++
+	return dbConn
+}
+
 type Connection struct {
-	ClientConn  *yamux.Session
+	ClientConn  *websocket.Conn
 	ID          int
 	Database    *Database
 	NextQueryId int
@@ -36,7 +49,7 @@ func (conn *Connection) Run() {
 		}
 
 		// parse what was sent to us
-		statement, err := Parse(message)
+		statement, err := json.Unmarshal(message, &Statement{})
 		if err != nil {
 			log.Println("connection", conn.ID, "parse error:", err)
 			channel.Write([]byte(fmt.Sprintf("parse error: %s\n", err)))

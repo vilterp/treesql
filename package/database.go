@@ -12,6 +12,7 @@ type Database struct {
 	BoltDB                  *bolt.DB
 	QueryValidationRequests chan *QueryValidationRequest
 	TableListeners          map[string]*TableListener
+	NextConnectionId        int
 }
 
 func Open(dataFile string) (*Database, error) {
@@ -26,6 +27,7 @@ func Open(dataFile string) (*Database, error) {
 		BoltDB:                  boltDB,
 		QueryValidationRequests: make(chan *QueryValidationRequest),
 		TableListeners:          map[string]*TableListener{},
+		NextConnectionId:        0,
 	}
 	database.EnsureBuiltinSchema()
 	database.LoadUserSchema()

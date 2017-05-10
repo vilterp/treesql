@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>TreeSQL</title>
+    <style>
+      tr.source-server {
+        background-color: lightgreen;
+      }
+      tr.source-client {
+        background-color: white;
+      }
+    </style>
+  </head>
+  <body>
+    <h1>TreeSQL Console</h1>
+    <table id="messages" border="1">
+      <tr>
+        <th>Source</th>
+        <th>Message</th>
+        <th>Date</th>
+      </tr>
+    </table>
+    <textarea id="command-area"></textarea>
+    <br />
+    <button id="send-button">Send</button>
+    <script>
+      const ws = new WebSocket("ws://localhost:9000/ws")
+      const messagesTable = document.getElementById('messages');
+      const commandArea = document.getElementById('command-area');
+      function addToLog(message, source) {
+        const tr = document.createElement('tr');
+        tr.className = `source-${source}`
+        
+        const sourceTd = document.createElement('td');
+        sourceTd.innerText = source;
+        tr.appendChild(sourceTd);
+        
+        const td = document.createElement('td');
+        td.innerText = message;
+        tr.appendChild(td);
+
+        const dateTd = document.createElement('td');
+        dateTd.innerText = new Date().toISOString();
+        tr.appendChild(dateTd);
+
+        messagesTable.appendChild(tr);
+      }
+      ws.addEventListener('message', (message) => {
+        addToLog(message.data, 'server');
+      });
+      document.getElementById('send-button').addEventListener('click', () => {
+        const command = commandArea.value;
+        commandArea.value = '';
+        addToLog(command, 'client');
+        ws.send(command);
+      });
+    </script>
+  </body>
+</html>
