@@ -17,7 +17,7 @@ func main() {
 	fmt.Println("TreeSQL server")
 
 	// get cmdline flags
-	var port = flag.Int("port", 6000, "port to listen for connections on")
+	var port = flag.Int("port", 9000, "port to listen for connections on")
 	var dataFile = flag.String("data-file", "treesql.data", "data file")
 	flag.Parse()
 

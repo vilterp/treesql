@@ -20,7 +20,7 @@ import (
 func main() {
 	// get cmdline flags
 	var host = flag.String("host", "localhost", "host to connect to")
-	var port = flag.Int("port", 6000, "port to connect to")
+	var port = flag.Int("port", 9000, "port to connect to")
 	flag.Parse()
 	isInputTty := isatty.Check(os.Stdin.Fd())
 
