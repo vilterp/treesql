@@ -46,13 +46,19 @@ See `test_script.treesql` for more.
 ## Requirements
 
 - Go 1.8
+- Node 6.9 & NPM 3.10
 - [`godep`](https://github.com/tools/godep) (install with `go get github.com/tools/godep`)
+
+## Installation
+
+- ```go get github.com/vilterp/treesql```
+- ```cd $GOPATH/src/github.com/vilterp/treesql```
 - ```$ make deps```
 - ```$ make```
 
 ## Usage
 
-`cd` into this directory, then:
+`cd $GOPATH/src/github.com/vilterp/treesql`, then:
 
 Start the server:
 
