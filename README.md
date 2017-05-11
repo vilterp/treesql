@@ -47,7 +47,8 @@ See `test_script.treesql` for more.
 
 - Go 1.8
 - [`godep`](https://github.com/tools/godep) (install with `go get github.com/tools/godep`)
-- ```$ godep restore```
+- ```$ make deps```
+- ```$ make```
 
 ## Usage
 
@@ -56,7 +57,13 @@ See `test_script.treesql` for more.
 Start the server:
 
 ```
-$ go run server/server.go --port 9000 --data-file treesql.data
+$ make start
 ```
 
-Browse to http://localhost:9000/ and type in queries in the Web UI. (Examples in `test_script.treesql`)
+Browse to http://localhost:9000/ and type in queries in the Web UI; e.g.:
+
+```
+many blog_posts { title, comments: many comments { body } } live
+```
+
+More examples live in `test_script.treesql`.
