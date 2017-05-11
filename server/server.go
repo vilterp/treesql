@@ -10,7 +10,7 @@ import (
 	"syscall"
 
 	"github.com/gorilla/websocket"
-	treesql "gitlab.com/vilterp/treesql/package"
+	treesql "github.com/vilterp/treesql/package"
 )
 
 func main() {

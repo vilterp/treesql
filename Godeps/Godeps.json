@@ -1,5 +1,5 @@
 {
-	"ImportPath": "gitlab.com/vilterp/treesql",
+	"ImportPath": "github.com/vilterp/treesql",
 	"GoVersion": "go1.8",
 	"GodepVersion": "v79",
 	"Packages": [
@@ -23,6 +23,11 @@
 			"ImportPath": "github.com/chzyer/readline",
 			"Comment": "v1.4-24-g41eea22",
 			"Rev": "41eea22f717c616615e1e59aa06cf831f9901f35"
+		},
+		{
+			"ImportPath": "github.com/gorilla/websocket",
+			"Comment": "v1.1.0-29-ga91eba7",
+			"Rev": "a91eba7f97777409bc2c443f5534d41dd20c5720"
 		},
 		{
 			"ImportPath": "github.com/hashicorp/yamux",
