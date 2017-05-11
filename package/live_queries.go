@@ -14,6 +14,7 @@ type TableListener struct {
 }
 
 type TableEvent struct {
+	TableName string
 	OldRecord *Record
 	NewRecord *Record
 }
@@ -46,7 +47,7 @@ func tableListenerLoop(listener *TableListener) {
 			columnListeners := listener.ColumnValueListeners[subEvent.ColumnName]
 			columnValueListener, ok := columnListeners[subEvent.Value.StringVal]
 			if !ok {
-				columnValueListener = newColumnValueListener(subEvent)
+				columnValueListener = newColumnValueListener(listener.Table.Name, subEvent)
 				columnListeners[subEvent.Value.StringVal] = columnValueListener
 			}
 			columnValueListener.LiveQueries = append(columnValueListener.LiveQueries, subEvent.QueryExecution)
@@ -64,14 +65,16 @@ func tableListenerLoop(listener *TableListener) {
 
 type ColumnValueListener struct {
 	TableEvents chan *TableEvent
+	TableName   string
 	ColumnName  string
 	EqualsValue *Value
 	LiveQueries []*QueryExecution
 }
 
-func newColumnValueListener(subEvt *SubscriberEvent) *ColumnValueListener {
+func newColumnValueListener(tableName string, subEvt *SubscriberEvent) *ColumnValueListener {
 	listener := &ColumnValueListener{
 		TableEvents: make(chan *TableEvent),
+		TableName:   tableName,
 		ColumnName:  subEvt.ColumnName,
 		EqualsValue: subEvt.Value,
 		LiveQueries: make([]*QueryExecution, 0),

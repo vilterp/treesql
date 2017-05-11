@@ -98,3 +98,11 @@ func (conn *Connection) writeMessagesToSocket() {
 		}
 	}
 }
+
+func (db *Database) PushTableEvent(tableName string, oldRecord *Record, newRecord *Record) {
+	db.TableListeners[tableName].TableEvents <- &TableEvent{
+		TableName: tableName,
+		OldRecord: oldRecord,
+		NewRecord: newRecord,
+	}
+}

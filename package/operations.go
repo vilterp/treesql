@@ -40,10 +40,7 @@ func (conn *Connection) ExecuteInsert(insert *Insert, channel *Channel) {
 		return nil
 	})
 	// push to live query listeners
-	conn.Database.TableListeners[insert.Table].TableEvents <- &TableEvent{
-		NewRecord: record,
-		OldRecord: nil,
-	}
+	conn.Database.PushTableEvent(insert.Table, nil, record)
 	log.Println("connection", conn.ID, "handled insert")
 	channel.WriteMessage("INSERT 1")
 }
@@ -138,11 +135,7 @@ func (conn *Connection) ExecuteUpdate(update *Update, channel *Channel) {
 					return rowUpdateErr
 				}
 				// send live query updates
-				tableListener := conn.Database.TableListeners[update.Table]
-				tableListener.TableEvents <- &TableEvent{
-					OldRecord: clonedOldRecord,
-					NewRecord: clonedNewRecord,
-				}
+				conn.Database.PushTableEvent(update.Table, clonedOldRecord, clonedNewRecord)
 				rowsUpdated++
 			}
 			return nil
