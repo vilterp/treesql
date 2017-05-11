@@ -59,16 +59,4 @@ Start the server:
 $ go run server/server.go --port 9000 --data-file treesql.data
 ```
 
-Start the client:
-
-```
-$ go run client/client.go --port 9000
-```
-
-And type in queries like
-
-```
-many blog_posts { title, comments: many comments { body } }
-```
-
-Currently the whole query has to be on one line. Also, `\d` lists tables, and `\d <tableName>` shows the schema of a table (`psql`-style).
+Browse to http://localhost:9000/ and type in queries in the Web UI. (Examples in `test_script.treesql`)
