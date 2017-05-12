@@ -1,5 +1,17 @@
 import _ from 'lodash';
 
+export const SCHEMA_QUERY = `
+  many __tables__ {
+    name,
+    primary_key,
+    columns: many __columns__ {
+      name,
+      type,
+      references
+    }
+  }
+`;
+
 class EventEmitter {
 
   constructor() {
@@ -29,10 +41,24 @@ class EventEmitter {
 
 }
 
-export class TreeSQLClient extends EventEmitter {
+class Channel extends EventEmitter {
+
+  constructor(client, statementID) {
+    super();
+    this.client = client;
+    this.statementID = statementID;
+  }
+
+  _dispatchUpdate(message) {
+    this._dispatch('update', message);
+  }
+
+}
+
+export default class TreeSQLClient extends EventEmitter {
 
   constructor(url) {
-    this.super();
+    super();
     this.nextStatementId = 0;
     this.channels = {};
     this.websocket = new WebSocket(url);
@@ -46,7 +72,7 @@ export class TreeSQLClient extends EventEmitter {
       this._dispatch('error', evt);
     });
     this.websocket.addEventListener('message', (message) => {
-      const parsedMessage = JSON.parse(message);
+      const parsedMessage = JSON.parse(message.data);
       this.channels[parsedMessage.StatementID]._dispatchUpdate(parsedMessage.Message);
     });
   }
@@ -55,25 +81,12 @@ export class TreeSQLClient extends EventEmitter {
     return this.websocket.readyState;
   }
 
-  query(query) { // "command?"
+  sendStatement(query) {
     this.websocket.send(query);
     const channel = new Channel(this, this.nextStatementId);
     this.channels[this.nextStatementId] = channel;
     this.nextStatementId++;
     return channel;
-  }
-
-}
-
-class Channel extends EventEmitter {
-
-  constructor(client) {
-    this.super();
-    this.client = client;
-  }
-
-  _dispatchUpdate(message) {
-    this._dispatch('update', message);
   }
 
 }

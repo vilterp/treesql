@@ -1,56 +1,34 @@
 import _ from 'lodash';
-import immutable from 'dot-prop-immutable';
-import { getCommandHistory } from './commandStorage';
+import immutable from 'object-path-immutable';
+import { getStatementHistory } from './statementStorage';
 
 const initialState = {
   ui: {
-    command: '',
+    statement: '',
     websocketState: WebSocket.CONNECTING,
-    commandHistory: getCommandHistory(),
-    nextStatementId: 0
+    statementHistory: getStatementHistory()
   },
-  db: {
-    messages: []
-  }
+  statements: []
 };
 
 export default function update(state = initialState, action) {
+  // TODO: really have to figure out how to use dot-prop-immutable or similar
+  // to push onto an array. jeez
   switch (action.type) {
-    case 'ADD_MESSAGE': {
-      const addedToMessages = {
-        ...state,
-        db: {
-          ...state.db,
-          messages: [
-            ...state.db.messages,
-            {
-              source: action.source,
-              message: action.message,
-              timestamp: new Date(),
-              statementId: action.statementId
-            }
-          ]
-        }
-      }
-      // this should be split into a different reducer...
-      if (action.source === 'client') {
-        return {
-          ...addedToMessages,
-          ui: {
-            ...state.ui,
-            commandHistory: _.uniq([
-              ...state.ui.commandHistory,
-              action.message
-            ]),
-            nextStatementId: state.ui.nextStatementId + 1
-          }
-        }
-      } else {
-        return addedToMessages;
-      }
+    case 'START_STATEMENT': {
+      const newState1 = immutable.push(state, 'statements', {
+        id: action.statementID,
+        statement: action.statement,
+        updates: []
+      });
+      return immutable.push(newState1, 'ui.statementHistory', action.statement);
     }
-    case 'UPDATE_COMMAND':
-      return immutable.set(state, 'ui.command', action.newValue);
+    case 'STATEMENT_UPDATE':
+      // assumption that index = statement id could be off maybe?
+      return immutable.push(state, `statements.${action.statementID}.updates`, action.update);
+
+    case 'UPDATE_STATEMENT':
+      return immutable.set(state, 'ui.statement', action.newValue);
     
     case 'WEBSOCKET_STATE_TRANSITION':
       return immutable.set(state, 'ui.websocketState', action.newState);
