@@ -58,6 +58,8 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 		Columns:    make([]*Column, len(create.Columns)),
 		PrimaryKey: primaryKey,
 	}
+	tableRecord := tableSpec.ToRecord(conn.Database)
+	columnRecords := make([]*Record, len(create.Columns))
 	updateErr := conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
 		// create bucket for new table
 		tx.CreateBucket([]byte(create.Name))
@@ -66,7 +68,6 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 		conn.Database.Schema.Tables[tableSpec.Name] = tableSpec
 		// write record to __tables__
 		tablesBucket := tx.Bucket([]byte("__tables__"))
-		tableRecord := tableSpec.ToRecord(conn.Database)
 		tablePutErr := tablesBucket.Put([]byte(create.Name), tableRecord.ToBytes())
 		if tablePutErr != nil {
 			return tablePutErr
@@ -100,6 +101,13 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 			if columnPutErr != nil {
 				return columnPutErr
 			}
+			columnRecords[idx] = columnRecord
+		}
+		// push records
+		conn.Database.PushTableEvent("__tables__", nil, tableRecord)
+		fmt.Println("updates", tableRecord, columnRecords)
+		for _, columnRecord := range columnRecords {
+			conn.Database.PushTableEvent("__columns__", nil, columnRecord)
 		}
 		// write next column id sequence
 		nextColumnIdBytes := make([]byte, 4)
@@ -107,6 +115,7 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 		tx.Bucket([]byte("__sequences__")).Put([]byte("__next_column_id__"), nextColumnIdBytes)
 		return nil
 	})
+	// add listener for table events
 	conn.Database.AddTableListener(tableSpec)
 	if updateErr != nil {
 		// TODO: structured errors on the wire...
