@@ -68,9 +68,32 @@ func (db *Database) validateSelect(query *Select, tableAbove *string) error {
 	return nil
 }
 
+// TODO: maybe these should be on Channel, not Connection
+func (conn *Connection) ExecuteTopLevelQuery(query *Select, statementID int, channel *Channel) {
+	result, duration, selectErr := conn.executeQuery(query, statementID, channel)
+	if selectErr != nil {
+		channel.WriteErrorMessage(selectErr)
+		log.Println("connection", conn.ID, "query error:", selectErr.Error())
+	} else {
+		channel.WriteInitialResult(result)
+		log.Println(
+			"connection", conn.ID, "serviced query", statementID, "in", duration,
+			"live:", query.Live,
+		) // TODO: structured logging XD
+	}
+}
+
+func (conn *Connection) ExecuteQueryForTableListener(query *Select, statementID int, channel *Channel) (SelectResult, error) {
+	result, duration, selectErr := conn.executeQuery(query, statementID, channel)
+	log.Println(
+		"connection", conn.ID, "executed table listener query for statement", statementID, "in", duration,
+	)
+	return result, selectErr
+}
+
 // can be from a live query or a top-level query
 // may want to export two different entry points that call something common
-func (conn *Connection) ExecuteQuery(query *Select, statementID int, channel *Channel) {
+func (conn *Connection) executeQuery(query *Select, statementID int, channel *Channel) (SelectResult, *time.Duration, error) {
 	startTime := time.Now()
 	tx, _ := conn.Database.BoltDB.Begin(false)
 	execution := &QueryExecution{
@@ -81,21 +104,16 @@ func (conn *Connection) ExecuteQuery(query *Select, statementID int, channel *Ch
 	}
 	result, selectErr := executeSelect(execution, query, nil)
 	if selectErr != nil {
-		channel.WriteErrorMessage(selectErr)
-		log.Println("connection", conn.ID, "query error:", selectErr.Error())
-	} else {
-		channel.WriteUpdateMessage(result)
+		return nil, nil, selectErr
 	}
 	commitErr := tx.Rollback()
 	if commitErr != nil {
-		log.Println("read commit err:", commitErr)
+		return nil, nil, commitErr
 	}
 	endTime := time.Now()
 
-	log.Println(
-		"connection", conn.ID, "serviced query", statementID, "in", endTime.Sub(startTime),
-		"live:", query.Live,
-	) // TODO: structured logging XD
+	duration := endTime.Sub(startTime)
+	return result, &duration, nil
 }
 
 // maybe this should be called transaction? idk
@@ -107,8 +125,10 @@ type QueryExecution struct {
 }
 
 type Scope struct {
-	table    *Table
-	document *Record
+	table         *Table
+	document      *Record
+	upperScope    *Scope
+	selectionName string
 }
 
 // the question: read everything into memory and serialize at the end,
@@ -119,7 +139,7 @@ type FilterCondition struct {
 	OuterColumnName string
 }
 
-// responsibility of serializer to write result[0] for ONE queries
+// TODO: wrap & annotate with one/many
 type SelectResult [](map[string]interface{})
 
 func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResult, error) {
@@ -190,8 +210,10 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResul
 			if selection.SubSelect != nil {
 				// execute subquery
 				nextScope := &Scope{
-					table:    tableSchema,
-					document: record,
+					table:         tableSchema,
+					document:      record,
+					selectionName: selection.Name,
+					upperScope:    scope,
 				}
 				subselectResult, subselectErr := executeSelect(ex, selection.SubSelect, nextScope)
 				if subselectErr != nil {

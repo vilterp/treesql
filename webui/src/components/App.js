@@ -29,13 +29,26 @@ class App extends Component {
           {this.props.statements.map((statement) => (
             <li key={statement.id}>
               <div className="statement">{statement.statement}</div>
-              <ol className="statement-updates">
-                {statement.updates.map((update, idx) => (
-                  <li key={idx}>
-                    <Message message={update} />
-                  </li>
-                ))}
-              </ol>
+              <table className="statement-log">
+                <thead>
+                  <tr>
+                    <th style={{ width: 100 }}>Type</th>
+                    <th>Message</th>
+                    <th style={{ width: 200 }}>Timestamp</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {statement.updates.map((message, idx) => (
+                    <tr key={idx} className={`message message-${message.type}`}>
+                      <td>{message.type}</td>
+                      <td>
+                        <Message message={message} />
+                      </td>
+                      <td>{message.timestamp.toISOString()}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
             </li>
           ))}
         </ol>

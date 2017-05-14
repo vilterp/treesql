@@ -1,7 +1,5 @@
 package treesql
 
-import "fmt"
-
 // LiveQueryInfo lives in a table...
 type LiveQueryInfo struct {
 	// input channels
@@ -25,63 +23,6 @@ func (table *Table) EmptyLiveQueryInfo() *LiveQueryInfo {
 	}
 }
 
-// type ListenerList map[ConnectionID]([]*QueryExecution)
-type ListenerList struct {
-	Table     *Table
-	Listeners []*Listener
-}
-
-type Listener struct {
-	QueryExecution *QueryExecution
-	Query          *Select // nil for record listeners
-}
-
-func (table *Table) NewListenerList() *ListenerList {
-	return &ListenerList{
-		Table:     table,
-		Listeners: make([]*Listener, 0),
-	}
-}
-
-func (list *ListenerList) AddQueryListener(ex *QueryExecution, query *Select) {
-	list.Listeners = append(list.Listeners, &Listener{
-		QueryExecution: ex,
-		Query:          query,
-	})
-}
-
-func (list *ListenerList) AddRecordListener(ex *QueryExecution) {
-	list.Listeners = append(list.Listeners, &Listener{
-		QueryExecution: ex,
-	})
-}
-
-func (list *ListenerList) SendEvent(event *TableEvent) {
-	for _, listener := range list.Listeners {
-		if listener.Query != nil {
-			conn := listener.QueryExecution.Channel.Connection
-			// TODO: make up a query
-			newQuery := &Select{
-				Live:       true,
-				Many:       listener.Query.Many,
-				One:        listener.Query.One, // ugh
-				Selections: listener.Query.Selections,
-				Table:      listener.Query.Table,
-				Where: &Where{
-					ColumnName: list.Table.PrimaryKey,
-					Value:      event.NewRecord.GetField(list.Table.PrimaryKey).StringVal,
-				}, // TODO: doesn't work if there was already a query... need AND support
-			}
-			fmt.Println("\texecuting new query")
-			go conn.ExecuteQuery(
-				newQuery, int(listener.QueryExecution.ID), listener.QueryExecution.Channel,
-			)
-		} else {
-			listener.QueryExecution.Channel.WriteUpdateMessage(event)
-		}
-	}
-}
-
 type TableEvent struct {
 	TableName string
 	OldRecord *Record
@@ -90,16 +31,17 @@ type TableEvent struct {
 
 type TableSubscriptionEvent struct {
 	QueryExecution *QueryExecution
-	// QueryPath      *QueryPath
-	SubQuery *Select // where we are in the query
+	QueryPath      *QueryPath
+	SubQuery       *Select // where we are in the query
 	// vv this and value null => subscribe to whole table w/ no filter
 	ColumnName *string
 	Value      *Value
 }
 
 type RecordSubscriptionEvent struct {
-	Value          *Value
 	QueryExecution *QueryExecution
+	Value          *Value
+	QueryPath      *QueryPath
 }
 
 func (table *Table) HandleEvents() {
@@ -114,10 +56,12 @@ func (table *Table) HandleEvents() {
 		select {
 		case tableSubEvent := <-liveInfo.TableSubscriptionEvents:
 			if tableSubEvent.ColumnName == nil {
+				// whole table listener
 				liveInfo.WholeTableListeners.AddQueryListener(
-					tableSubEvent.QueryExecution, tableSubEvent.SubQuery,
+					tableSubEvent.QueryExecution, tableSubEvent.SubQuery, tableSubEvent.QueryPath,
 				)
 			} else {
+				// filtered listener
 				columnName := ColumnName(*tableSubEvent.ColumnName)
 				// initialize listeners for this column (could be done at table create/load)
 				// but that would leave us open when new columns are added
@@ -132,7 +76,9 @@ func (table *Table) HandleEvents() {
 					listenersForValue = table.NewListenerList()
 					listenersForColumn[tableSubEvent.Value.StringVal] = listenersForValue
 				}
-				listenersForValue.AddQueryListener(tableSubEvent.QueryExecution, tableSubEvent.SubQuery)
+				listenersForValue.AddQueryListener(
+					tableSubEvent.QueryExecution, tableSubEvent.SubQuery, tableSubEvent.QueryPath,
+				)
 			}
 
 		case recordSubEvent := <-liveInfo.RecordSubscriptionEvents:
@@ -141,10 +87,9 @@ func (table *Table) HandleEvents() {
 				listenersForValue = table.NewListenerList()
 				liveInfo.RecordListeners[recordSubEvent.Value.StringVal] = listenersForValue
 			}
-			listenersForValue.AddRecordListener(recordSubEvent.QueryExecution)
+			listenersForValue.AddRecordListener(recordSubEvent.QueryExecution, recordSubEvent.QueryPath)
 
 		case tableEvent := <-liveInfo.TableEvents:
-			fmt.Println("table event")
 			// whole table listeners
 			liveInfo.WholeTableListeners.SendEvent(tableEvent)
 			// filtered table listeners

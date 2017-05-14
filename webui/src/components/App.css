@@ -1,5 +1,35 @@
 .statement {
   font-family: monospace;
+  padding: 5px;
+}
+
+.statement-log {
+  width: 100%;
+}
+
+.statement-log th {
+  background-color: lightgrey;
+}
+
+.statement-log, .statement-log td, .statement-log th {
+  border: 1px solid black;
+  border-collapse: collapse;
+}
+
+.statement-log td, .statement-log th {
+  padding: 5px;
+  font-family: monospace;
+}
+
+.message-error {
+  background-color: pink;
+}
+
+.message-ack {
+  background-color: lightgreen;
+}
+
+.message.initial_result, .message.table_update, .message.record_update {
 }
 
 #statement-input {
@@ -17,15 +47,4 @@
 
 .statement-choice.selected {
   background-color: lightgrey;
-}
-
-.message.error {
-  background-color: pink;
-}
-
-.message.ack {
-  background-color: lightgreen;
-}
-
-.message.update {
 }

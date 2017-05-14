@@ -25,7 +25,11 @@ export default function update(state = initialState, action) {
     }
     case 'STATEMENT_UPDATE':
       // assumption that index = statement id could be off maybe?
-      return immutable.push(state, `statements.${action.statementID}.updates`, action.update);
+      return immutable.push(
+        state,
+        `statements.${action.statementID}.updates`,
+        {...action.update, timestamp: new Date()}
+      );
 
     case 'UPDATE_STATEMENT':
       return immutable.set(state, 'ui.statement', action.newValue);

@@ -66,7 +66,7 @@ func (conn *Connection) HandleStatements() {
 
 func (conn *Connection) ExecuteStatement(statement *Statement, channel *Channel) {
 	if statement.Select != nil {
-		conn.ExecuteQuery(statement.Select, conn.NextStatementID, channel)
+		conn.ExecuteTopLevelQuery(statement.Select, conn.NextStatementID, channel)
 	} else if statement.Insert != nil {
 		conn.ExecuteInsert(statement.Insert, channel)
 	} else if statement.CreateTable != nil {

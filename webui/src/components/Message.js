@@ -8,6 +8,7 @@ class Message extends React.Component {
   }
 
   render() {
+    // TODO: table with timestamp & type
     const message = this.props.message;
     switch (message.type) {
       case 'error':
@@ -18,11 +19,14 @@ class Message extends React.Component {
         return (
           <span className="message ack">{message.ack}</span>
         );
-      case 'update':
+      case 'initial_result':
+      case 'table_update':
+      case 'record_update':
         return (
           <div className="message update">
+            <strong>{message.type}:</strong><br />
             <ReactJson
-              src={message.update}
+              src={message.payload}
               displayDataTypes={false}
               displayObjectSize={false} />
           </div>
