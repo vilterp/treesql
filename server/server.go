@@ -57,7 +57,7 @@ func main() {
 			log.Println(err)
 			return
 		}
-		database.NewConnection(conn).Run()
+		database.NewConnection(conn).HandleStatements()
 	})
 	log.Println("serving HTTP at", fmt.Sprintf("http://localhost:%d/", *port))
 	listenErr := http.ListenAndServe(fmt.Sprintf(":%d", *port), nil)

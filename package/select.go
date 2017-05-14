@@ -131,11 +131,19 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResul
 	var filterCondition *FilterCondition
 	if scope != nil {
 		filterCondition = getFilterCondition(query, tableSchema, scope)
-
-		if ex.Query.Live {
-			innerTable := database.Schema.Tables[query.Table]
-			database.Schema.Tables[innerTable.Name].TableSubscriptionEvents <- &TableSubscriptionEvent{
-				ColumnName:     filterCondition.InnerColumnName,
+	}
+	if ex.Query.Live {
+		innerTable := database.Schema.Tables[query.Table]
+		channel := database.Schema.Tables[innerTable.Name].LiveQueryInfo.TableSubscriptionEvents
+		if filterCondition == nil {
+			// subscribe to whole table
+			channel <- &TableSubscriptionEvent{
+				QueryExecution: ex,
+			}
+		} else {
+			// subscribe to k=v filter
+			channel <- &TableSubscriptionEvent{
+				ColumnName:     &filterCondition.InnerColumnName,
 				Value:          scope.document.GetField(filterCondition.OuterColumnName),
 				QueryExecution: ex,
 			}
@@ -172,7 +180,7 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResul
 		}
 		// we are interested in this record... let's subscribe to it
 		if ex.Query.Live {
-			database.Schema.Tables[tableSchema.Name].RecordSubscriptionEvents <- &RecordSubscriptionEvent{
+			database.Schema.Tables[tableSchema.Name].LiveQueryInfo.RecordSubscriptionEvents <- &RecordSubscriptionEvent{
 				Value:          record.GetField(tableSchema.PrimaryKey),
 				QueryExecution: ex,
 			}

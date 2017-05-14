@@ -14,17 +14,13 @@ type Schema struct {
 }
 
 type Table struct {
-	Name       string
-	Columns    []*Column
-	PrimaryKey string
-	// for live queries
-	TableEvents              chan *TableEvent
-	RecordSubscriptionEvents chan *RecordSubscriptionEvent
-	TableSubscriptionEvents  chan *TableSubscriptionEvent
-	TableListeners           map[string](map[string]*TableListener) // column name => value => listener
-	RecordListeners          map[string](map[ConnectionID]*RecordListener)
+	Name          string
+	Columns       []*Column
+	PrimaryKey    string
+	LiveQueryInfo *LiveQueryInfo
 }
 
+type ColumnName string
 type Column struct {
 	ID               int
 	Name             string
@@ -146,19 +142,13 @@ func (db *Database) LoadUserSchema() {
 
 func (db *Database) AddTable(name string, primaryKey string, columns []*Column) *Table {
 	table := &Table{
-		Name:       name,
-		PrimaryKey: primaryKey,
-		Columns:    columns,
-		// live query stuff. separate struct?
-		TableEvents:              make(chan *TableEvent),
-		TableSubscriptionEvents:  make(chan *TableSubscriptionEvent),
-		RecordSubscriptionEvents: make(chan *RecordSubscriptionEvent),
-		TableListeners:           map[string](map[string]*TableListener){},
-		RecordListeners:          map[string](map[ConnectionID]*RecordListener){},
+		Name:          name,
+		PrimaryKey:    primaryKey,
+		Columns:       columns,
+		LiveQueryInfo: EmptyLiveQueryInfo(),
 	}
 	db.Schema.Tables[name] = table
-	go table.HandleTableEvents()
-	go table.HandleSubscriptionEvents()
+	go table.HandleEvents()
 	return table
 }
 

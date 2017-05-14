@@ -75,7 +75,7 @@ func (db *Database) ValidateStatement(statement *Statement) error {
 }
 
 func (db *Database) PushTableEvent(tableName string, oldRecord *Record, newRecord *Record) {
-	db.Schema.Tables[tableName].TableEvents <- &TableEvent{
+	db.Schema.Tables[tableName].LiveQueryInfo.TableEvents <- &TableEvent{
 		TableName: tableName,
 		OldRecord: oldRecord,
 		NewRecord: newRecord,

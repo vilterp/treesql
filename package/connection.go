@@ -30,7 +30,7 @@ func (db *Database) NewConnection(conn *websocket.Conn) *Connection {
 	return dbConn
 }
 
-func (conn *Connection) Run() {
+func (conn *Connection) HandleStatements() {
 	log.Println("connection id", conn.ID, "from", conn.clientConn.RemoteAddr())
 	go conn.writeMessagesToSocket()
 	for {

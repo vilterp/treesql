@@ -50,7 +50,7 @@ type NonexistentType struct {
 }
 
 func (e *NonexistentType) Error() string {
-	return fmt.Sprintf("nonexistent type:", e.TypeName)
+	return fmt.Sprintf("nonexistent type: %s", e.TypeName)
 }
 
 type WrongNoPrimaryKey struct {
