@@ -12,18 +12,18 @@ type Connection struct {
 	Messages        chan *ChannelMessage
 	ID              int
 	Database        *Database
-	NextStatementId int
+	NextStatementID int
 }
 
 func (db *Database) NewConnection(conn *websocket.Conn) *Connection {
 	dbConn := &Connection{
 		clientConn:      conn,
 		Messages:        make(chan *ChannelMessage),
-		ID:              db.NextConnectionId,
+		ID:              db.NextConnectionID,
 		Database:        db,
-		NextStatementId: 0,
+		NextStatementID: 0,
 	}
-	db.NextConnectionId++
+	db.NextConnectionID++
 	return dbConn
 }
 
@@ -42,9 +42,9 @@ func (conn *Connection) NewChannel(rawStatement string) *Channel {
 	channel := &Channel{
 		Connection:   conn,
 		RawStatement: rawStatement,
-		StatementID:  conn.NextStatementId,
+		StatementID:  conn.NextStatementID,
 	}
-	conn.NextStatementId++
+	conn.NextStatementID++
 	return channel
 }
 
@@ -86,6 +86,20 @@ func (conn *Connection) Run() {
 			continue
 		}
 		conn.ExecuteStatement(statement, channel)
+	}
+}
+
+func (conn *Connection) ExecuteStatement(statement *Statement, channel *Channel) {
+	if statement.Select != nil {
+		conn.ExecuteQuery(statement.Select, conn.NextStatementID, channel)
+	} else if statement.Insert != nil {
+		conn.ExecuteInsert(statement.Insert, channel)
+	} else if statement.CreateTable != nil {
+		conn.ExecuteCreateTable(statement.CreateTable, channel)
+	} else if statement.Update != nil {
+		conn.ExecuteUpdate(statement.Update, channel)
+	} else {
+		panic(fmt.Sprintf("unknown statement type %v", statement))
 	}
 }
 

@@ -8,6 +8,66 @@ import (
 	"github.com/boltdb/bolt"
 )
 
+// want to not export this and do it via the server, but...
+func (db *Database) validateSelect(query *Select, tableAbove *string) error {
+	// does table exist?
+	_, ok := db.Schema.Tables[query.Table]
+	if !ok && query.Table != "__tables__" && query.Table != "__columns__" {
+		return &NoSuchTable{TableName: query.Table}
+	}
+	// is there a reference from this table to table above or vice versa?
+	if tableAbove != nil {
+		var fromTable string
+		var toTable string
+		// ugh I want f*cking checked switch statements
+		if query.Many {
+			// reference from inner to outer
+			fromTable = query.Table
+			toTable = *tableAbove
+		} else if query.One {
+			// reference from outer to inner
+			fromTable = *tableAbove
+			toTable = query.Table
+		}
+		referenceFound := false
+		for _, column := range db.Schema.Tables[fromTable].Columns {
+			if column.ReferencesColumn != nil {
+				if column.ReferencesColumn.TableName == toTable {
+					referenceFound = true
+				}
+			}
+		}
+		if !referenceFound {
+			return &NoReferenceForJoin{
+				FromTable: fromTable,
+				ToTable:   toTable,
+			}
+		}
+	}
+	// do columns exist / are subqueries valid?
+	// TODO: dedup
+	for _, selection := range query.Selections {
+		if selection.SubSelect != nil {
+			err := db.validateSelect(selection.SubSelect, &query.Table)
+			if err != nil {
+				return err
+			}
+		} else {
+			// hoo, I miss filter
+			hasColumn := false
+			for _, column := range db.Schema.Tables[query.Table].Columns {
+				if column.Name == selection.Name {
+					hasColumn = true
+				}
+			}
+			if !hasColumn {
+				return &NoSuchColumn{TableName: query.Table, ColumnName: selection.Name}
+			}
+		}
+	}
+	return nil
+}
+
 func (conn *Connection) ExecuteQuery(query *Select, queryID int, channel *Channel) {
 	// TODO: put all these reads in a transaction
 	startTime := time.Now()

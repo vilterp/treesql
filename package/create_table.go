@@ -4,45 +4,45 @@ import (
 	"encoding/binary"
 	"fmt"
 	"log"
-	"time"
 
 	"github.com/boltdb/bolt"
 )
 
-func (conn *Connection) ExecuteStatement(statement *Statement, channel *Channel) {
-	if statement.Select != nil {
-		// execute query
-		conn.ExecuteQuery(statement.Select, conn.NextStatementId, channel)
-	} else if statement.Insert != nil {
-		conn.ExecuteInsert(statement.Insert, channel)
-	} else if statement.CreateTable != nil {
-		conn.ExecuteCreateTable(statement.CreateTable, channel)
-	} else if statement.Update != nil {
-		conn.ExecuteUpdate(statement.Update, channel)
-	} else {
-		panic(fmt.Sprintf("unknown statement %v", statement))
+func (db *Database) validateCreateTable(create *CreateTable) error {
+	// does table already exist?
+	_, ok := db.Schema.Tables[create.Name]
+	if ok {
+		return &TableAlreadyExists{TableName: create.Name}
 	}
-}
-
-// TODO: some other file, alongside executor.go? idk
-func (conn *Connection) ExecuteInsert(insert *Insert, channel *Channel) {
-	table := conn.Database.Schema.Tables[insert.Table]
-	record := table.NewRecord()
-	for idx, value := range insert.Values {
-		record.SetString(table.Columns[idx].Name, value)
+	// types are real
+	for _, column := range create.Columns {
+		knownType := column.TypeName == "string" || column.TypeName == "int"
+		if !knownType {
+			return &NonexistentType{TypeName: column.TypeName}
+		}
 	}
-	key := record.GetField(table.PrimaryKey).StringVal
-	// write to table
-	// TODO: handle any errors
-	conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(insert.Table))
-		bucket.Put([]byte(key), record.ToBytes())
-		return nil
-	})
-	// push to live query listeners
-	conn.Database.PushTableEvent(insert.Table, nil, record)
-	log.Println("connection", conn.ID, "handled insert")
-	channel.WriteMessage("INSERT 1")
+	// only one primary key
+	primaryKeyCount := 0
+	for _, column := range create.Columns {
+		if column.PrimaryKey {
+			primaryKeyCount++
+		}
+	}
+	if primaryKeyCount != 1 {
+		return &WrongNoPrimaryKey{Count: primaryKeyCount}
+	}
+	// referenced table exists
+	// TODO: column same type as primary key
+	for _, column := range create.Columns {
+		if column.References != nil {
+			_, tableExists := db.Schema.Tables[*column.References]
+			if !tableExists {
+				return &NoSuchTable{TableName: *column.References}
+			}
+		}
+	}
+	// TODO: dedup column names
+	return nil
 }
 
 func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel) {
@@ -124,38 +124,5 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 	} else {
 		log.Println("connection", conn.ID, "created table", create.Name)
 		channel.WriteMessage("CREATE TABLE")
-	}
-}
-
-func (conn *Connection) ExecuteUpdate(update *Update, channel *Channel) {
-	startTime := time.Now()
-	table := conn.Database.Schema.Tables[update.Table]
-	rowsUpdated := 0
-	updateErr := conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(update.Table))
-		bucket.ForEach(func(key []byte, value []byte) error {
-			record := table.RecordFromBytes(value)
-			if record.GetField(update.WhereColumnName).StringVal == update.EqualsValue {
-				clonedOldRecord := record.Clone()
-				record.SetString(update.ColumnName, update.Value)
-				clonedNewRecord := record.Clone()
-				rowUpdateErr := bucket.Put(key, record.ToBytes())
-				if rowUpdateErr != nil {
-					return rowUpdateErr
-				}
-				// send live query updates
-				conn.Database.PushTableEvent(update.Table, clonedOldRecord, clonedNewRecord)
-				rowsUpdated++
-			}
-			return nil
-		})
-		return nil
-	})
-	if updateErr != nil {
-		channel.WriteMessage(fmt.Sprintf("error executing update: %s", updateErr))
-	} else {
-		channel.WriteMessage(fmt.Sprintf("UPDATE %d", rowsUpdated))
-		endTime := time.Now()
-		log.Println("connection", conn.ID, "handled update in", endTime.Sub(startTime))
 	}
 }

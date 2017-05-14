@@ -12,7 +12,7 @@ type Database struct {
 	BoltDB                  *bolt.DB
 	QueryValidationRequests chan *QueryValidationRequest
 	TableListeners          map[string]*TableListener
-	NextConnectionId        int
+	NextConnectionID        int
 }
 
 func Open(dataFile string) (*Database, error) {
@@ -27,7 +27,7 @@ func Open(dataFile string) (*Database, error) {
 		BoltDB:                  boltDB,
 		QueryValidationRequests: make(chan *QueryValidationRequest),
 		TableListeners:          map[string]*TableListener{},
-		NextConnectionId:        0,
+		NextConnectionID:        0,
 	}
 	database.EnsureBuiltinSchema()
 	database.LoadUserSchema()
@@ -74,179 +74,4 @@ func (db *Database) ValidateStatement(statement *Statement) error {
 	} else {
 		return errors.New("unknown statement type")
 	}
-}
-
-// func (db *Database) validateQuery(query *Select) error {
-// 	responseChan := make(chan error)
-// 	fmt.Println("about to send request")
-// 	db.QueryValidationRequests <- &QueryValidationRequest{
-// 		query:        query,
-// 		responseChan: responseChan,
-// 	}
-// 	fmt.Println("sent request")
-// 	return <-responseChan
-// }
-
-// func (db *Database) handleValidationRequest(request *QueryValidationRequest) {
-// 	fmt.Printf("hello from handleValidationRequest")
-// 	request.responseChan <- db.ValidateSelect(request.query)
-// }
-
-func (db *Database) validateInsert(insert *Insert) error {
-	// does table exist
-	tableSpec, ok := db.Schema.Tables[insert.Table]
-	if !ok {
-		return &NoSuchTable{TableName: insert.Table}
-	}
-	// can't insert into builtins
-	if insert.Table == "__tables__" || insert.Table == "__columns__" {
-		return &BuiltinWriteAttempt{TableName: insert.Table}
-	}
-	// right # fields (TODO: validate types)
-	wanted := len(tableSpec.Columns)
-	got := len(insert.Values)
-	if wanted != got {
-		return &InsertWrongNumFields{TableName: insert.Table, Wanted: wanted, Got: got}
-	}
-	return nil
-}
-
-// want to not export this and do it via the server, but...
-func (db *Database) validateSelect(query *Select, tableAbove *string) error {
-	// does table exist?
-	_, ok := db.Schema.Tables[query.Table]
-	if !ok && query.Table != "__tables__" && query.Table != "__columns__" {
-		return &NoSuchTable{TableName: query.Table}
-	}
-	// is there a reference from this table to table above or vice versa?
-	if tableAbove != nil {
-		var fromTable string
-		var toTable string
-		// ugh I want f*cking checked switch statements
-		if query.Many {
-			// reference from inner to outer
-			fromTable = query.Table
-			toTable = *tableAbove
-		} else if query.One {
-			// reference from outer to inner
-			fromTable = *tableAbove
-			toTable = query.Table
-		}
-		referenceFound := false
-		for _, column := range db.Schema.Tables[fromTable].Columns {
-			if column.ReferencesColumn != nil {
-				if column.ReferencesColumn.TableName == toTable {
-					referenceFound = true
-				}
-			}
-		}
-		if !referenceFound {
-			return &NoReferenceForJoin{
-				FromTable: fromTable,
-				ToTable:   toTable,
-			}
-		}
-	}
-	// do columns exist / are subqueries valid?
-	// TODO: dedup
-	for _, selection := range query.Selections {
-		if selection.SubSelect != nil {
-			err := db.validateSelect(selection.SubSelect, &query.Table)
-			if err != nil {
-				return err
-			}
-		} else {
-			// hoo, I miss filter
-			hasColumn := false
-			for _, column := range db.Schema.Tables[query.Table].Columns {
-				if column.Name == selection.Name {
-					hasColumn = true
-				}
-			}
-			if !hasColumn {
-				return &NoSuchColumn{TableName: query.Table, ColumnName: selection.Name}
-			}
-		}
-	}
-	return nil
-}
-
-func (db *Database) validateCreateTable(create *CreateTable) error {
-	// does table already exist?
-	_, ok := db.Schema.Tables[create.Name]
-	if ok {
-		return &TableAlreadyExists{TableName: create.Name}
-	}
-	// types are real
-	for _, column := range create.Columns {
-		knownType := column.TypeName == "string" || column.TypeName == "int"
-		if !knownType {
-			return &NonexistentType{TypeName: column.TypeName}
-		}
-	}
-	// only one primary key
-	primaryKeyCount := 0
-	for _, column := range create.Columns {
-		if column.PrimaryKey {
-			primaryKeyCount++
-		}
-	}
-	if primaryKeyCount != 1 {
-		return &WrongNoPrimaryKey{Count: primaryKeyCount}
-	}
-	// referenced table exists
-	// TODO: column same type as primary key
-	for _, column := range create.Columns {
-		if column.References != nil {
-			_, tableExists := db.Schema.Tables[*column.References]
-			if !tableExists {
-				return &NoSuchTable{TableName: *column.References}
-			}
-		}
-	}
-	// TODO: dedup column names
-	return nil
-}
-
-func (db *Database) validateUpdate(update *Update) error {
-	table, ok := db.Schema.Tables[update.Table]
-	// table exists
-	if !ok {
-		return &NoSuchTable{
-			TableName: update.Table,
-		}
-	}
-	// table isn't a builtin
-	if update.Table == "__tables__" || update.Table == "__columns__" {
-		return &BuiltinWriteAttempt{
-			TableName: update.Table,
-		}
-	}
-	// column to update exists
-	updateColExists := false
-	for _, column := range table.Columns {
-		if column.Name == update.ColumnName {
-			updateColExists = true
-		}
-	}
-	if !updateColExists {
-		return &NoSuchColumn{
-			TableName:  update.Table,
-			ColumnName: update.ColumnName,
-		}
-	}
-	// column in where clause exists
-	whereColExists := false
-	for _, column := range table.Columns {
-		if column.Name == update.WhereColumnName {
-			whereColExists = true
-		}
-	}
-	if !whereColExists {
-		return &NoSuchColumn{
-			TableName:  update.Table,
-			ColumnName: update.ColumnName,
-		}
-	}
-	return nil
 }
