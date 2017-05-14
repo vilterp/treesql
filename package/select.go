@@ -2,6 +2,7 @@ package treesql
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -69,7 +70,6 @@ func (db *Database) validateSelect(query *Select, tableAbove *string) error {
 }
 
 func (conn *Connection) ExecuteQuery(query *Select, statementID int, channel *Channel) {
-	// TODO: put all these reads in a transaction
 	startTime := time.Now()
 	tx, _ := conn.Database.BoltDB.Begin(false)
 	execution := &QueryExecution{
@@ -78,7 +78,9 @@ func (conn *Connection) ExecuteQuery(query *Select, statementID int, channel *Ch
 		Query:       query,
 		Transaction: tx,
 	}
+	fmt.Println("execute select")
 	result, selectErr := executeSelect(execution, query, nil)
+	fmt.Println("done execute select")
 	if selectErr != nil {
 		channel.WriteErrorMessage(selectErr)
 		log.Println("connection", conn.ID, "query error:", selectErr.Error())

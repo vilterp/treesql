@@ -21,7 +21,7 @@ type Table struct {
 	TableEvents              chan *TableEvent
 	RecordSubscriptionEvents chan *RecordSubscriptionEvent
 	TableSubscriptionEvents  chan *TableSubscriptionEvent
-	TableListeners           map[string](map[string]*ColumnValueListener) // column name => value => listener
+	TableListeners           map[string](map[string]*TableListener) // column name => value => listener
 	RecordListeners          map[string](map[ConnectionID]*RecordListener)
 }
 
@@ -153,10 +153,12 @@ func (db *Database) AddTable(name string, primaryKey string, columns []*Column) 
 		TableEvents:              make(chan *TableEvent),
 		TableSubscriptionEvents:  make(chan *TableSubscriptionEvent),
 		RecordSubscriptionEvents: make(chan *RecordSubscriptionEvent),
-		TableListeners:           map[string](map[string]*ColumnValueListener){},
+		TableListeners:           map[string](map[string]*TableListener){},
 		RecordListeners:          map[string](map[ConnectionID]*RecordListener){},
 	}
 	db.Schema.Tables[name] = table
+	go table.HandleTableEvents()
+	go table.HandleSubscriptionEvents()
 	return table
 }
 

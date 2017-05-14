@@ -27,6 +27,7 @@ func Open(dataFile string) (*Database, error) {
 		QueryValidationRequests: make(chan *QueryValidationRequest),
 		NextConnectionID:        0,
 	}
+	database.AddBuiltinSchema()
 	database.EnsureBuiltinSchema()
 	database.LoadUserSchema()
 

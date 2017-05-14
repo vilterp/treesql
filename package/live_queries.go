@@ -21,8 +21,7 @@ type RecordSubscriptionEvent struct {
 	QueryExecution *QueryExecution
 }
 
-type ColumnValueListener struct {
-	TableEvents chan *TableEvent
+type TableListener struct {
 	TableName   string
 	ColumnName  string
 	EqualsValue *Value
@@ -35,7 +34,7 @@ type RecordListener struct {
 	LiveQueries map[ConnectionID]*QueryExecution
 }
 
-func (table *Table) tableListenerLoop() {
+func (table *Table) HandleSubscriptionEvents() {
 	for {
 		select {
 		case tableSubEvent := <-table.TableSubscriptionEvents:
@@ -48,25 +47,9 @@ func (table *Table) tableListenerLoop() {
 	}
 }
 
-// func newColumnValueListener(tableName string, subEvt *SubscriberEvent) *ColumnValueListener {
-// 	listener := &ColumnValueListener{
-// 		TableEvents: make(chan *TableEvent),
-// 		TableName:   tableName,
-// 		ColumnName:  subEvt.ColumnName,
-// 		EqualsValue: subEvt.Value,
-// 		LiveQueries: make([]*QueryExecution, 0),
-// 	}
-// 	fmt.Println("new column value listener", listener)
-// 	go columnValueListenerLoop(listener)
-// 	return listener
-// }
-
-func columnValueListenerLoop(listener *ColumnValueListener) {
+func (table *Table) HandleTableEvents() {
 	for {
-		tableEvent := <-listener.TableEvents
-		fmt.Println("listener", listener, "event", tableEvent)
-		for _, liveQuery := range listener.LiveQueries {
-			liveQuery.Channel.WriteUpdateMessage(tableEvent)
-		}
+		tableEvent := <-table.TableEvents
+		fmt.Println("table event for", table, ":", tableEvent)
 	}
 }
