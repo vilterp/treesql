@@ -1,6 +1,7 @@
 createtable users (id string primarykey, name string, age string)
 createtable blog_posts (id string primarykey, title string, body string, author_id string referencestable users)
 createtable comments (id string primarykey, post_id string referencestable blog_posts, body string, author_id string referencestable users)
+many users { id, name, age } live
 insert into users values ("0", "Alice", "24")
 insert into users values ("1", "Bob", "24")
 insert into blog_posts values ("0", "test post", "body of test post", "0")

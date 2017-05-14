@@ -135,18 +135,17 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResul
 	if ex.Query.Live {
 		innerTable := database.Schema.Tables[query.Table]
 		channel := database.Schema.Tables[innerTable.Name].LiveQueryInfo.TableSubscriptionEvents
-		if filterCondition == nil {
-			// subscribe to whole table
-			channel <- &TableSubscriptionEvent{
-				QueryExecution: ex,
-			}
-		} else {
-			// subscribe to k=v filter
-			channel <- &TableSubscriptionEvent{
-				ColumnName:     &filterCondition.InnerColumnName,
-				Value:          scope.document.GetField(filterCondition.OuterColumnName),
-				QueryExecution: ex,
-			}
+		var colNameForSub *string
+		var valueForSub *Value
+		if filterCondition != nil {
+			colNameForSub = &filterCondition.InnerColumnName
+			valueForSub = scope.document.GetField(filterCondition.OuterColumnName)
+		}
+		channel <- &TableSubscriptionEvent{
+			ColumnName:     colNameForSub,
+			Value:          valueForSub,
+			SubQuery:       query,
+			QueryExecution: ex,
 		}
 	}
 	// get schema fields into a map (maybe it should be this in the schema? idk)

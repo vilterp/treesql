@@ -29,29 +29,46 @@ func EmptyLiveQueryInfo() *LiveQueryInfo {
 
 // type ListenerList map[ConnectionID]([]*QueryExecution)
 type ListenerList struct {
-	Queries []*QueryExecution
+	Listeners []*Listener
+}
+
+type Listener struct {
+	QueryExecution *QueryExecution
+	Query          *Select // nil for record listeners
 }
 
 func NewListenerList() *ListenerList {
-	// return map[ConnectionID]([]*QueryExecution){}
 	return &ListenerList{
-		Queries: make([]*QueryExecution, 0),
+		Listeners: make([]*Listener, 0),
 	}
 }
 
-func (list *ListenerList) AddListener(ex *QueryExecution) {
-	// listeners := list[ID]
-	// if listeners == nil {
-	// 	listeners = make([]*QueryExecution, 0)
-	// }
-	// newListeners := append(listeners, ex)
-	// list[ID] = newListeners
-	list.Queries = append(list.Queries, ex)
+func (list *ListenerList) AddQueryListener(ex *QueryExecution, query *Select) {
+	list.Listeners = append(list.Listeners, &Listener{
+		QueryExecution: ex,
+		Query:          query,
+	})
+}
+
+func (list *ListenerList) AddRecordListener(ex *QueryExecution) {
+	list.Listeners = append(list.Listeners, &Listener{
+		QueryExecution: ex,
+	})
 }
 
 func (list *ListenerList) SendEvent(event *TableEvent) {
-	for _, ex := range list.Queries {
-		ex.Channel.WriteUpdateMessage(event)
+	fmt.Println("send event", event, list.Listeners)
+	for _, listener := range list.Listeners {
+		fmt.Println("\tlistener", listener)
+		if listener.Query != nil {
+			// conn := listener.QueryExecution.Channel.Connection
+			fmt.Println("executing sub query", listener.Query)
+			listener.QueryExecution.Channel.WriteUpdateMessage(listener.Query)
+			// conn.ExecuteQuery(listener.Query, int(listener.QueryExecution.ID), listener.QueryExecution.Channel)
+		} else {
+			fmt.Println("standard update message")
+			listener.QueryExecution.Channel.WriteUpdateMessage(event)
+		}
 	}
 }
 
@@ -63,6 +80,8 @@ type TableEvent struct {
 
 type TableSubscriptionEvent struct {
 	QueryExecution *QueryExecution
+	// QueryPath      *QueryPath
+	SubQuery *Select // where we are in the query
 	// vv this and value null => subscribe to whole table w/ no filter
 	ColumnName *string
 	Value      *Value
@@ -86,7 +105,9 @@ func (table *Table) HandleEvents() {
 		case tableSubEvent := <-liveInfo.TableSubscriptionEvents:
 			fmt.Println("table sub event for", table.Name, ":", tableSubEvent)
 			if tableSubEvent.ColumnName == nil {
-				liveInfo.WholeTableListeners.AddListener(tableSubEvent.QueryExecution)
+				liveInfo.WholeTableListeners.AddQueryListener(
+					tableSubEvent.QueryExecution, tableSubEvent.SubQuery,
+				)
 			} else {
 				columnName := ColumnName(*tableSubEvent.ColumnName)
 				// initialize listeners for this column (could be done at table create/load)
@@ -102,7 +123,7 @@ func (table *Table) HandleEvents() {
 					listenersForValue = NewListenerList()
 					listenersForColumn[tableSubEvent.Value.StringVal] = listenersForValue
 				}
-				listenersForValue.AddListener(tableSubEvent.QueryExecution)
+				listenersForValue.AddQueryListener(tableSubEvent.QueryExecution, tableSubEvent.SubQuery)
 			}
 
 		case recordSubEvent := <-liveInfo.RecordSubscriptionEvents:
@@ -112,11 +133,12 @@ func (table *Table) HandleEvents() {
 				listenersForValue = NewListenerList()
 				liveInfo.RecordListeners[recordSubEvent.Value.StringVal] = listenersForValue
 			}
-			listenersForValue.AddListener(recordSubEvent.QueryExecution)
+			listenersForValue.AddRecordListener(recordSubEvent.QueryExecution)
 
 		case tableEvent := <-liveInfo.TableEvents:
 			fmt.Println("table event for", table.Name, ":", tableEvent)
 			// whole table listeners
+			fmt.Println("whole table event", tableEvent)
 			liveInfo.WholeTableListeners.SendEvent(tableEvent)
 			// filtered table listeners
 			fmt.Println("tableListeners for", table.Name, ":", liveInfo.TableListeners)
