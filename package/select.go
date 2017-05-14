@@ -68,11 +68,12 @@ func (db *Database) validateSelect(query *Select, tableAbove *string) error {
 	return nil
 }
 
-func (conn *Connection) ExecuteQuery(query *Select, queryID int, channel *Channel) {
+func (conn *Connection) ExecuteQuery(query *Select, statementID int, channel *Channel) {
 	// TODO: put all these reads in a transaction
 	startTime := time.Now()
 	tx, _ := conn.Database.BoltDB.Begin(false)
 	execution := &QueryExecution{
+		ID:          StatementID(statementID),
 		Channel:     channel,
 		Query:       query,
 		Transaction: tx,
@@ -91,13 +92,14 @@ func (conn *Connection) ExecuteQuery(query *Select, queryID int, channel *Channe
 	endTime := time.Now()
 
 	log.Println(
-		"connection", conn.ID, "serviced query", queryID, "in", endTime.Sub(startTime),
+		"connection", conn.ID, "serviced query", statementID, "in", endTime.Sub(startTime),
 		"live:", query.Live,
 	) // TODO: structured logging XD
 }
 
 // maybe this should be called transaction? idk
 type QueryExecution struct {
+	ID          StatementID
 	Channel     *Channel
 	Query       *Select
 	Transaction *bolt.Tx
@@ -130,10 +132,10 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResul
 
 		if ex.Query.Live {
 			innerTable := database.Schema.Tables[query.Table]
-			database.TableListeners[innerTable.Name].SubscriberEvents <- &SubscriberEvent{
+			database.Schema.Tables[innerTable.Name].TableSubscriptionEvents <- &TableSubscriptionEvent{
 				ColumnName:     filterCondition.InnerColumnName,
-				QueryExecution: ex,
 				Value:          scope.document.GetField(filterCondition.OuterColumnName),
+				QueryExecution: ex,
 			}
 		}
 	}
@@ -168,10 +170,9 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResul
 		}
 		// we are interested in this record... let's subscribe to it
 		if ex.Query.Live {
-			database.TableListeners[tableSchema.Name].SubscriberEvents <- &SubscriberEvent{
-				ColumnName:     tableSchema.PrimaryKey,
-				QueryExecution: ex,
+			database.Schema.Tables[tableSchema.Name].RecordSubscriptionEvents <- &RecordSubscriptionEvent{
 				Value:          record.GetField(tableSchema.PrimaryKey),
+				QueryExecution: ex,
 			}
 		}
 		// start writing it

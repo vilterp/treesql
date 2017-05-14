@@ -10,17 +10,23 @@ import (
 
 type Schema struct {
 	Tables       map[string]*Table
-	NextColumnId int
+	NextColumnID int
 }
 
 type Table struct {
 	Name       string
 	Columns    []*Column
 	PrimaryKey string
+	// for live queries
+	TableEvents              chan *TableEvent
+	RecordSubscriptionEvents chan *RecordSubscriptionEvent
+	TableSubscriptionEvents  chan *TableSubscriptionEvent
+	TableListeners           map[string](map[string]*ColumnValueListener) // column name => value => listener
+	RecordListeners          map[string](map[ConnectionID]*RecordListener)
 }
 
 type Column struct {
-	Id               int
+	ID               int
 	Name             string
 	Type             ColumnType
 	ReferencesColumn *ColumnReference
@@ -49,7 +55,7 @@ var NameToType = map[string]ColumnType{
 func (column *Column) ToRecord(tableName string, db *Database) *Record {
 	columnsTable := db.Schema.Tables["__columns__"]
 	record := columnsTable.NewRecord()
-	record.SetString("id", fmt.Sprintf("%d", column.Id))
+	record.SetString("id", fmt.Sprintf("%d", column.ID))
 	record.SetString("name", column.Name)
 	record.SetString("table_name", tableName)
 	record.SetString("type", TypeToName[column.Type])
@@ -69,7 +75,7 @@ func ColumnFromRecord(record *Record) *Column {
 		}
 	}
 	return &Column{
-		Id:               idInt,
+		ID:               idInt,
 		Name:             record.GetField("name").StringVal,
 		Type:             NameToType[record.GetField("type").StringVal],
 		ReferencesColumn: columnReference,
@@ -97,16 +103,16 @@ func (db *Database) EnsureBuiltinSchema() {
 		tx.CreateBucketIfNotExists([]byte("__columns__"))
 		sequencesBucket, _ := tx.CreateBucketIfNotExists([]byte("__sequences__"))
 		// sync next column id
-		nextColumnIdBytes := sequencesBucket.Get([]byte("__next_column_id__"))
-		if nextColumnIdBytes == nil {
+		nextColumnIDBytes := sequencesBucket.Get([]byte("__next_column_id__"))
+		if nextColumnIDBytes == nil {
 			// write it
-			nextColumnIdBytes = make([]byte, 4)
-			binary.BigEndian.PutUint32(nextColumnIdBytes, uint32(db.Schema.NextColumnId))
-			sequencesBucket.Put([]byte("__next_column_id__"), nextColumnIdBytes)
+			nextColumnIDBytes = make([]byte, 4)
+			binary.BigEndian.PutUint32(nextColumnIDBytes, uint32(db.Schema.NextColumnID))
+			sequencesBucket.Put([]byte("__next_column_id__"), nextColumnIDBytes)
 		} else {
 			// read it
-			nextColumnId := binary.BigEndian.Uint32(nextColumnIdBytes)
-			db.Schema.NextColumnId = int(nextColumnId)
+			nextColumnID := binary.BigEndian.Uint32(nextColumnIDBytes)
+			db.Schema.NextColumnID = int(nextColumnID)
 		}
 		return nil
 	})
@@ -116,16 +122,21 @@ func (db *Database) LoadUserSchema() {
 	tablesTable := db.Schema.Tables["__tables__"]
 	columnsTable := db.Schema.Tables["__columns__"]
 	db.BoltDB.View(func(tx *bolt.Tx) error {
+		tables := map[string]*Table{}
 		tx.Bucket([]byte("__tables__")).ForEach(func(_ []byte, tableBytes []byte) error {
 			tableRecord := tablesTable.RecordFromBytes(tableBytes)
-			tableSpec := TableFromRecord(tableRecord)
-			db.Schema.Tables[tableSpec.Name] = tableSpec
+			tableSpec := db.AddTable(
+				tableRecord.GetField("name").StringVal,
+				tableRecord.GetField("primary_key").StringVal,
+				make([]*Column, 0),
+			)
+			tables[tableSpec.Name] = tableSpec
 			return nil
 		})
 		tx.Bucket([]byte("__columns__")).ForEach(func(key []byte, columnBytes []byte) error {
 			columnRecord := columnsTable.RecordFromBytes(columnBytes)
 			columnSpec := ColumnFromRecord(columnRecord)
-			tableSpec := db.Schema.Tables[columnRecord.GetField("table_name").StringVal]
+			tableSpec := tables[columnRecord.GetField("table_name").StringVal]
 			tableSpec.Columns = append(tableSpec.Columns, columnSpec)
 			return nil
 		})
@@ -133,63 +144,71 @@ func (db *Database) LoadUserSchema() {
 	})
 }
 
-func GetBuiltinSchema() *Schema {
+func (db *Database) AddTable(name string, primaryKey string, columns []*Column) *Table {
+	table := &Table{
+		Name:       name,
+		PrimaryKey: primaryKey,
+		Columns:    columns,
+		// live query stuff. separate struct?
+		TableEvents:              make(chan *TableEvent),
+		TableSubscriptionEvents:  make(chan *TableSubscriptionEvent),
+		RecordSubscriptionEvents: make(chan *RecordSubscriptionEvent),
+		TableListeners:           map[string](map[string]*ColumnValueListener){},
+		RecordListeners:          map[string](map[ConnectionID]*RecordListener){},
+	}
+	db.Schema.Tables[name] = table
+	return table
+}
+
+func EmptySchema() *Schema {
+	return &Schema{
+		Tables: map[string]*Table{},
+	}
+}
+
+func (db *Database) AddBuiltinSchema() {
 	// these never go in the on-disk __tables__ and __columns__ Bolt buckets
 	// doing ids like this is kind of precarious...
-	tables := map[string]*Table{
-		"__tables__": &Table{
-			Name:       "__tables__",
-			PrimaryKey: "name",
-			Columns: []*Column{
-				&Column{
-					Id:   0,
-					Name: "name",
-					Type: TypeString,
-				},
-				&Column{
-					Id:   1,
-					Name: "primary_key",
-					Type: TypeString,
-				},
+	db.AddTable("__tables__", "name", []*Column{
+		&Column{
+			ID:   0,
+			Name: "name",
+			Type: TypeString,
+		},
+		&Column{
+			ID:   1,
+			Name: "primary_key",
+			Type: TypeString,
+		},
+	})
+	db.AddTable("__columns__", "id", []*Column{
+		&Column{
+			ID:   2,
+			Name: "id",
+			Type: TypeString, // TODO: switch to int when they work
+		},
+		&Column{
+			ID:   3,
+			Name: "name",
+			Type: TypeString,
+		},
+		&Column{
+			ID:   4,
+			Name: "table_name",
+			Type: TypeString,
+			ReferencesColumn: &ColumnReference{
+				TableName: "__tables__",
 			},
 		},
-		"__columns__": &Table{
-			Name:       "__columns__",
-			PrimaryKey: "id",
-			Columns: []*Column{
-				&Column{
-					Id:   2,
-					Name: "id",
-					Type: TypeString, // TODO: switch to int when they work
-				},
-				&Column{
-					Id:   3,
-					Name: "name",
-					Type: TypeString,
-				},
-				&Column{
-					Id:   4,
-					Name: "table_name",
-					Type: TypeString,
-					ReferencesColumn: &ColumnReference{
-						TableName: "__tables__",
-					},
-				},
-				&Column{
-					Id:   5,
-					Name: "type",
-					Type: TypeString,
-				},
-				&Column{
-					Id:   6,
-					Name: "references", // TODO: this is a keyword. rename to "references_table"
-					Type: TypeString,
-				},
-			},
+		&Column{
+			ID:   5,
+			Name: "type",
+			Type: TypeString,
 		},
-	}
-	return &Schema{
-		Tables:       tables,
-		NextColumnId: 7,
-	}
+		&Column{
+			ID:   6,
+			Name: "references", // TODO: this is a keyword. rename to "references_table"
+			Type: TypeString,
+		},
+	})
 }

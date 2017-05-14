@@ -4,78 +4,21 @@ import (
 	"fmt"
 )
 
-func (db *Database) MakeTableListeners() {
-	for _, table := range db.Schema.Tables {
-		fmt.Println("making table listener for", table.Name)
-		db.AddTableListener(table)
-	}
-}
-
-type TableListener struct {
-	Table                *Table
-	TableEvents          chan *TableEvent
-	SubscriberEvents     chan *SubscriberEvent
-	ColumnValueListeners map[string](map[string]*ColumnValueListener) // column name => value => listener
-	WholeTableListeners  []*WholeTableListener
-}
-
 type TableEvent struct {
 	TableName string
 	OldRecord *Record
 	NewRecord *Record
 }
 
-type SubscriberEvent struct {
+type TableSubscriptionEvent struct {
 	ColumnName     string
 	Value          *Value
 	QueryExecution *QueryExecution
 }
 
-type WholeTableListener struct {
-	Table       *Table
-	Query       *Select
-	LiveQueries []*QueryExecution
-}
-
-func (db *Database) AddTableListener(table *Table) {
-	listener := &TableListener{
-		Table:                table,
-		TableEvents:          make(chan *TableEvent),
-		SubscriberEvents:     make(chan *SubscriberEvent),
-		ColumnValueListeners: map[string](map[string]*ColumnValueListener){},
-	}
-	// yet another thing to migrate when schema of this table changes
-	for _, column := range table.Columns {
-		listener.ColumnValueListeners[column.Name] = map[string](*ColumnValueListener){}
-	}
-	db.TableListeners[table.Name] = listener
-	go tableListenerLoop(listener)
-}
-
-func tableListenerLoop(listener *TableListener) {
-	for {
-		select {
-		case subEvent := <-listener.SubscriberEvents:
-			fmt.Println("sub event for", listener.Table.Name, ":", subEvent)
-			columnListeners := listener.ColumnValueListeners[subEvent.ColumnName]
-			columnValueListener, ok := columnListeners[subEvent.Value.StringVal]
-			if !ok {
-				columnValueListener = newColumnValueListener(listener.Table.Name, subEvent)
-				columnListeners[subEvent.Value.StringVal] = columnValueListener
-			}
-			columnValueListener.LiveQueries = append(columnValueListener.LiveQueries, subEvent.QueryExecution)
-		case tableEvent := <-listener.TableEvents:
-			fmt.Println("table event for", listener.Table.Name, ":", tableEvent)
-			for columnName, columnValueListeners := range listener.ColumnValueListeners {
-				fmt.Println("column value listeners for table", listener.Table.Name, "on column", columnName, "are", columnValueListeners)
-				// TODO: integers, someday
-				columnValueListener, ok := columnValueListeners[tableEvent.NewRecord.GetField(columnName).StringVal]
-				if ok {
-					columnValueListener.TableEvents <- tableEvent
-				}
-			}
-		}
-	}
+type RecordSubscriptionEvent struct {
+	Value          *Value
+	QueryExecution *QueryExecution
 }
 
 type ColumnValueListener struct {
@@ -86,18 +29,37 @@ type ColumnValueListener struct {
 	LiveQueries []*QueryExecution
 }
 
-func newColumnValueListener(tableName string, subEvt *SubscriberEvent) *ColumnValueListener {
-	listener := &ColumnValueListener{
-		TableEvents: make(chan *TableEvent),
-		TableName:   tableName,
-		ColumnName:  subEvt.ColumnName,
-		EqualsValue: subEvt.Value,
-		LiveQueries: make([]*QueryExecution, 0),
-	}
-	fmt.Println("new column value listener", listener)
-	go columnValueListenerLoop(listener)
-	return listener
+type RecordListener struct {
+	Table       *Table
+	Value       *Value // value of primary key
+	LiveQueries map[ConnectionID]*QueryExecution
 }
+
+func (table *Table) tableListenerLoop() {
+	for {
+		select {
+		case tableSubEvent := <-table.TableSubscriptionEvents:
+			fmt.Println("table sub event for", table.Name, ":", tableSubEvent)
+		case recordSubEvent := <-table.RecordSubscriptionEvents:
+			fmt.Println("record sub event for", table.Name, ":", recordSubEvent)
+		case tableEvent := <-table.TableEvents:
+			fmt.Println("table event for", table.Name, ":", tableEvent)
+		}
+	}
+}
+
+// func newColumnValueListener(tableName string, subEvt *SubscriberEvent) *ColumnValueListener {
+// 	listener := &ColumnValueListener{
+// 		TableEvents: make(chan *TableEvent),
+// 		TableName:   tableName,
+// 		ColumnName:  subEvt.ColumnName,
+// 		EqualsValue: subEvt.Value,
+// 		LiveQueries: make([]*QueryExecution, 0),
+// 	}
+// 	fmt.Println("new column value listener", listener)
+// 	go columnValueListenerLoop(listener)
+// 	return listener
+// }
 
 func columnValueListenerLoop(listener *ColumnValueListener) {
 	for {

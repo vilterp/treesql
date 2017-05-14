@@ -7,6 +7,9 @@ import (
 	"github.com/gorilla/websocket"
 )
 
+type ConnectionID int
+type StatementID int
+
 type Connection struct {
 	clientConn      *websocket.Conn
 	Messages        chan *ChannelMessage

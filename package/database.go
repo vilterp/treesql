@@ -11,7 +11,6 @@ type Database struct {
 	Schema                  *Schema
 	BoltDB                  *bolt.DB
 	QueryValidationRequests chan *QueryValidationRequest
-	TableListeners          map[string]*TableListener
 	NextConnectionID        int
 }
 
@@ -23,15 +22,13 @@ func Open(dataFile string) (*Database, error) {
 
 	// TODO: load this from somewhere in data dir
 	database := &Database{
-		Schema:                  GetBuiltinSchema(),
+		Schema:                  EmptySchema(),
 		BoltDB:                  boltDB,
 		QueryValidationRequests: make(chan *QueryValidationRequest),
-		TableListeners:          map[string]*TableListener{},
 		NextConnectionID:        0,
 	}
 	database.EnsureBuiltinSchema()
 	database.LoadUserSchema()
-	database.MakeTableListeners()
 
 	// serve query validation requests
 	// TODO: a `select` here for schema changes
@@ -77,7 +74,7 @@ func (db *Database) ValidateStatement(statement *Statement) error {
 }
 
 func (db *Database) PushTableEvent(tableName string, oldRecord *Record, newRecord *Record) {
-	db.TableListeners[tableName].TableEvents <- &TableEvent{
+	db.Schema.Tables[tableName].TableEvents <- &TableEvent{
 		TableName: tableName,
 		OldRecord: oldRecord,
 		NewRecord: newRecord,
