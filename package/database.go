@@ -75,3 +75,11 @@ func (db *Database) ValidateStatement(statement *Statement) error {
 		return errors.New("unknown statement type")
 	}
 }
+
+func (db *Database) PushTableEvent(tableName string, oldRecord *Record, newRecord *Record) {
+	db.TableListeners[tableName].TableEvents <- &TableEvent{
+		TableName: tableName,
+		OldRecord: oldRecord,
+		NewRecord: newRecord,
+	}
+}

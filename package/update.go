@@ -76,9 +76,9 @@ func (conn *Connection) ExecuteUpdate(update *Update, channel *Channel) {
 		return nil
 	})
 	if updateErr != nil {
-		channel.WriteMessage(fmt.Sprintf("error executing update: %s", updateErr))
+		channel.WriteErrorMessage(fmt.Errorf("error executing update: %s", updateErr))
 	} else {
-		channel.WriteMessage(fmt.Sprintf("UPDATE %d", rowsUpdated))
+		channel.WriteAckMessage(fmt.Sprintf("UPDATE %d", rowsUpdated))
 		endTime := time.Now()
 		log.Println("connection", conn.ID, "handled update in", endTime.Sub(startTime))
 	}

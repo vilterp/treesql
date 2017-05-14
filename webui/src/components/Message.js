@@ -9,12 +9,28 @@ class Message extends React.Component {
 
   render() {
     const message = this.props.message;
-    return typeof(message) === 'object'
-        ? <ReactJson
-            src={message}
-            displayDataTypes={false}
-            displayObjectSize={false} />
-        : <span>{message}</span>;
+    switch (message.type) {
+      case 'error':
+        return (
+          <span className="message error">{message.error}</span>
+        );
+      case 'ack':
+        return (
+          <span className="message ack">{message.ack}</span>
+        );
+      case 'update':
+        return (
+          <div className="message update">
+            <ReactJson
+              src={message.update}
+              displayDataTypes={false}
+              displayObjectSize={false} />
+          </div>
+        );
+      default:
+        console.error('unknown message type', message);
+        return null;
+    }
   }
 
 }

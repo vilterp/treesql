@@ -119,10 +119,10 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 	conn.Database.AddTableListener(tableSpec)
 	if updateErr != nil {
 		// TODO: structured errors on the wire...
-		channel.WriteMessage(fmt.Sprintf("error creating table: %s", updateErr))
+		channel.WriteErrorMessage(fmt.Errorf("error creating table: %s", updateErr))
 		log.Println("connection", conn.ID, "error creating table:", updateErr)
 	} else {
 		log.Println("connection", conn.ID, "created table", create.Name)
-		channel.WriteMessage("CREATE TABLE")
+		channel.WriteAckMessage("CREATE TABLE")
 	}
 }

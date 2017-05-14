@@ -42,5 +42,5 @@ func (conn *Connection) ExecuteInsert(insert *Insert, channel *Channel) {
 	// push to live query listeners
 	conn.Database.PushTableEvent(insert.Table, nil, record)
 	log.Println("connection", conn.ID, "handled insert")
-	channel.WriteMessage("INSERT 1")
+	channel.WriteAckMessage("INSERT 1")
 }

@@ -27,36 +27,8 @@ func (db *Database) NewConnection(conn *websocket.Conn) *Connection {
 	return dbConn
 }
 
-type Channel struct {
-	Connection   *Connection
-	RawStatement string
-	StatementID  int
-}
-
-type ChannelMessage struct {
-	StatementID int
-	Message     interface{}
-}
-
-func (conn *Connection) NewChannel(rawStatement string) *Channel {
-	channel := &Channel{
-		Connection:   conn,
-		RawStatement: rawStatement,
-		StatementID:  conn.NextStatementID,
-	}
-	conn.NextStatementID++
-	return channel
-}
-
-func (channel *Channel) WriteMessage(message interface{}) {
-	channel.Connection.Messages <- &ChannelMessage{
-		StatementID: channel.StatementID,
-		Message:     message,
-	}
-}
-
 func (conn *Connection) Run() {
-	log.Println("connection id", conn.ID, " from", conn.clientConn.RemoteAddr())
+	log.Println("connection id", conn.ID, "from", conn.clientConn.RemoteAddr())
 	go conn.writeMessagesToSocket()
 	for {
 		_, message, readErr := conn.clientConn.ReadMessage()
@@ -71,7 +43,7 @@ func (conn *Connection) Run() {
 		statement, err := Parse(stringMessage)
 		if err != nil {
 			log.Println("connection", conn.ID, "parse error:", err)
-			channel.WriteMessage(fmt.Sprintf("parse error: %s", err))
+			channel.WriteErrorMessage(fmt.Errorf("parse error: %s", err))
 			continue
 		}
 
@@ -81,7 +53,7 @@ func (conn *Connection) Run() {
 		// validate statement
 		queryErr := conn.Database.ValidateStatement(statement)
 		if queryErr != nil {
-			channel.WriteMessage(fmt.Sprintf("validation error: %s", queryErr))
+			channel.WriteErrorMessage(fmt.Errorf("validation error: %s", queryErr))
 			log.Println("connection", conn.ID, "statement validation error:", queryErr)
 			continue
 		}
@@ -110,13 +82,5 @@ func (conn *Connection) writeMessagesToSocket() {
 		if writeErr != nil {
 			panic(writeErr)
 		}
-	}
-}
-
-func (db *Database) PushTableEvent(tableName string, oldRecord *Record, newRecord *Record) {
-	db.TableListeners[tableName].TableEvents <- &TableEvent{
-		TableName: tableName,
-		OldRecord: oldRecord,
-		NewRecord: newRecord,
 	}
 }

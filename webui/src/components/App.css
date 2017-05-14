@@ -18,3 +18,14 @@
 .statement-choice.selected {
   background-color: lightgrey;
 }
+
+.message.error {
+  background-color: pink;
+}
+
+.message.ack {
+  background-color: lightgreen;
+}
+
+.message.update {
+}

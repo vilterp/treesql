@@ -79,10 +79,10 @@ func (conn *Connection) ExecuteQuery(query *Select, queryID int, channel *Channe
 	}
 	result, selectErr := executeSelect(execution, query, nil)
 	if selectErr != nil {
-		channel.WriteMessage(selectErr.Error())
+		channel.WriteErrorMessage(selectErr)
 		log.Println("connection", conn.ID, "query error:", selectErr.Error())
 	} else {
-		channel.WriteMessage(result)
+		channel.WriteUpdateMessage(result)
 	}
 	commitErr := tx.Rollback()
 	if commitErr != nil {

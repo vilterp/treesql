@@ -104,7 +104,7 @@ func columnValueListenerLoop(listener *ColumnValueListener) {
 		tableEvent := <-listener.TableEvents
 		fmt.Println("listener", listener, "event", tableEvent)
 		for _, liveQuery := range listener.LiveQueries {
-			liveQuery.Channel.WriteMessage(tableEvent)
+			liveQuery.Channel.WriteUpdateMessage(tableEvent)
 		}
 	}
 }
