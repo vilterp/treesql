@@ -61,10 +61,10 @@ func (list *ListenerList) SendEvent(event *TableEvent) {
 	for _, listener := range list.Listeners {
 		fmt.Println("\tlistener", listener)
 		if listener.Query != nil {
-			// conn := listener.QueryExecution.Channel.Connection
+			conn := listener.QueryExecution.Channel.Connection
 			fmt.Println("\t\texecuting sub query", listener.Query)
-			listener.QueryExecution.Channel.WriteUpdateMessage(listener.Query)
-			// conn.ExecuteQuery(listener.Query, int(listener.QueryExecution.ID), listener.QueryExecution.Channel)
+			// listener.QueryExecution.Channel.WriteUpdateMessage(listener.Query)
+			go conn.ExecuteQuery(listener.Query, int(listener.QueryExecution.ID), listener.QueryExecution.Channel)
 		} else {
 			fmt.Println("\t\trecord update")
 			listener.QueryExecution.Channel.WriteUpdateMessage(event)
