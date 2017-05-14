@@ -69,7 +69,6 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResul
 		filterCondition = getFilterCondition(query, tableSchema, scope)
 
 		if ex.Query.Live {
-			// ugh... need to compute filter condition here?
 			innerTable := database.Schema.Tables[query.Table]
 			database.TableListeners[innerTable.Name].SubscriberEvents <- &SubscriberEvent{
 				ColumnName:     filterCondition.InnerColumnName,

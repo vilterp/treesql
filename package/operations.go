@@ -104,15 +104,15 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 			columnRecords[idx] = columnRecord
 		}
 		// push records
-		conn.Database.PushTableEvent("__tables__", nil, tableRecord)
 		fmt.Println("updates", tableRecord, columnRecords)
+		conn.Database.PushTableEvent("__tables__", nil, tableRecord)
 		for _, columnRecord := range columnRecords {
 			conn.Database.PushTableEvent("__columns__", nil, columnRecord)
 		}
 		// write next column id sequence
-		nextColumnIdBytes := make([]byte, 4)
-		binary.BigEndian.PutUint32(nextColumnIdBytes, uint32(conn.Database.Schema.NextColumnId))
-		tx.Bucket([]byte("__sequences__")).Put([]byte("__next_column_id__"), nextColumnIdBytes)
+		nextColumnIDBytes := make([]byte, 4)
+		binary.BigEndian.PutUint32(nextColumnIDBytes, uint32(conn.Database.Schema.NextColumnId))
+		tx.Bucket([]byte("__sequences__")).Put([]byte("__next_column_id__"), nextColumnIDBytes)
 		return nil
 	})
 	// add listener for table events

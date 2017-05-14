@@ -155,7 +155,7 @@ func GetBuiltinSchema() *Schema {
 		},
 		"__columns__": &Table{
 			Name:       "__columns__",
-			PrimaryKey: "name",
+			PrimaryKey: "id",
 			Columns: []*Column{
 				&Column{
 					Id:   2,

@@ -5,6 +5,7 @@ export const SCHEMA_QUERY = `
     name,
     primary_key,
     columns: many __columns__ {
+      id,
       name,
       type,
       references

@@ -64,26 +64,4 @@ func main() {
 	if listenErr != nil {
 		log.Fatal("error listening:", listenErr)
 	}
-
-	// // listen for connections
-	// listeningSock, listenErr := net.Listen("tcp", fmt.Sprintf(":%d", *port))
-	// if listenErr != nil {
-	// 	log.Fatalln("failed to listen for connections:", listenErr)
-	// }
-	// log.Printf("listening on port %d\n", *port)
-
-	// // accept & handle connections
-	// connectionID := 0
-	// for {
-	// 	conn, _ := listeningSock.Accept()
-	// 	mx, _ := yamux.Server(conn, nil)
-	// 	connection := &treesql.Connection{
-	// 		ClientConn:  mx,
-	// 		ID:          connectionID,
-	// 		Database:    database,
-	// 		NextQueryId: 0,
-	// 	}
-	// 	connectionID++
-	// 	go connection.Run()
-	// }
 }

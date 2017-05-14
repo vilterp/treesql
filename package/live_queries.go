@@ -1,7 +1,12 @@
 package treesql
 
+import (
+	"fmt"
+)
+
 func (db *Database) MakeTableListeners() {
 	for _, table := range db.Schema.Tables {
+		fmt.Println("making table listener for", table.Name)
 		db.AddTableListener(table)
 	}
 }
@@ -11,6 +16,7 @@ type TableListener struct {
 	TableEvents          chan *TableEvent
 	SubscriberEvents     chan *SubscriberEvent
 	ColumnValueListeners map[string](map[string]*ColumnValueListener) // column name => value => listener
+	WholeTableListeners  []*WholeTableListener
 }
 
 type TableEvent struct {
@@ -23,6 +29,12 @@ type SubscriberEvent struct {
 	ColumnName     string
 	Value          *Value
 	QueryExecution *QueryExecution
+}
+
+type WholeTableListener struct {
+	Table       *Table
+	Query       *Select
+	LiveQueries []*QueryExecution
 }
 
 func (db *Database) AddTableListener(table *Table) {
@@ -44,6 +56,7 @@ func tableListenerLoop(listener *TableListener) {
 	for {
 		select {
 		case subEvent := <-listener.SubscriberEvents:
+			fmt.Println("sub event for", listener.Table.Name, ":", subEvent)
 			columnListeners := listener.ColumnValueListeners[subEvent.ColumnName]
 			columnValueListener, ok := columnListeners[subEvent.Value.StringVal]
 			if !ok {
@@ -52,7 +65,9 @@ func tableListenerLoop(listener *TableListener) {
 			}
 			columnValueListener.LiveQueries = append(columnValueListener.LiveQueries, subEvent.QueryExecution)
 		case tableEvent := <-listener.TableEvents:
+			fmt.Println("table event for", listener.Table.Name, ":", tableEvent)
 			for columnName, columnValueListeners := range listener.ColumnValueListeners {
+				fmt.Println("column value listeners for table", listener.Table.Name, "on column", columnName, "are", columnValueListeners)
 				// TODO: integers, someday
 				columnValueListener, ok := columnValueListeners[tableEvent.NewRecord.GetField(columnName).StringVal]
 				if ok {
@@ -79,6 +94,7 @@ func newColumnValueListener(tableName string, subEvt *SubscriberEvent) *ColumnVa
 		EqualsValue: subEvt.Value,
 		LiveQueries: make([]*QueryExecution, 0),
 	}
+	fmt.Println("new column value listener", listener)
 	go columnValueListenerLoop(listener)
 	return listener
 }
@@ -86,6 +102,7 @@ func newColumnValueListener(tableName string, subEvt *SubscriberEvent) *ColumnVa
 func columnValueListenerLoop(listener *ColumnValueListener) {
 	for {
 		tableEvent := <-listener.TableEvents
+		fmt.Println("listener", listener, "event", tableEvent)
 		for _, liveQuery := range listener.LiveQueries {
 			liveQuery.Channel.WriteMessage(tableEvent)
 		}
