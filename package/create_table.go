@@ -83,6 +83,7 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 				ReferencesColumn: reference,
 				Type:             NameToType[parsedColumn.TypeName],
 			}
+			fmt.Println("========= Column ID:", conn.Database.Schema.NextColumnID)
 			conn.Database.Schema.NextColumnID++
 			// put column spec in in-memory schema copy
 			// TODO: synchronize access to this mutable shared data structure!!

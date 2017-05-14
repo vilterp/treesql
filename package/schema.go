@@ -203,4 +203,5 @@ func (db *Database) AddBuiltinSchema() {
 			Type: TypeString,
 		},
 	})
+	db.Schema.NextColumnID = 7 // ugh magic numbers.
 }

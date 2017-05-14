@@ -62,11 +62,11 @@ func (list *ListenerList) SendEvent(event *TableEvent) {
 		fmt.Println("\tlistener", listener)
 		if listener.Query != nil {
 			// conn := listener.QueryExecution.Channel.Connection
-			fmt.Println("executing sub query", listener.Query)
+			fmt.Println("\t\texecuting sub query", listener.Query)
 			listener.QueryExecution.Channel.WriteUpdateMessage(listener.Query)
 			// conn.ExecuteQuery(listener.Query, int(listener.QueryExecution.ID), listener.QueryExecution.Channel)
 		} else {
-			fmt.Println("standard update message")
+			fmt.Println("\t\trecord update")
 			listener.QueryExecution.Channel.WriteUpdateMessage(event)
 		}
 	}
@@ -157,6 +157,7 @@ func (table *Table) HandleEvents() {
 			if recordListeners != nil {
 				recordListeners.SendEvent(tableEvent)
 			}
+			// TODO: handle deletes someday, heh
 		}
 	}
 }
