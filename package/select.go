@@ -2,7 +2,6 @@ package treesql
 
 import (
 	"errors"
-	"fmt"
 	"log"
 	"time"
 
@@ -69,6 +68,8 @@ func (db *Database) validateSelect(query *Select, tableAbove *string) error {
 	return nil
 }
 
+// can be from a live query or a top-level query
+// may want to export two different entry points that call something common
 func (conn *Connection) ExecuteQuery(query *Select, statementID int, channel *Channel) {
 	startTime := time.Now()
 	tx, _ := conn.Database.BoltDB.Begin(false)
@@ -78,9 +79,7 @@ func (conn *Connection) ExecuteQuery(query *Select, statementID int, channel *Ch
 		Query:       query,
 		Transaction: tx,
 	}
-	fmt.Println("execute select")
 	result, selectErr := executeSelect(execution, query, nil)
-	fmt.Println("done execute select")
 	if selectErr != nil {
 		channel.WriteErrorMessage(selectErr)
 		log.Println("connection", conn.ID, "query error:", selectErr.Error())
@@ -227,7 +226,7 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResul
 func recordMatchesFilter(condition *FilterCondition, innerRec *Record, outerRec *Record) bool {
 	innerField := innerRec.GetField(condition.InnerColumnName)
 	outerField := outerRec.GetField(condition.OuterColumnName)
-	return *innerField == *outerField
+	return innerField.StringVal == outerField.StringVal // TODO: more than strings someday
 }
 
 func getFilterCondition(query *Select, tableSchema *Table, scope *Scope) *FilterCondition {

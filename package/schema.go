@@ -142,11 +142,11 @@ func (db *Database) LoadUserSchema() {
 
 func (db *Database) AddTable(name string, primaryKey string, columns []*Column) *Table {
 	table := &Table{
-		Name:          name,
-		PrimaryKey:    primaryKey,
-		Columns:       columns,
-		LiveQueryInfo: EmptyLiveQueryInfo(),
+		Name:       name,
+		PrimaryKey: primaryKey,
+		Columns:    columns,
 	}
+	table.LiveQueryInfo = table.EmptyLiveQueryInfo() // def something weird about this
 	db.Schema.Tables[name] = table
 	go table.HandleEvents()
 	return table

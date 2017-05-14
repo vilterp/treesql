@@ -83,7 +83,6 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 				ReferencesColumn: reference,
 				Type:             NameToType[parsedColumn.TypeName],
 			}
-			fmt.Println("========= Column ID:", conn.Database.Schema.NextColumnID)
 			conn.Database.Schema.NextColumnID++
 			// put column spec in in-memory schema copy
 			// TODO: synchronize access to this mutable shared data structure!!
@@ -100,7 +99,6 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 			columnRecords[idx] = columnRecord
 		}
 		// push live query messages
-		fmt.Println("updates", tableRecord, columnRecords)
 		conn.Database.PushTableEvent("__tables__", nil, tableRecord)
 		for _, columnRecord := range columnRecords {
 			conn.Database.PushTableEvent("__columns__", nil, columnRecord)
