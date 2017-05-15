@@ -128,7 +128,7 @@ type QueryExecution struct {
 type Scope struct {
 	table         *Table
 	document      *Record
-	upperScope    *Scope
+	pathSoFar     *QueryPath
 	selectionName string
 }
 
@@ -153,6 +153,7 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResul
 		filterCondition = getFilterCondition(query, tableSchema, scope)
 	}
 	if ex.Query.Live {
+		// add table subscription
 		innerTable := database.Schema.Tables[query.Table]
 		channel := database.Schema.Tables[innerTable.Name].LiveQueryInfo.TableSubscriptionEvents
 		var colNameForSub *string
@@ -161,11 +162,16 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResul
 			colNameForSub = &filterCondition.InnerColumnName
 			valueForSub = scope.document.GetField(filterCondition.OuterColumnName)
 		}
+		var queryPath *QueryPath
+		if scope != nil {
+			queryPath = scope.pathSoFar
+		}
 		channel <- &TableSubscriptionEvent{
 			ColumnName:     colNameForSub,
 			Value:          valueForSub,
 			SubQuery:       query,
 			QueryExecution: ex,
+			QueryPath:      queryPath,
 		}
 	}
 	// get schema fields into a map (maybe it should be this in the schema? idk)
@@ -197,44 +203,27 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResul
 		if rowsRead == 1 && query.One {
 			return nil, fmt.Errorf("one row requested, but found > 1")
 		}
-		// we are interested in this record... let's subscribe to it
-		// TODO: add path
+		// this record is in the result set... let's subscribe to it
 		if ex.Query.Live {
-			database.Schema.Tables[tableSchema.Name].LiveQueryInfo.RecordSubscriptionEvents <- &RecordSubscriptionEvent{
+			var previousQueryPath *QueryPath
+			if scope != nil {
+				previousQueryPath = scope.pathSoFar
+			}
+			queryPathWithPkVal := &QueryPath{
+				ID:              &record.GetField(tableSchema.PrimaryKey).StringVal,
+				PreviousSegment: previousQueryPath,
+			}
+			tableEventsChannel := tableSchema.LiveQueryInfo.RecordSubscriptionEvents
+			tableEventsChannel <- &RecordSubscriptionEvent{
 				Value:          record.GetField(tableSchema.PrimaryKey),
 				QueryExecution: ex,
+				QueryPath:      queryPathWithPkVal,
 			}
 		}
-		// start writing it
-		recordResults := map[string]interface{}{}
-		// extract & write fields
-		for _, selection := range query.Selections {
-			if selection.SubSelect != nil {
-				// execute subquery
-				nextScope := &Scope{
-					table:         tableSchema,
-					document:      record,
-					selectionName: selection.Name,
-					upperScope:    scope,
-				}
-				subselectResult, subselectErr := executeSelect(ex, selection.SubSelect, nextScope)
-				if subselectErr != nil {
-					return nil, subselectErr
-				}
-				recordResults[selection.Name] = subselectResult
-			} else {
-				// write field value out to socket
-				columnSpec := columnsMap[selection.Name]
-				switch columnSpec.Type {
-				case TypeInt:
-					val := record.GetField(columnSpec.Name).StringVal
-					recordResults[columnSpec.Name] = val
-
-				case TypeString:
-					val := record.GetField(columnSpec.Name).StringVal
-					recordResults[columnSpec.Name] = val
-				}
-			}
+		// get all fields for selection
+		recordResults, subSelectErr := getRecordResults(query, scope, tableSchema, record, ex, columnsMap)
+		if subSelectErr != nil {
+			return nil, subSelectErr
 		}
 		rowsRead++
 		result = append(result, recordResults)
@@ -245,6 +234,56 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResul
 		// TODO: this could be in the middle of a result set, lol
 	}
 	return result, nil
+}
+
+func getRecordResults(
+	query *Select,
+	scope *Scope,
+	tableSchema *Table,
+	record *Record,
+	ex *QueryExecution,
+	columnsMap map[string]*Column) (map[string]interface{}, error) {
+
+	recordResults := map[string]interface{}{}
+	// extract & write fields
+	for _, selection := range query.Selections {
+		if selection.SubSelect != nil {
+			// execute subquery
+			var queryPathSoFar *QueryPath
+			if scope != nil {
+				queryPathSoFar = scope.pathSoFar
+			}
+			queryPathWithSelection := &QueryPath{
+				Selection:       &selection.Name,
+				PreviousSegment: queryPathSoFar,
+			}
+			// execute subquery
+			nextScope := &Scope{
+				table:         tableSchema,
+				document:      record,
+				selectionName: selection.Name,
+				pathSoFar:     queryPathWithSelection,
+			}
+			subselectResult, subselectErr := executeSelect(ex, selection.SubSelect, nextScope)
+			if subselectErr != nil {
+				return nil, subselectErr
+			}
+			recordResults[selection.Name] = subselectResult
+		} else {
+			// save field value
+			columnSpec := columnsMap[selection.Name]
+			switch columnSpec.Type {
+			case TypeInt:
+				val := record.GetField(columnSpec.Name).StringVal
+				recordResults[columnSpec.Name] = val
+
+			case TypeString:
+				val := record.GetField(columnSpec.Name).StringVal
+				recordResults[columnSpec.Name] = val
+			}
+		}
+	}
+	return recordResults, nil
 }
 
 func recordMatchesFilter(condition *FilterCondition, innerRec *Record, outerRec *Record) bool {

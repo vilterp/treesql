@@ -15,14 +15,6 @@ type Listener struct {
 	QueryPath *QueryPath
 }
 
-type QueryPath []*QueryPathSegment
-
-type QueryPathSegment struct {
-	// only one of these should be not nil (ugh)
-	Selection *string
-	ID        *string
-}
-
 func (table *Table) NewListenerList() *ListenerList {
 	return &ListenerList{
 		Table:     table,
