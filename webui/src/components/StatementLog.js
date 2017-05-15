@@ -15,11 +15,11 @@ function StatementLog({ updates }) {
       <tbody>
         {updates.map((message, idx) => (
           <tr key={idx} className={`message message-${message.type}`}>
-            <td>{message.type}</td>
+            <td className="statement-log-message-type">{message.type}</td>
             <td>
               <Message message={message} />
             </td>
-            <td>{message.timestamp.toISOString()}</td>
+            <td className="statement-log-timestamp">{message.timestamp.toISOString()}</td>
           </tr>
         ))}
       </tbody>

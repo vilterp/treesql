@@ -24,5 +24,13 @@
   background-color: lightgreen;
 }
 
+.message-table_update, .message-record_update {
+  background-color: papayawhip;
+}
+
 .message.initial_result, .message.table_update, .message.record_update {
+}
+
+.statement-log-message-type, .statement-log-timestamp {
+  vertical-align: top;
 }
