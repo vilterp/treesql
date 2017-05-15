@@ -1,0 +1,8 @@
+.table-tree, .table-tree td, .table-tree th {
+  border-collapse: collapse;
+  border: 1px solid black;
+}
+
+.table-tree thead th {
+  background-color: lightblue;
+}

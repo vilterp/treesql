@@ -1,5 +1,5 @@
 import React from 'react';
-import ReactJson from 'react-json-view'
+import TableTree from './TableTree';
 
 class Message extends React.Component {
 
@@ -24,10 +24,7 @@ class Message extends React.Component {
       case 'record_update':
         return (
           <div className="message update">
-            <ReactJson
-              src={message.payload}
-              displayDataTypes={false}
-              displayObjectSize={false} />
+            <TableTree records={message.payload} />
           </div>
         );
       default:
