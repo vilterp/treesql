@@ -132,9 +132,6 @@ type Scope struct {
 	selectionName string
 }
 
-// the question: read everything into memory and serialize at the end,
-// or just write everything to the socket as we go?
-
 type FilterCondition struct {
 	InnerColumnName string
 	OuterColumnName string
@@ -253,9 +250,15 @@ func getRecordResults(
 			if scope != nil {
 				queryPathSoFar = scope.pathSoFar
 			}
+			// TODO: refactor: we've already made this in `executeSelect` above
+			// maybe fold scope chain & query path together for fewer parameters
+			queryPathWithPkVal := &QueryPath{
+				ID:              &record.GetField(tableSchema.PrimaryKey).StringVal,
+				PreviousSegment: queryPathSoFar,
+			}
 			queryPathWithSelection := &QueryPath{
 				Selection:       &selection.Name,
-				PreviousSegment: queryPathSoFar,
+				PreviousSegment: queryPathWithPkVal,
 			}
 			// execute subquery
 			nextScope := &Scope{

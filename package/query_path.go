@@ -27,10 +27,11 @@ func (qp *QueryPath) Length() int {
 }
 
 func (qp *QueryPath) Flatten() []map[string]*string {
-	array := make([]map[string]*string, qp.Length())
+	length := qp.Length()
+	array := make([]map[string]*string, length)
 	currentSegment := qp
 	for i := 0; currentSegment != nil; i++ {
-		array[i] = map[string]*string{
+		array[length-i-1] = map[string]*string{
 			"selection": currentSegment.Selection,
 			"id":        currentSegment.ID,
 		}
