@@ -1,5 +1,7 @@
 package treesql
 
+import "log"
+
 // LiveQueryInfo lives in a table...
 type LiveQueryInfo struct {
 	// input channels
@@ -90,23 +92,29 @@ func (table *Table) HandleEvents() {
 			listenersForValue.AddRecordListener(recordSubEvent.QueryExecution, recordSubEvent.QueryPath)
 
 		case tableEvent := <-liveInfo.TableEvents:
-			// whole table listeners
-			liveInfo.WholeTableListeners.SendEvent(tableEvent)
-			// filtered table listeners
-			for columnName, listenersForColumn := range liveInfo.TableListeners {
-				valueForColumn := tableEvent.NewRecord.GetField(string(columnName)).StringVal
-				listenersForValue := listenersForColumn[valueForColumn]
-				if listenersForValue != nil {
-					listenersForValue.SendEvent(tableEvent)
+			if tableEvent.NewRecord != nil && tableEvent.OldRecord == nil {
+				log.Println("pushing insert event to table listeners")
+				// whole table listeners
+				liveInfo.WholeTableListeners.SendEvent(tableEvent)
+				// filtered table listeners
+				for columnName, listenersForColumn := range liveInfo.TableListeners {
+					valueForColumn := tableEvent.NewRecord.GetField(string(columnName)).StringVal
+					listenersForValue := listenersForColumn[valueForColumn]
+					if listenersForValue != nil {
+						listenersForValue.SendEvent(tableEvent)
+					}
 				}
+			} else if tableEvent.OldRecord != nil && tableEvent.NewRecord != nil {
+				log.Println("pushing update event to table listeners")
+				// record listeners
+				primaryKeyValue := tableEvent.NewRecord.GetField(table.PrimaryKey).StringVal
+				recordListeners := liveInfo.RecordListeners[primaryKeyValue]
+				if recordListeners != nil {
+					recordListeners.SendEvent(tableEvent)
+				}
+			} else if tableEvent.OldRecord != nil && tableEvent.NewRecord == nil {
+				log.Println("TODO: handle delete events")
 			}
-			// record listeners
-			primaryKeyValue := tableEvent.NewRecord.GetField(table.PrimaryKey).StringVal
-			recordListeners := liveInfo.RecordListeners[primaryKeyValue]
-			if recordListeners != nil {
-				recordListeners.SendEvent(tableEvent)
-			}
-			// TODO: handle deletes someday, heh
 		}
 	}
 }

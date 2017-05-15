@@ -13,18 +13,17 @@ class Message extends React.Component {
     switch (message.type) {
       case 'error':
         return (
-          <span className="message error">{message.error}</span>
+          <span className="message error">{message.payload}</span>
         );
       case 'ack':
         return (
-          <span className="message ack">{message.ack}</span>
+          <span className="message ack">{message.payload}</span>
         );
       case 'initial_result':
       case 'table_update':
       case 'record_update':
         return (
           <div className="message update">
-            <strong>{message.type}:</strong><br />
             <ReactJson
               src={message.payload}
               displayDataTypes={false}

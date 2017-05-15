@@ -2,6 +2,7 @@ package treesql
 
 import (
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -194,9 +195,10 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResul
 			}
 		}
 		if rowsRead == 1 && query.One {
-			break // TODO: actually error if > 1
+			return nil, fmt.Errorf("one row requested, but found > 1")
 		}
 		// we are interested in this record... let's subscribe to it
+		// TODO: add path
 		if ex.Query.Live {
 			database.Schema.Tables[tableSchema.Name].LiveQueryInfo.RecordSubscriptionEvents <- &RecordSubscriptionEvent{
 				Value:          record.GetField(tableSchema.PrimaryKey),

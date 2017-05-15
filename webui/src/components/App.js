@@ -4,7 +4,7 @@ import { connect } from 'react-redux';
 import classNames from 'classnames';
 import Autocomplete from 'react-autocomplete';
 import { sendStatementFromInput } from '../actions.js';
-import Message from './Message';
+import StatementLog from './StatementLog';
 import './App.css';
 
 const WEBSOCKET_STATES = {
@@ -29,26 +29,7 @@ class App extends Component {
           {this.props.statements.map((statement) => (
             <li key={statement.id}>
               <div className="statement">{statement.statement}</div>
-              <table className="statement-log">
-                <thead>
-                  <tr>
-                    <th style={{ width: 100 }}>Type</th>
-                    <th>Message</th>
-                    <th style={{ width: 200 }}>Timestamp</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {statement.updates.map((message, idx) => (
-                    <tr key={idx} className={`message message-${message.type}`}>
-                      <td>{message.type}</td>
-                      <td>
-                        <Message message={message} />
-                      </td>
-                      <td>{message.timestamp.toISOString()}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
+              <StatementLog updates={statement.updates} />
             </li>
           ))}
         </ol>
