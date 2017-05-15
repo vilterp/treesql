@@ -2,16 +2,16 @@
   width: 100%;
 }
 
-.statement-log th {
+.statement-log > thead > tr > th {
   background-color: lightgrey;
 }
 
-.statement-log, .statement-log td, .statement-log th {
+.statement-log, .statement-log > tbody > tr > td, .statement-log > thead > tr > th {
   border: 1px solid black;
   border-collapse: collapse;
 }
 
-.statement-log td, .statement-log th {
+.statement-log > tbody > tr > td, .statement-log > thead > tr > th {
   padding: 5px;
   font-family: monospace;
 }

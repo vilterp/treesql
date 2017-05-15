@@ -84,6 +84,10 @@ func (conn *Connection) writeMessagesToSocket() {
 		writeErr := conn.clientConn.WriteJSON(message)
 		if writeErr != nil {
 			panic(writeErr)
+			// seem to have errors here when we try to write to a connection
+			// that has been closed by the client.
+			// TODO: need to go through and remove those listeners when we get a
+			// close from the client!
 		}
 	}
 }

@@ -1,8 +1,25 @@
 .table-tree, .table-tree td, .table-tree th {
   border-collapse: collapse;
   border: 1px solid black;
+  font-family: monospace;
+  padding: 5px;
 }
 
 .table-tree thead th {
   background-color: lightblue;
+}
+
+.expansion-link {
+  color: blue;
+  text-decoration: underline;
+  cursor: pointer;
+}
+
+td.cell-expanded {
+  font-weight: bold;
+  border-bottom: none !important; /* hmmmm */
+}
+
+tr.expansions-row > td {
+  border-top: none !important;
 }

@@ -1,5 +1,6 @@
 import React from 'react';
 import TableTree from './TableTree';
+import ReactJson from 'react-json-view';
 
 class Message extends React.Component {
 
@@ -20,12 +21,18 @@ class Message extends React.Component {
           <span className="message ack">{message.payload}</span>
         );
       case 'initial_result':
-      case 'table_update':
-      case 'record_update':
         return (
           <div className="message update">
             <TableTree records={message.payload} />
           </div>
+        );
+      case 'table_update':
+      case 'record_update':
+        return (
+          <ReactJson
+            src={message.payload}
+            displayDataTypes={false}
+            displayObjectSize={false} />
         );
       default:
         console.error('unknown message type', message);
