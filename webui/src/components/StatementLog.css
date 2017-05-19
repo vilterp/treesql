@@ -34,3 +34,9 @@
 .statement-log-message-type, .statement-log-timestamp {
   vertical-align: top;
 }
+
+.expansion-toggle {
+  color: blue;
+  text-decoration: underline;
+  cursor: pointer;
+}
