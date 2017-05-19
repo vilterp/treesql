@@ -1,6 +1,7 @@
 package treesql
 
 import (
+	"fmt"
 	"strconv"
 
 	"github.com/boltdb/bolt"
@@ -17,11 +18,13 @@ func (ex *QueryExecution) getTableIterator(tableName string) (TableIterator, err
 		return newTablesIterator(ex.Channel.Connection.Database)
 	} else if tableName == "__columns__" {
 		return newColumnsIterator(ex.Channel.Connection.Database)
+	} else if tableName == "__record_listeners__" {
+		return newRecordListenersIterator(ex.Channel.Connection.Database)
 	}
 	return newBoltIterator(ex, tableName)
 }
 
-// sophia iterator
+// bolt iterator
 
 type BoltIterator struct {
 	cursor        *bolt.Cursor
@@ -148,3 +151,66 @@ func (it *SchemaColumnsIterator) Get(key string) (*Record, error) {
 }
 
 func (it *SchemaColumnsIterator) Close() {}
+
+// record listeners iterator
+
+type RecordListenersIterator struct {
+	db        *Database
+	listeners []*Record
+	idx       int
+}
+
+func newRecordListenersIterator(db *Database) (*RecordListenersIterator, error) {
+	listenersTable := db.Schema.Tables["__record_listeners__"]
+	listeners := make([]*Record, 0)
+	i := 0
+	for _, table := range db.Schema.Tables {
+		for pkVal, listenerList := range table.LiveQueryInfo.RecordListeners {
+			for connID, listenersForConn := range listenerList.Listeners {
+				for statementID, listenersForStatement := range listenersForConn {
+					for _, listener := range listenersForStatement {
+						record := listenersTable.NewRecord()
+						record.SetString("id", fmt.Sprintf("%d", i)) // uh yeah these are not stable
+						record.SetString("connection_id", fmt.Sprintf("%d", connID))
+						record.SetString("channel_id", fmt.Sprintf("%d", statementID))
+						record.SetString("table_name", table.Name)
+						record.SetString("pk_value", pkVal)
+						record.SetString("query_path", listener.QueryPath.ToString())
+						listeners = append(listeners, record)
+						i++
+					}
+				}
+			}
+			// listenerDoc := column.ToRecord(table.Name, db)
+		}
+	}
+	return &RecordListenersIterator{
+		db:        db,
+		listeners: listeners,
+		idx:       0,
+	}, nil
+}
+
+func (it *RecordListenersIterator) Next() *Record {
+	if it.idx == len(it.listeners) {
+		return nil
+	}
+	columnDoc := it.listeners[it.idx]
+	it.idx++
+	return columnDoc
+}
+
+func (it *RecordListenersIterator) Get(key string) (*Record, error) {
+	// BUG: this is not stable if columns are dropped
+	// need real OIDs
+	// need sequences as a first-class DB object O_o
+	idx, err := strconv.Atoi(key)
+	if err != nil {
+		return nil, nil
+	}
+	return it.listeners[idx], nil
+}
+
+func (it *RecordListenersIterator) Close() {}
+
+// records iterator

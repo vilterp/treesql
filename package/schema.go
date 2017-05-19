@@ -203,5 +203,42 @@ func (db *Database) AddBuiltinSchema() {
 			Type: TypeString,
 		},
 	})
-	db.Schema.NextColumnID = 7 // ugh magic numbers.
+	db.AddTable("__record_listeners__", "id", []*Column{
+		&Column{
+			ID:   7,
+			Name: "id",
+			Type: TypeString,
+		},
+		&Column{
+			ID:   8,
+			Name: "connection_id",
+			Type: TypeString,
+		},
+		&Column{
+			ID:   9,
+			Name: "channel_id",
+			Type: TypeString,
+		},
+		&Column{
+			ID:   10,
+			Name: "table_name",
+			Type: TypeString,
+			ReferencesColumn: &ColumnReference{
+				TableName: "__tables__",
+			},
+		},
+		&Column{
+			ID:   11,
+			Name: "pk_value",
+			Type: TypeString,
+		},
+		&Column{
+			ID:   12,
+			Name: "query_path",
+			Type: TypeString,
+		},
+	})
+	db.Schema.NextColumnID = 13 // ugh magic numbers.
 }
+
+// TODO: __connections__, __channels__, __whole_table_listeners__, __filtered_table_listeners__
