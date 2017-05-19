@@ -1,7 +1,6 @@
 package treesql
 
 import (
-	"fmt"
 	"log"
 )
 
@@ -38,7 +37,6 @@ func (list *ListenerList) addListener(listener *Listener) {
 		listenersForStatement = make([]*Listener, 0)
 	}
 	listenersForStatement = append(listenersForStatement, listener)
-	fmt.Println("added listener for table", list.Table.Name, "at path", listener.QueryPath.ToString(), "length now", len(listenersForStatement))
 	listenersForConn[stmtID] = listenersForStatement
 }
 
@@ -58,11 +56,9 @@ func (list *ListenerList) AddRecordListener(ex *QueryExecution, queryPath *Query
 }
 
 func (list *ListenerList) SendEvent(event *TableEvent) {
-	fmt.Println("sending event for table", event.TableName)
 	for _, listenersForConn := range list.Listeners {
 		for _, listenersForChannel := range listenersForConn {
 			for _, listener := range listenersForChannel {
-				fmt.Println("\tQuery:", listener.Query, "path:", listener.QueryPath.ToString())
 				if listener.Query != nil {
 					// whole table or filtered table update
 					conn := listener.QueryExecution.Channel.Connection

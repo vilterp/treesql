@@ -1,7 +1,6 @@
 package treesql
 
 import (
-	"fmt"
 	"log"
 )
 
@@ -92,11 +91,6 @@ func (table *Table) HandleEvents() {
 				listenersForValue = table.NewListenerList()
 				liveInfo.RecordListeners[recordSubEvent.Value.StringVal] = listenersForValue
 			}
-			fmt.Println(
-				"add record listener for table", table.Name,
-				"pk", recordSubEvent.Value.StringVal,
-				"at path", recordSubEvent.QueryPath.ToString(),
-			)
 			listenersForValue.AddRecordListener(recordSubEvent.QueryExecution, recordSubEvent.QueryPath)
 
 		case tableEvent := <-liveInfo.TableEvents:
