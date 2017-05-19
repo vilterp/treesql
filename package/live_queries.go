@@ -1,6 +1,9 @@
 package treesql
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 // LiveQueryInfo lives in a table...
 type LiveQueryInfo struct {
@@ -89,6 +92,11 @@ func (table *Table) HandleEvents() {
 				listenersForValue = table.NewListenerList()
 				liveInfo.RecordListeners[recordSubEvent.Value.StringVal] = listenersForValue
 			}
+			fmt.Println(
+				"add record listener for table", table.Name,
+				"pk", recordSubEvent.Value.StringVal,
+				"at path", recordSubEvent.QueryPath.ToString(),
+			)
 			listenersForValue.AddRecordListener(recordSubEvent.QueryExecution, recordSubEvent.QueryPath)
 
 		case tableEvent := <-liveInfo.TableEvents:

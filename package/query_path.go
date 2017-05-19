@@ -16,6 +16,12 @@ func (qp *QueryPath) MarshalJSON() ([]byte, error) {
 	return json.Marshal(qp.Flatten())
 }
 
+// idk is there an interface for this
+func (qp *QueryPath) ToString() string {
+	jsonRepr, _ := qp.MarshalJSON()
+	return string(jsonRepr)
+}
+
 func (qp *QueryPath) Length() int {
 	currentSegment := qp
 	length := 0
@@ -26,15 +32,19 @@ func (qp *QueryPath) Length() int {
 	return length
 }
 
-func (qp *QueryPath) Flatten() []map[string]*string {
+func (qp *QueryPath) Flatten() []map[string]string {
 	length := qp.Length()
-	array := make([]map[string]*string, length)
+	array := make([]map[string]string, length)
 	currentSegment := qp
 	for i := 0; currentSegment != nil; i++ {
-		array[length-i-1] = map[string]*string{
-			"selection": currentSegment.Selection,
-			"id":        currentSegment.ID,
+		pathSegment := map[string]string{}
+		if currentSegment.Selection != nil {
+			pathSegment["selection"] = *currentSegment.Selection
 		}
+		if currentSegment.ID != nil {
+			pathSegment["id"] = *currentSegment.ID
+		}
+		array[length-i-1] = pathSegment
 		currentSegment = currentSegment.PreviousSegment
 	}
 	return array

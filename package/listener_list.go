@@ -1,6 +1,9 @@
 package treesql
 
-import "log"
+import (
+	"fmt"
+	"log"
+)
 
 // type ListenerList map[ConnectionID]([]*QueryExecution)
 type ListenerList struct {
@@ -31,11 +34,11 @@ func (list *ListenerList) addListener(listener *Listener) {
 		list.Listeners[connID] = listenersForConn
 	}
 	listenersForStatement := listenersForConn[stmtID]
-	if listenersForStatement != nil {
+	if listenersForStatement == nil {
 		listenersForStatement = make([]*Listener, 0)
-
 	}
 	listenersForStatement = append(listenersForStatement, listener)
+	fmt.Println("added listener for table", list.Table.Name, "at path", listener.QueryPath.ToString(), "length now", len(listenersForStatement))
 	listenersForConn[stmtID] = listenersForStatement
 }
 
@@ -55,10 +58,13 @@ func (list *ListenerList) AddRecordListener(ex *QueryExecution, queryPath *Query
 }
 
 func (list *ListenerList) SendEvent(event *TableEvent) {
+	fmt.Println("sending event for table", event.TableName)
 	for _, listenersForConn := range list.Listeners {
-		for _, listeners := range listenersForConn {
-			for _, listener := range listeners {
+		for _, listenersForChannel := range listenersForConn {
+			for _, listener := range listenersForChannel {
+				fmt.Println("\tQuery:", listener.Query, "path:", listener.QueryPath.ToString())
 				if listener.Query != nil {
+					// whole table or filtered table update
 					conn := listener.QueryExecution.Channel.Connection
 					// want to just be like "clone this, with this different..."
 					// like object spread operator in JS (also Elixir, Elm)
@@ -86,6 +92,7 @@ func (list *ListenerList) SendEvent(event *TableEvent) {
 						})
 					}()
 				} else {
+					// record update
 					listener.QueryExecution.Channel.WriteRecordUpdate(event, listener.QueryPath)
 				}
 			}
