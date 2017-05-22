@@ -1,0 +1,21 @@
+.statement {
+  font-family: monospace;
+  padding: 5px;
+}
+
+#statement-input {
+  font-family: monospace;
+}
+
+#statement-input-container {
+  margin-bottom: 300px;
+  display: inline-block;
+}
+
+.statement-choice {
+  font-family: monospace;
+}
+
+.statement-choice.selected {
+  background-color: lightgrey;
+}

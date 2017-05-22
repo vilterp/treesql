@@ -16,7 +16,7 @@ export const statementUpdate = (statementID, update) => ({
 
 export function sendStatementFromInput() {
   return (dispatch, getState) => {
-    const statement = getState().ui.statement;
+    const statement = getState().state.ui.statement;
     dispatch({
       type: 'UPDATE_STATEMENT',
       newValue: ''
@@ -31,28 +31,8 @@ export function sendStatementFromInput() {
 }
 
 export function sendStatement(statement) {
-  return (dispatch) => {
+  return (dispatch, getState) => {
     storeStatement(statement);
-    window.CLIENT.sendStatement(statement);
+    getState().client.sendStatement(statement);
   };
 }
-
-// export function addMessage(message, statementId, source) {
-//   return function(dispatch) {
-//     var maybeJSON;
-//     try {
-//       maybeJSON = JSON.parse(message)
-//     } catch (e) {
-//       maybeJSON = message
-//     }
-//     dispatch({
-//       type: 'ADD_MESSAGE',
-//       message: maybeJSON,
-//       statementId,
-//       source
-//     });
-//     if (source === 'server') {
-//       window.scrollTo(0, document.body.scrollHeight - window.innerHeight - 250);
-//     }
-//   }
-// }
