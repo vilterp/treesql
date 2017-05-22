@@ -1,8 +1,8 @@
 import React from 'react';
-import Slacker from './Slacker';
-import './Container.css';
+import Slacker from './components/Slacker';
+import './App.css';
 
-export default function Container() {
+export default function App() {
   return (
     <div className="slacker-container">
       <Slacker />

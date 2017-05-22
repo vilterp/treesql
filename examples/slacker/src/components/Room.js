@@ -1,3 +1,4 @@
+import _ from 'lodash';
 import React from 'react';
 
 class Room extends React.Component {
@@ -35,14 +36,21 @@ class Room extends React.Component {
   }
 
   render() {
+    const messages = _.chain(this.props.room.messages)
+      .map((message) => ({
+        ...message,
+        timestamp: new Date(parseInt(message.timestamp, 10))
+      }))
+      .sortBy('timestamp')
+      .value();
     return (
       <div>
         <h2>#{this.props.room.name}</h2>
         <table>
           <tbody>
-            {this.props.room.messages.map((message) => (
+            {messages.map((message) => (
               <tr key={message.id}>
-                <td>{new Date(parseInt(message.timestamp, 10)).toISOString()}</td>
+                <td>{message.timestamp.toISOString()}</td>
                 <td>{message.user[0].name}</td>{/*TODO: ONE*/}
                 <td>{message.body}</td>
               </tr>

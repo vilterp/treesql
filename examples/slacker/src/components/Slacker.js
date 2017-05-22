@@ -108,7 +108,7 @@ class Slacker extends Component {
 
 function mapStateToProps(state) {
   return {
-    queryTree: state.slacker.tree
+    queryTree: state.tree
   };
 }
 

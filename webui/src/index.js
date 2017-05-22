@@ -14,35 +14,14 @@ import {
 } from './actions';
 import './index.css';
 
-// TODO: move into own app
-import { QUERY } from './components/Slacker/Slacker';
-import Container from './components/Slacker/Container';
-import liveQueryReducer from './lib/liveQueryReducer';
-import { updateToAction } from './lib/liveQueryActions';
-
 const store = createStore(
-  (state, action) => ({
-    ...reducer(state, action),
-    slacker: liveQueryReducer(state ? state.slacker : undefined, action)
-  }),
+  reducer,
   applyMiddleware(thunk, logger)
 );
-
-// TODO: move this somewhere (probably a library of some kind)
-function initializeSlacker() {
-  const channel = window.CLIENT.sendStatement(QUERY);
-  channel.on('update', (update) => {
-    const action = updateToAction(update);
-    if (action) {
-      store.dispatch(action);
-    }
-  });
-}
 
 window.CLIENT = new TreeSQLClient(`ws://localhost:9000/ws`)
 window.CLIENT.on('open', () => {
   store.dispatch(sendStatement(SCHEMA_QUERY + ' live'));
-  initializeSlacker();
 });
 window.CLIENT.on('statement_sent', (channel) => {
   store.dispatch(startStatement(channel.statementID, channel.statement));
@@ -65,7 +44,6 @@ window.CLIENT.on('error', dispatchSocketState);
 ReactDOM.render(
   <Provider store={store}>
     <div>
-      <Container />
       <App />
     </div>
   </Provider>,
