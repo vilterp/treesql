@@ -56,7 +56,10 @@ function updateAtRecord(record, path, selection) {
     console.log('idk what to do here', record, path, selection);
     return record;
   } else {
-    console.log('idk what to do here either', record, path, selection);
-    return record;
+    const fieldName = path[0].selection; // have to converge on terminology here lol
+    return {
+      ...record,
+      [fieldName]: updateAtSelection(record[fieldName], path.slice(1), selection)
+    }
   }
 }
