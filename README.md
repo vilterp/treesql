@@ -1,5 +1,7 @@
 # TreeSQL
 
+[![Build Status](https://travis-ci.org/vilterp/treesql.svg?branch=master)](https://travis-ci.org/vilterp/treesql)
+
 A simple database to explore alternative query languages which return trees of data instead of tables (hence the name).
 
 Currently uses [BoltDB](https://github.com/boltdb/bolt) as a storage layer, which means it can't do concurrent write transactions.
