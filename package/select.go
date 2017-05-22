@@ -76,7 +76,10 @@ func (conn *Connection) ExecuteTopLevelQuery(query *Select, statementID int, cha
 		channel.WriteErrorMessage(selectErr)
 		log.Println("connection", conn.ID, "query error:", selectErr.Error())
 	} else {
-		channel.WriteInitialResult(result)
+		channel.WriteInitialResult(&InitialResult{
+			Data:   result,
+			Schema: schemaOfQuery(query),
+		})
 		log.Println(
 			"connection", conn.ID, "serviced query", statementID, "in", duration,
 			"live:", query.Live,
@@ -90,6 +93,19 @@ func (conn *Connection) ExecuteQueryForTableListener(query *Select, statementID 
 		"connection", conn.ID, "executed table listener query for statement", statementID, "in", duration,
 	)
 	return result, selectErr
+}
+
+func schemaOfQuery(query *Select) map[string]interface{} {
+	result := map[string]interface{}{}
+	result["table"] = query.Table
+	selectionSchemas := map[string]interface{}{}
+	for _, selection := range query.Selections {
+		if selection.SubSelect != nil {
+			selectionSchemas[selection.Name] = schemaOfQuery(selection.SubSelect)
+		}
+	}
+	result["selections"] = selectionSchemas
+	return result
 }
 
 // can be from a live query or a top-level query

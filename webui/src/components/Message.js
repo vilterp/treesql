@@ -23,7 +23,7 @@ class Message extends React.Component {
       case 'initial_result':
         return (
           <div className="message update">
-            <TableTree records={message.payload} />
+            <TableTree records={message.payload.Data} />
           </div>
         );
       case 'table_update':

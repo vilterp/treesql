@@ -10,14 +10,39 @@ import TreeSQLClient, { SCHEMA_QUERY } from './lib/TreeSQLClient';
 import { sendStatement } from './actions';
 import './index.css';
 
+// TODO: move into own app
+import { QUERY } from './components/Slacker/Slacker';
+import Container from './components/Slacker/Container';
+import liveQueryReducer from './lib/liveQueryReducer';
+import { updateToAction } from './lib/liveQueryActions';
+
 const store = createStore(
-  reducer,
+  (state, action) => liveQueryReducer(
+    reducer(
+      state,
+      action
+    ),
+    action
+  ),
   applyMiddleware(thunk, logger)
 );
+
+// TODO: move this somewhere (probably a library of some kind)
+function initializeSlacker() {
+  const channel = window.CLIENT.sendStatement(QUERY);
+  channel.on('update', (update) => {
+    console.log('Slacker update:', update);
+    const action = updateToAction(update);
+    if (action) {
+      store.dispatch(action);
+    }
+  });
+}
 
 window.CLIENT = new TreeSQLClient(`ws://localhost:9000/ws`)
 window.CLIENT.on('open', () => {
   store.dispatch(sendStatement(SCHEMA_QUERY + ' live'));
+  initializeSlacker();
 });
 
 function dispatchSocketState() {
@@ -31,14 +56,12 @@ window.CLIENT.on('close', dispatchSocketState);
 window.CLIENT.on('open', dispatchSocketState);
 window.CLIENT.on('error', dispatchSocketState);
 
-// window.CLIENT.addEventListener('message', (msg) => {
-//   const json = JSON.parse(msg.data);
-//   store.dispatch(addMessage(json.Message, json.StatementID, 'server'));
-// });
-
 ReactDOM.render(
   <Provider store={store}>
-    <App />
+    <div>
+      <Container />
+      <App />
+    </div>
   </Provider>,
   document.getElementById('root')
 );

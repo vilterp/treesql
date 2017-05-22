@@ -8,7 +8,9 @@ const initialState = {
     websocketState: WebSocket.CONNECTING,
     statementHistory: getStatementHistory()
   },
-  statements: []
+  statements: [],
+  // TODO: move this into example app
+  slacker: {}
 };
 
 export default function update(state = initialState, action) {

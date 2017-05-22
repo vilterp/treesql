@@ -30,9 +30,14 @@ type MessageToClient struct {
 	ErrorMessage error
 	AckMessage   *string
 	// data
-	InitialResultMessage SelectResult
+	InitialResultMessage *InitialResult
 	RecordUpdateMessage  *RecordUpdate
 	TableUpdateMessage   *TableUpdate
+}
+
+type InitialResult struct {
+	Schema map[string]interface{}
+	Data   SelectResult
 }
 
 type TableUpdate struct {
@@ -89,7 +94,7 @@ func (channel *Channel) WriteAckMessage(message string) {
 	})
 }
 
-func (channel *Channel) WriteInitialResult(result SelectResult) {
+func (channel *Channel) WriteInitialResult(result *InitialResult) {
 	channel.writeMessage(&MessageToClient{
 		InitialResultMessage: result,
 	})
