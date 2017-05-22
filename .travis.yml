@@ -4,5 +4,7 @@ go:
 node_js:
   - 6.9.x
 install:
+  - nvm install 6.9
+  - nvm use 6.9
   - go get github.com/tools/godep
   - make deps
