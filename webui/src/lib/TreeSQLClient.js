@@ -47,9 +47,10 @@ class EventEmitter {
 
 class Channel extends EventEmitter {
 
-  constructor(client, statementID) {
+  constructor(client, statement, statementID) {
     super();
     this.client = client;
+    this.statement = statement;
     this.statementID = statementID;
   }
 
@@ -85,10 +86,11 @@ export default class TreeSQLClient extends EventEmitter {
     return this.websocket.readyState;
   }
 
-  sendStatement(query) {
-    this.websocket.send(query);
-    const channel = new Channel(this, this.nextStatementId);
+  sendStatement(statement) {
+    this.websocket.send(statement);
+    const channel = new Channel(this, statement, this.nextStatementId);
     this.channels[this.nextStatementId] = channel;
+    this._dispatch('statement_sent', channel);
     this.nextStatementId++;
     return channel;
   }

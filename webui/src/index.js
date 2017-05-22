@@ -7,7 +7,11 @@ import thunk from 'redux-thunk';
 import logger from 'redux-logger';
 import App from './components/App';
 import TreeSQLClient, { SCHEMA_QUERY } from './lib/TreeSQLClient';
-import { sendStatement } from './actions';
+import {
+  startStatement,
+  sendStatement,
+  statementUpdate
+} from './actions';
 import './index.css';
 
 // TODO: move into own app
@@ -40,6 +44,12 @@ window.CLIENT.on('open', () => {
   store.dispatch(sendStatement(SCHEMA_QUERY + ' live'));
   initializeSlacker();
 });
+window.CLIENT.on('statement_sent', (channel) => {
+  store.dispatch(startStatement(channel.statementID, channel.statement));
+  channel.on('update', (update) => {
+    store.dispatch(statementUpdate(channel.statementID, update));
+  });
+})
 
 function dispatchSocketState() {
   store.dispatch({

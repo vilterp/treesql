@@ -33,11 +33,7 @@ export function sendStatementFromInput() {
 export function sendStatement(statement) {
   return (dispatch) => {
     storeStatement(statement);
-    const channel = window.CLIENT.sendStatement(statement);
-    dispatch(startStatement(channel.statementID, statement));
-    channel.on('update', (update) => {
-      dispatch(statementUpdate(channel.statementID, update));
-    });
+    window.CLIENT.sendStatement(statement);
   };
 }
 
