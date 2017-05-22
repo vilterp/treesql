@@ -17,13 +17,10 @@ import liveQueryReducer from './lib/liveQueryReducer';
 import { updateToAction } from './lib/liveQueryActions';
 
 const store = createStore(
-  (state, action) => liveQueryReducer(
-    reducer(
-      state,
-      action
-    ),
-    action
-  ),
+  (state, action) => ({
+    ...reducer(state, action),
+    slacker: liveQueryReducer(state ? state.slacker : undefined, action)
+  }),
   applyMiddleware(thunk, logger)
 );
 

@@ -32,10 +32,17 @@ class Slacker extends Component {
     return _.find(this.props.queryState, { id: this.state.currentRoomID }).messages;
   }
 
+  componentWillMount() {
+    this.setState({
+      currentRoomID: null
+    });
+  }
+
   render() {
-    const { queryState } = this.props;
+    const { queryTree } = this.props;
+    console.log('queryTree', queryTree);
     // ^v TODO: I guess make some sort of HOC that contains this
-    if (_.isEqual(queryState, {})) {
+    if (!queryTree) {
       return (
         <div className="loading">
           Loading Slacker...
@@ -44,10 +51,13 @@ class Slacker extends Component {
     } else {
       return (
         <div>
-          <RoomList rooms={queryState} />
-          {this.state.currentRoomID
-            ? <MessageList messages={this.messagesForRoom(this.state.currentRoomID)} />
-            : <div className="select-a-room">Select a room</div>}
+          <h1>Slacker</h1>
+          <div style={{ display: 'flex' }}>
+            <RoomList rooms={queryTree} />
+            {this.state.currentRoomID
+              ? <MessageList messages={this.messagesForRoom(this.state.currentRoomID)} />
+              : <div className="select-a-room">Select a room</div>}
+          </div>
         </div>
       );
     }
@@ -57,7 +67,7 @@ class Slacker extends Component {
 
 function mapStateToProps(state) {
   return {
-    queryState: state.slacker
+    queryTree: state.slacker.tree
   };
 }
 

@@ -1,16 +1,20 @@
+import _ from 'lodash';
 import {
   INITIAL_RESULT,
   RECORD_UPDATE,
   TABLE_UPDATE
 } from './liveQueryActions';
 
-const initialState = {};
+const initialState = {
+  tree: null
+};
 
 export default function update(state = initialState, action) {
   switch (action.type) {
     case INITIAL_RESULT: {
-      const withSchema = ensureSchema(state, action.Schema);
-      return setResultAtPath(withSchema, [], action.Data)
+      return {
+        tree: action.data
+      };
     }
     case TABLE_UPDATE:
       console.log('TODO: table update');
@@ -23,11 +27,6 @@ export default function update(state = initialState, action) {
     default:
       return state;
   }
-}
-
-function ensureSchema(state, schema) {
-  console.log('TODO: ensure schema');
-  return state;
 }
 
 function setResultAtPath(state, path, data) {
