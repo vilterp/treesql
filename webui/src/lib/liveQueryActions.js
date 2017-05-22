@@ -15,6 +15,7 @@ export const tableUpdate = (queryPath, selection) => ({
 export const RECORD_UPDATE = 'RECORD_UPDATE';
 export const recordUpdate = (queryPath, oldRecord, newRecord) => ({
   type: RECORD_UPDATE,
+  queryPath,
   oldRecord,
   newRecord
 });

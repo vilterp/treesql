@@ -22,8 +22,9 @@ export default function update(state = initialState, action) {
       };
 
     case RECORD_UPDATE:
-      console.log('TODO: record update');
-      return state;
+      return {
+        tree: updateAtSelection(state.tree, action.queryPath, action.newRecord)
+      }
 
     default:
       return state;
@@ -53,8 +54,12 @@ function updateAtSelection(records, path, selection) {
 
 function updateAtRecord(record, path, selection) {
   if (path.length === 0) {
-    console.log('idk what to do here', record, path, selection);
-    return record;
+    // replacing with NewRecord, which may have fields that weren't in the original selction...
+    // would be good just to send the keys in your selection
+    return {
+      ...record,
+      ...selection
+    };
   } else {
     const fieldName = path[0].selection; // have to converge on terminology here lol
     return {
