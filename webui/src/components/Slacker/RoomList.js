@@ -12,7 +12,7 @@ function RoomList({ rooms, currentRoomID, selectRoom }) {
             key={room.id}
             className={classNames('room', { 'current-room': currentRoomID === room.id })}
             onClick={() => selectRoom(room.id)}>
-            {room.name}
+            #{room.name}
           </li>
         ))}
       </ul>

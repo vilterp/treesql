@@ -37,6 +37,7 @@ class Room extends React.Component {
   render() {
     return (
       <div>
+        <h2>#{this.props.room.name}</h2>
         <table>
           <tbody>
             {this.props.room.messages.map((message) => (

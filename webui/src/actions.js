@@ -21,7 +21,12 @@ export function sendStatementFromInput() {
       type: 'UPDATE_STATEMENT',
       newValue: ''
     });
-    dispatch(sendStatement(statement));
+    statement
+      .split(';')
+      .filter((stmt) => (stmt.length > 0))
+      .forEach((splitStatement) => {
+        dispatch(sendStatement(splitStatement));
+      });
   };
 }
 
