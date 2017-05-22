@@ -1,4 +1,4 @@
 .slacker-container {
-  height: 200px;
+  min-height: 200px;
   border-bottom: 1px solid black;
 }

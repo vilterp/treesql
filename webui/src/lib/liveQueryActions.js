@@ -30,7 +30,8 @@ export function updateToAction(update) {
       return recordUpdate(payload.QueryPath, payload.TableEvent.OldRecord, payload.TableEvent.NewRecord);
 
     case 'table_update':
-      return tableUpdate(payload.QueryPath, payload.Selection);
+      // TODO: this should come through as an empty list
+      return tableUpdate(payload.QueryPath || [], payload.Selection);
     
     default:
       console.warn('unhandled message from live query:', update);

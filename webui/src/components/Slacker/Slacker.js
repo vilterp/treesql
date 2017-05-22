@@ -24,6 +24,7 @@ export const QUERY = `
       }
     }
   }
+  live
 `;
 
 class Slacker extends Component {
