@@ -2,7 +2,7 @@
 
 Tiny Slack clone to show what TreeSQL can do.
 
-## Installl
+## Install
 
 ```npm install```
 
