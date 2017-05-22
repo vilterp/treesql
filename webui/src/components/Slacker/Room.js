@@ -22,11 +22,10 @@ class Room extends React.Component {
     // uh, yeah. sending kv pairs would be nice
     const messageID = Math.random();
     const timestamp = new Date().getTime();
-    const currentUserID = 0;
     window.CLIENT.sendStatement(`INSERT INTO messages VALUES (
       "${messageID}",
       "${this.props.room.id}",
-      "${currentUserID}",
+      "${this.props.currentUserID}",
       "${timestamp}",
       "${this.state.message}"
     )`);

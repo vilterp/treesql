@@ -41,7 +41,8 @@ class Slacker extends Component {
 
   componentWillMount() {
     this.setState({
-      currentRoomID: null
+      currentRoomID: null,
+      currentUserID: null
     });
   }
 
@@ -56,27 +57,50 @@ class Slacker extends Component {
     const { queryTree } = this.props;
     console.log('queryTree', queryTree);
     // ^v TODO: I guess make some sort of HOC that contains this
-    if (!queryTree) {
+    if (!this.state.currentUserID) {
       return (
-        <div className="loading">
-          Loading Slacker...
+        <div className="signin">
+          <h2>Who are you?</h2>
+          <form>
+            <input
+              type="text"
+              placeholder="User ID no."
+              onInput={(evt) => { this.setState({ possibleUserID: evt.target.value }) }} />
+            <button
+              onClick={(evt) => {
+                evt.preventDefault();
+                this.setState({ currentUserID: this.state.possibleUserID });
+              }}>
+              Sign In
+            </button>
+          </form>
         </div>
       );
     } else {
-      return (
-        <div>
-          <h1>Slacker</h1>
-          <div style={{ display: 'flex' }}>
-            <RoomList
-              rooms={queryTree}
-              selectRoom={this.selectRoom}
-              currentRoomID={this.state.currentRoomID} />
-            {this.state.currentRoomID
-              ? <Room room={this.findRoom(this.state.currentRoomID)} />
-              : <div className="select-a-room">Select a room</div>}
+      if (!queryTree) {
+        return (
+          <div className="loading">
+            Loading Slacker...
           </div>
-        </div>
-      );
+        );
+      } else {
+        return (
+          <div>
+            <h1>Slacker</h1>
+            <div style={{ display: 'flex' }}>
+              <RoomList
+                rooms={queryTree}
+                selectRoom={this.selectRoom}
+                currentRoomID={this.state.currentRoomID} />
+              {this.state.currentRoomID
+                ? <Room
+                    room={this.findRoom(this.state.currentRoomID)}
+                    currentUserID={this.state.currentUserID} />
+                : <div className="select-a-room">Select a room</div>}
+            </div>
+          </div>
+        );
+      }
     }
   }
 
