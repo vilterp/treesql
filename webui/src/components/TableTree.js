@@ -45,7 +45,7 @@ class TableTree extends React.Component {
             [recordIdx]: expanded ? column : null
           })
         })
-      }).bind(this);
+      });
     }
     // could compute this on mount & cache in state
     const columns = _.keys(this.props.records[0]);
