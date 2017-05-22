@@ -181,7 +181,6 @@ func newRecordListenersIterator(db *Database) (*RecordListenersIterator, error) 
 					}
 				}
 			}
-			// listenerDoc := column.ToRecord(table.Name, db)
 		}
 	}
 	return &RecordListenersIterator{

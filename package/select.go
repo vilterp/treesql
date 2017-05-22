@@ -93,7 +93,6 @@ func (conn *Connection) ExecuteQueryForTableListener(query *Select, statementID 
 }
 
 // can be from a live query or a top-level query
-// may want to export two different entry points that call something common
 func (conn *Connection) executeQuery(query *Select, statementID int, channel *Channel) (SelectResult, *time.Duration, error) {
 	startTime := time.Now()
 	tx, _ := conn.Database.BoltDB.Begin(false)
@@ -158,6 +157,21 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResul
 		if filterCondition != nil {
 			colNameForSub = &filterCondition.InnerColumnName
 			valueForSub = scope.document.GetField(filterCondition.OuterColumnName)
+		}
+		if query.Where != nil {
+			// TODO: unify these conditions and support ANDs in filtered table listeners
+			// so don't need to worry about this
+			if colNameForSub != nil {
+				log.Println(
+					"connection", ex.Channel.Connection.ID,
+					"warn:", "overriding filter cond with where cond for subscription",
+				)
+			}
+			colNameForSub = &query.Where.ColumnName
+			valueForSub = &Value{
+				Type:      TypeString,
+				StringVal: query.Where.Value,
+			}
 		}
 		var queryPath *QueryPath
 		if scope != nil {

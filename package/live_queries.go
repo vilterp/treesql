@@ -1,6 +1,7 @@
 package treesql
 
 import (
+	"fmt"
 	"log"
 )
 
@@ -49,7 +50,7 @@ type RecordSubscriptionEvent struct {
 }
 
 func (table *Table) HandleEvents() {
-	// PERF: I guess all (live) reads and writes are serialized through here
+	// PERF: I guess all writes and (live) reads are serialized through here
 	// that seems bad for perf
 	// you'd have to shard the channels themselves somehow... e.g. for p.k. listeners,
 	// each record has its own goroutine...
@@ -59,6 +60,7 @@ func (table *Table) HandleEvents() {
 	for {
 		select {
 		case tableSubEvent := <-liveInfo.TableSubscriptionEvents:
+			fmt.Println("table sub event", table.Name, "/", tableSubEvent.ColumnName, tableSubEvent.QueryPath.ToString())
 			if tableSubEvent.ColumnName == nil {
 				// whole table listener
 				liveInfo.WholeTableListeners.AddQueryListener(
@@ -86,6 +88,7 @@ func (table *Table) HandleEvents() {
 			}
 
 		case recordSubEvent := <-liveInfo.RecordSubscriptionEvents:
+			fmt.Println("record sub event", table.Name, recordSubEvent.Value.StringVal, recordSubEvent.QueryPath.ToString())
 			listenersForValue := liveInfo.RecordListeners[recordSubEvent.Value.StringVal]
 			if listenersForValue == nil {
 				listenersForValue = table.NewListenerList()
