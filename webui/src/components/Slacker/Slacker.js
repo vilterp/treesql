@@ -2,7 +2,7 @@ import _ from 'lodash';
 import React, { Component } from 'react';
 import { connect } from 'react-redux';
 import RoomList from './RoomList';
-import MessageList from './MessageList';
+import Room from './Room';
 
 // TODO: some kind of room read count
 export const QUERY = `
@@ -34,8 +34,9 @@ class Slacker extends Component {
     this.selectRoom = this.selectRoom.bind(this);
   }
 
-  messagesForRoom() {
-    return _.find(this.props.queryTree, { id: this.state.currentRoomID }).messages;
+  // things should be returned keyed by id so this is unnecessary
+  findRoom() {
+    return _.find(this.props.queryTree, { id: this.state.currentRoomID });
   }
 
   componentWillMount() {
@@ -71,7 +72,7 @@ class Slacker extends Component {
               selectRoom={this.selectRoom}
               currentRoomID={this.state.currentRoomID} />
             {this.state.currentRoomID
-              ? <MessageList messages={this.messagesForRoom(this.state.currentRoomID)} />
+              ? <Room room={this.findRoom(this.state.currentRoomID)} />
               : <div className="select-a-room">Select a room</div>}
           </div>
         </div>

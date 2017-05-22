@@ -28,7 +28,6 @@ const store = createStore(
 function initializeSlacker() {
   const channel = window.CLIENT.sendStatement(QUERY);
   channel.on('update', (update) => {
-    console.log('Slacker update:', update);
     const action = updateToAction(update);
     if (action) {
       store.dispatch(action);

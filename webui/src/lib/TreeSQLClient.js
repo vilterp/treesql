@@ -35,9 +35,12 @@ class EventEmitter {
   }
 
   _dispatch(event, value) {
-    this.listeners[event].forEach((listener) => {
-      listener(value);
-    });
+    const listeners = this.listeners[event];
+    if (listeners) {
+      this.listeners[event].forEach((listener) => {
+        listener(value);
+      });
+    }
   }
 
 }

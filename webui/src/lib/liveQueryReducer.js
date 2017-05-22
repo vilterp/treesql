@@ -60,8 +60,3 @@ function updateAtRecord(record, path, selection) {
     return record;
   }
 }
-
-function setResultAtPath(state, path, data) {
-  console.log('TODO: set result at path');
-  return state;
-}
