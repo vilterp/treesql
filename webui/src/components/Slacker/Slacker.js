@@ -29,13 +29,25 @@ export const QUERY = `
 
 class Slacker extends Component {
 
+  constructor() {
+    super();
+    this.selectRoom = this.selectRoom.bind(this);
+  }
+
   messagesForRoom() {
-    return _.find(this.props.queryState, { id: this.state.currentRoomID }).messages;
+    return _.find(this.props.queryTree, { id: this.state.currentRoomID }).messages;
   }
 
   componentWillMount() {
     this.setState({
       currentRoomID: null
+    });
+  }
+
+  selectRoom(roomID) {
+    // this should be a react router thing
+    this.setState({
+      currentRoomID: roomID
     });
   }
 
@@ -54,7 +66,10 @@ class Slacker extends Component {
         <div>
           <h1>Slacker</h1>
           <div style={{ display: 'flex' }}>
-            <RoomList rooms={queryTree} />
+            <RoomList
+              rooms={queryTree}
+              selectRoom={this.selectRoom}
+              currentRoomID={this.state.currentRoomID} />
             {this.state.currentRoomID
               ? <MessageList messages={this.messagesForRoom(this.state.currentRoomID)} />
               : <div className="select-a-room">Select a room</div>}
