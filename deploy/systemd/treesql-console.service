@@ -1,0 +1,8 @@
+[Unit]
+Description=TreeSQL Console
+
+[Service]
+ExecStart=/usr/local/bin/http-server /home/ubuntu/webui -p 80
+
+[Install]
+WantedBy=multi-user.target

@@ -4,7 +4,7 @@ import App from './components/App';
 import TreeSQLClient from './lib/TreeSQLClient';
 import './index.css';
 
-const client = new TreeSQLClient(`ws://localhost:9000/ws`)
+const client = new TreeSQLClient(`ws://${window.location.host}:9000/ws`)
 
 ReactDOM.render(
   <App client={client} />,

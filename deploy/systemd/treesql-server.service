@@ -1,0 +1,8 @@
+[Unit]
+Description=TreeSQL server
+
+[Service]
+ExecStart=/home/ubuntu/treesql-server
+
+[Install]
+WantedBy=multi-user.target
