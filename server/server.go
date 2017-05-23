@@ -34,7 +34,7 @@ func main() {
 	go func() {
 		<-ctrlCChan
 		database.Close()
-		os.Exit(1) // is 1 the proper exit code for Ctrl-C?
+		os.Exit(0)
 	}()
 
 	// set up HTTP server for static files

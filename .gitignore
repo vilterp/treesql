@@ -4,5 +4,7 @@ thoughts_on_go.txt
 treesql.data
 vendor/
 
-treesql-client
 treesql-server
+treesql-server-linux
+
+deploy/systemd/*.env.sh

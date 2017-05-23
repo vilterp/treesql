@@ -16,8 +16,11 @@ webui:
 treesql-server:
 	godep go build -o treesql-server server/server.go
 
+treesql-server-linux:
+	GOOS=linux godep go build -o treesql-server-linux server/server.go
+
 clean:
 	rm -r treesql-server
 	rm -r webui/build
 
-.PHONY: webui
+.PHONY: webui treesql-server-linux treesql-server
