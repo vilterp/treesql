@@ -1,0 +1,1 @@
+ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'journalctl -f'
