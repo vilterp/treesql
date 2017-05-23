@@ -2,6 +2,7 @@ package treesql
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 )
 
@@ -23,7 +24,7 @@ func (conn *Connection) NewChannel(rawStatement string) *Channel {
 
 type ChannelMessage struct {
 	StatementID int
-	Message     interface{}
+	Message     *MessageToClient
 }
 
 type MessageToClient struct {
@@ -79,6 +80,39 @@ func (message *MessageToClient) MarshalJSON() ([]byte, error) {
 		})
 	} else {
 		panic(fmt.Sprintf("unknown message type: %v", message))
+	}
+}
+
+func (message *MessageToClient) UnmarshalJSON(data []byte) error {
+	theMap := map[string]interface{}{}
+	mapErr := json.Unmarshal(data, &theMap)
+	if mapErr != nil {
+		return mapErr
+	}
+	switch theMap["type"] {
+	case "error":
+		message.ErrorMessage = errors.New(theMap["payload"].(string))
+		return nil
+
+	case "ack":
+		str := theMap["payload"].(string)
+		message.AckMessage = &str
+		return nil
+
+	case "initial_result":
+		message.InitialResultMessage = &InitialResult{}
+		return json.Unmarshal(data, message.InitialResultMessage)
+
+	case "record_update":
+		message.RecordUpdateMessage = &RecordUpdate{}
+		return json.Unmarshal(data, message.RecordUpdateMessage)
+
+	case "table_update":
+		message.TableUpdateMessage = &TableUpdate{}
+		return json.Unmarshal(data, message.TableUpdateMessage)
+
+	default:
+		return fmt.Errorf("unrecognized message type: %v", theMap["type"])
 	}
 }
 
