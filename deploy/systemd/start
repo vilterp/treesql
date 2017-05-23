@@ -1,0 +1,4 @@
+#/bin/sh
+ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'mv ~/treesql-server-next ~/treesql-server'
+ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo systemctl start treesql-server'
+ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo systemctl start treesql-console'

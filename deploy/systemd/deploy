@@ -1,0 +1,8 @@
+#/bin/sh
+pushd ../..
+make webui
+make treesql-server-linux
+popd
+scp -i $TREESQL_DEPLOY_KEY ../../treesql-server-linux $TREESQL_DEPLOY_HOST:treesql-server-next
+scp -i $TREESQL_DEPLOY_KEY -r ../../webui/build $TREESQL_DEPLOY_HOST:webui
+./restart
