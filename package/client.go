@@ -4,6 +4,8 @@ package treesql
 // this should pretty much be the same API as TreeSQLClient.js
 
 import (
+	"fmt"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -51,10 +53,12 @@ func (conn *ClientConn) handleStatements() {
 			conn.Channels[channel.StatementID] = channel
 			request.ResultChan <- channel
 			conn.WebSocketConn.WriteMessage(websocket.TextMessage, []byte(request.Statement))
+			fmt.Println("wrote message")
 
 		case incomingMsg := <-conn.IncomingMessages:
 			channel := conn.Channels[incomingMsg.StatementID]
 			channel.Updates <- incomingMsg.Message
+			fmt.Println("incoming message", incomingMsg.Message)
 		}
 	}
 }
@@ -63,7 +67,9 @@ func (conn *ClientConn) handleIncoming() {
 	defer conn.WebSocketConn.Close()
 	for {
 		parsedMessage := &ChannelMessage{}
+		fmt.Println("about to read json")
 		err := conn.WebSocketConn.ReadJSON(&parsedMessage)
+		fmt.Println("read json")
 		if err != nil {
 			panic(err)
 			// uh... should probably recover gracefully from this, but

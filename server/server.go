@@ -28,7 +28,7 @@ func main() {
 	}
 	log.Printf("opened data file: %s\n", *dataFile)
 
-	// graceful shutdown on Ctrl-C (hopefully this will stop the routine corruption??)
+	// graceful shutdown on Ctrl-C
 	ctrlCChan := make(chan os.Signal, 1)
 	signal.Notify(ctrlCChan, os.Interrupt, syscall.SIGTERM)
 	go func() {

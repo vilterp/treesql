@@ -17,6 +17,7 @@ func main() {
 	var url = flag.String("url", "ws://localhost:9000/ws", "URL of TreeSQL server to connect to")
 	flag.Parse()
 
+	// connect to server
 	client, connErr := treesql.NewClientConn(*url)
 	if connErr != nil {
 		fmt.Println("couldn't connect:", connErr)
