@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
-	"time"
-
 	"path/filepath"
-
 	"strconv"
+	"time"
 
 	"github.com/google/uuid"
 	treesql "github.com/vilterp/treesql/package"
@@ -44,7 +42,6 @@ func main() {
 	filepath.Walk(*dir, func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() {
 			fmt.Println("inserting", path)
-			// ioutil.ReadFile()
 			newFileID := uuid.New()
 			contents, readErr := ioutil.ReadFile(path)
 			if readErr != nil {
