@@ -2,9 +2,11 @@
 journal.txt
 thoughts_on_go.txt
 treesql.data
+test-dir/
 vendor/
 
 treesql-server
 treesql-server-linux
 
 deploy/systemd/*.env.sh
+
