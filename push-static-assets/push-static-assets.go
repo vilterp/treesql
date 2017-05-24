@@ -27,17 +27,18 @@ func main() {
 		return
 	}
 	fmt.Println("connected to", *mothershipUrl, "for app", *appID)
+	defer clientConn.Close()
 
 	// insert new version
 	newVersionID := uuid.New()
 	fmt.Println("new version:", newVersionID)
 
 	newVersionStmt := fmt.Sprintf("insert into versions values ('%s', '%s', '%v')", newVersionID, *appID, time.Now())
-	newVersionChannel := clientConn.SendStatement(newVersionStmt) // TODO: sendStatementSync or something
-	go func() {
-		update := <-newVersionChannel.Updates
-		fmt.Println("new version", update)
-	}()
+	_, newVersionErr := clientConn.Write(newVersionStmt)
+	if newVersionErr != nil {
+		fmt.Println("failed to write new version:", newVersionErr)
+		return
+	}
 
 	filepath.Walk(*dir, func(path string, info os.FileInfo, err error) error {
 		if !info.IsDir() {
@@ -51,11 +52,11 @@ func main() {
 				"insert into files values ('%s', '%s', '%s', %s)",
 				newFileID, path, newVersionID, strconv.Quote(string(contents)),
 			)
-			newFileChannel := clientConn.SendStatement(newFileStmt)
-			go func(ch *treesql.ClientChannel) {
-				update := <-ch.Updates
-				fmt.Println("new file", update)
-			}(newFileChannel)
+			_, newFileErr := clientConn.Write(newFileStmt)
+			if newFileErr != nil {
+				fmt.Println("failed to write file:", newFileErr)
+				// lol, we don't have transactions :P
+			}
 		}
 		return nil
 	})
