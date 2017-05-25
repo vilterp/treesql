@@ -1,4 +1,4 @@
-all: treesql-server webui
+all: treesql-server treesql-server-linux webui
 
 start:
 	go run server/server.go
