@@ -1,5 +1,7 @@
 package treesql
 
+import "fmt"
+
 type Channel struct {
 	Connection   *Connection
 	RawStatement string
@@ -21,15 +23,7 @@ type ChannelMessage struct {
 	Message     *MessageToClient
 }
 
-// type MessageToClientType = int
-// const MessageToClientType (
-// 	ErrorMessage := iota,
-// 	AckMessage,
-// 	InitialResult,
-// 	RecordUpdate,
-// 	TableUpdate
-// )
-
+// ugh. this sucks.
 type MessageToClientType int
 
 const (
@@ -40,14 +34,47 @@ const (
 	TableUpdateMessage
 )
 
+func (m *MessageToClientType) MarshalJSON() ([]byte, error) {
+	switch *m {
+	case ErrorMessage:
+		return []byte("\"error\""), nil
+	case AckMessage:
+		return []byte("\"ack\""), nil
+	case InitialResultMessage:
+		return []byte("\"initial_result\""), nil
+	case RecordUpdateMessage:
+		return []byte("\"record_update\""), nil
+	case TableUpdateMessage:
+		return []byte("\"table_update\""), nil
+	}
+	return nil, fmt.Errorf("unknown error type %d", *m)
+}
+
+func (m *MessageToClientType) UnmarshalText(text []byte) error {
+	textStr := string(text)
+	switch textStr {
+	case "error":
+		*m = ErrorMessage
+	case "ack":
+		*m = AckMessage
+	case "initial_result":
+		*m = InitialResultMessage
+	case "record_update":
+		*m = RecordUpdateMessage
+	case "table_update":
+		*m = TableUpdateMessage
+	}
+	return nil
+}
+
 type MessageToClient struct {
-	Type         MessageToClientType
-	ErrorMessage *string
-	AckMessage   *string
+	Type         MessageToClientType `json:"type"`
+	ErrorMessage *string             `json:"error,omitempty"`
+	AckMessage   *string             `json:"ack,omitempty"`
 	// data
-	InitialResultMessage *InitialResult
-	RecordUpdateMessage  *RecordUpdate
-	TableUpdateMessage   *TableUpdate
+	InitialResultMessage *InitialResult `json:"initial_result,omitempty"`
+	RecordUpdateMessage  *RecordUpdate  `json:"record_update,omitempty"`
+	TableUpdateMessage   *TableUpdate   `json:"table_update,omitempty"`
 }
 
 type InitialResult struct {

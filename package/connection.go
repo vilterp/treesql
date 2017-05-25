@@ -50,9 +50,6 @@ func (conn *Connection) HandleStatements() {
 			continue
 		}
 
-		// output message received
-		// fmt.Print("SQL statement received:", spew.Sdump(statement))
-
 		// validate statement
 		queryErr := conn.Database.ValidateStatement(statement)
 		if queryErr != nil {

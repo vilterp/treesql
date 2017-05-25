@@ -5,9 +5,8 @@ import (
 	"fmt"
 	"os"
 
-	"encoding/json"
-
 	"github.com/chzyer/readline"
+	"github.com/davecgh/go-spew/spew"
 	"github.com/robertkrimen/isatty"
 	treesql "github.com/vilterp/treesql/package"
 )
@@ -66,7 +65,8 @@ func main() {
 func handleUpdates(channel *treesql.ClientChannel) {
 	for {
 		update := <-channel.Updates
-		indented, _ := json.MarshalIndent(update, "", "  ")
-		fmt.Println("from channel", channel.StatementID, ":", string(indented))
+		fmt.Println("from channel:", spew.Sdump(update))
+		// indented, _ := json.MarshalIndent(update, "", "  ")
+		// fmt.Println("from channel", channel.StatementID, ":", string(indented))
 	}
 }
