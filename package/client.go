@@ -4,6 +4,8 @@ package treesql
 // this should pretty much be the same API as TreeSQLClient.js
 
 import (
+	"errors"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -103,7 +105,7 @@ func (conn *ClientConn) Query(query string) (*InitialResult, error) {
 	resultChan := conn.sendStatement(query)
 	update := <-resultChan.Updates
 	if update.ErrorMessage != nil {
-		return nil, update.ErrorMessage
+		return nil, errors.New(*update.ErrorMessage)
 	} else if update.InitialResultMessage != nil {
 		return update.InitialResultMessage, nil
 	}
@@ -114,7 +116,7 @@ func (conn *ClientConn) Write(statement string) (string, error) {
 	resultChan := conn.sendStatement(statement)
 	update := <-resultChan.Updates
 	if update.ErrorMessage != nil {
-		return "", update.ErrorMessage
+		return "", errors.New(*update.ErrorMessage)
 	} else if update.AckMessage != nil {
 		return *update.AckMessage, nil
 	}

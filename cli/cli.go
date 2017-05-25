@@ -24,6 +24,7 @@ func main() {
 		os.Exit(1)
 		return
 	}
+	defer client.Close()
 
 	// check if is TTY
 	isInputTty := isatty.Check(os.Stdin.Fd())
@@ -57,7 +58,7 @@ func main() {
 			os.Exit(0)
 		}
 
-		channel := client.SendStatement(line)
+		channel := client.LiveQuery(line)
 		go handleUpdates(channel)
 	}
 }

@@ -1,0 +1,3 @@
+createtable apps (id string primarykey, name string)
+createtable versions (id string primarykey, app_id string referencestable apps, timestamp string)
+createtable files (id string primarykey, path string, version_id string referencestable versions, contents string)

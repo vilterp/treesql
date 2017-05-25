@@ -30,7 +30,7 @@ func main() {
 		return
 	}
 
-	// graceful shutdown on Ctrl-C (hopefully this will stop the routine corruption??)
+	// graceful shutdown on Ctrl-C
 	ctrlCChan := make(chan os.Signal, 1)
 	signal.Notify(ctrlCChan, os.Interrupt, syscall.SIGTERM)
 	go func() {
@@ -39,7 +39,7 @@ func main() {
 	}()
 
 	// open files LQ
-	channel := clientConn.SendStatement(getFilesQuery(*appID))
+	channel := clientConn.LiveQuery(getFilesQuery(*appID))
 	for {
 		update := <-channel.Updates
 		parsed, _ := json.MarshalIndent(update, "", "  ")
