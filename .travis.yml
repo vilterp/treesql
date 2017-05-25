@@ -17,4 +17,4 @@ deploy:
   provider: script
   script: deploy/systemd/deploy
   on:
-    branch: deploy-testing
+    branch: deploy
