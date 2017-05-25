@@ -1,7 +1,7 @@
 FROM node:6.10
 
-COPY . webui
-WORKDIR webui
+COPY . slacker
+WORKDIR slacker
 RUN npm install
 RUN npm run build
 
