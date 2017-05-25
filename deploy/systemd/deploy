@@ -1,4 +1,5 @@
 #/bin/sh
+ls
 scp -i $TREESQL_DEPLOY_KEY ../../treesql-server-linux $TREESQL_DEPLOY_HOST:treesql-server
 scp -i $TREESQL_DEPLOY_KEY ran $TREESQL_DEPLOY_HOST:ran
 scp -i $TREESQL_DEPLOY_KEY -r ../../webui/build $TREESQL_DEPLOY_HOST:webui
