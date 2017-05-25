@@ -1,8 +1,0 @@
-[Unit]
-Description=TreeSQL server
-
-[Service]
-ExecStart=/usr/bin/treesql-server
-
-[Install]
-WantedBy=multi-user.target

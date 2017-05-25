@@ -1,5 +1,0 @@
-#/bin/sh
-pushd ../..
-make webui
-make treesql-server-linux
-popd

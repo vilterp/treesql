@@ -1,5 +1,0 @@
-#/bin/sh
-scp -i $TREESQL_DEPLOY_KEY treesql-console.service $TREESQL_DEPLOY_HOST:/home/$TREESQL_DEPLOY_USER
-scp -i $TREESQL_DEPLOY_KEY treesql-server.service $TREESQL_DEPLOY_HOST:/home/$TREESQL_DEPLOY_USER
-ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo mv treesql-server.service /etc/systemd/system && sudo mv treesql-console.service /etc/systemd/system && sudo systemctl daemon-reload'
-./deploy

@@ -1,8 +1,0 @@
-[Unit]
-Description=TreeSQL Console
-
-[Service]
-ExecStart=/usr/bin/ran -r /usr/bin/treesql-webui -p 80
-
-[Install]
-WantedBy=multi-user.target
