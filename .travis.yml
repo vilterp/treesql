@@ -4,6 +4,7 @@ go:
 node_js:
 - 6.9.x
 before_install:
+- pwd
 - openssl aes-256-cbc -K $encrypted_8eed446b2bb2_key -iv $encrypted_8eed446b2bb2_iv
   -in deploy/systemd/treesql-com.pem.enc -out treesql-com.pem -d
 install:
