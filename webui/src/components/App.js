@@ -4,7 +4,6 @@ import { createStore, applyMiddleware, combineReducers } from "redux";
 import reducer from "../reducer";
 import thunk from "redux-thunk";
 import logger from "redux-logger";
-import CSSTransitionGroup from "react-transition-group/CSSTransitionGroup";
 import { startStatement, sendStatement, statementUpdate } from "../actions";
 import { SCHEMA_QUERY } from "../lib/TreeSQLClient";
 import REPL from "./REPL";
@@ -56,18 +55,7 @@ class App extends React.Component {
   render() {
     return (
       <Provider store={this.state.store}>
-        <div>
-          <ul>
-            <CSSTransitionGroup
-              transitionName="list-item"
-              transitionEnterTimeout={500}
-              transitionLeaveTimeout={500}
-            >
-              {this.state.list.map(num => <li key={num}>{num}</li>)}
-            </CSSTransitionGroup>
-          </ul>
-          <REPL />
-        </div>
+        <REPL />
       </Provider>
     );
   }
