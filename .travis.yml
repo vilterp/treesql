@@ -5,9 +5,10 @@ node_js:
 - 6.9.x
 before_install:
 - pwd
-- tree
+- ls deploy/systemd
 - openssl aes-256-cbc -K $encrypted_8eed446b2bb2_key -iv $encrypted_8eed446b2bb2_iv
   -in deploy/systemd/treesql-com.pem.enc -out treesql-com.pem -d
+- ls deploy/systemd
 install:
 # - nvm install 6.9
 # - nvm use 6.9
