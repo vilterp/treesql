@@ -1,3 +1,3 @@
 #/bin/sh
-ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo systemctl stop treesql-server'
-ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo systemctl stop treesql-console'
+ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo systemctl stop treesql-server && echo "stopped treesql-server"'
+ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo systemctl stop treesql-console && echo "stopped treesql-console"'

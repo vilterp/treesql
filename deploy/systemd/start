@@ -1,5 +1,5 @@
 #/bin/sh
-ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo cp ~/treesql-server-next /usr/bin/treesql-server'
+ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo cp ~/treesql-server /usr/bin/treesql-server'
 ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo cp ~/ran /usr/bin/ran'
 ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo rm -rf /usr/bin/treesql-webui'
 ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo cp -r ~/webui /usr/bin/treesql-webui'
