@@ -2,7 +2,7 @@
 Description=TreeSQL Console
 
 [Service]
-ExecStart=/home/ubuntu/ran -r /home/ubuntu/webui -p 80
+ExecStart=/usr/bin/ran -r /usr/bin/treesql-webui -p 80
 
 [Install]
 WantedBy=multi-user.target

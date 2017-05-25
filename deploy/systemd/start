@@ -1,4 +1,7 @@
 #/bin/sh
-ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'mv ~/treesql-server-next ~/treesql-server'
-ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo systemctl start treesql-server'
-ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo systemctl start treesql-console'
+ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo cp ~/treesql-server-next /usr/bin/treesql-server'
+ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo cp ~/ran /usr/bin/ran'
+ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo rm -rf /usr/bin/treesql-webui'
+ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo cp -r ~/webui /usr/bin/treesql-webui'
+ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo systemctl start treesql-server && echo "started treesql-server"'
+ssh -i $TREESQL_DEPLOY_KEY $TREESQL_DEPLOY_HOST 'sudo systemctl start treesql-console && echo "started treesql-console"'

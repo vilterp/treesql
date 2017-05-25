@@ -2,7 +2,7 @@
 Description=TreeSQL server
 
 [Service]
-ExecStart=/home/ubuntu/treesql-server
+ExecStart=/usr/bin/treesql-server
 
 [Install]
 WantedBy=multi-user.target
