@@ -1,6 +1,6 @@
 # TreeSQL
 
-[![Build Status](https://travis-ci.org/vilterp/treesql.svg?branch=master)](https://travis-ci.org/vilterp/treesql)
+[![Build Status](https://travis-ci.org/vilterp/treesql.svg?branch=master)](https://travis-ci.org/vilterp/treesql) &nbsp; [Docker Hub](https://hub.docker.com/r/vilterp/treesql/)
 
 ![logo](logo.png)
 
@@ -49,11 +49,15 @@ See `test_script.treesql` for more.
 
 ## Requirements
 
+Use [the docker version](https://hub.docker.com/r/vilterp/treesql/), or:
+
 - Go 1.8
 - Node 6.9 & NPM 3.10
 - [`godep`](https://github.com/tools/godep) (install with `go get github.com/tools/godep`)
 
 ## Installation
+
+Use [the docker version](https://hub.docker.com/r/vilterp/treesql/) or:
 
 - ```go get github.com/vilterp/treesql```
 - ```cd $GOPATH/src/github.com/vilterp/treesql```
