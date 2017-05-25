@@ -2,7 +2,7 @@
 
 [![Build Status](https://travis-ci.org/vilterp/treesql.svg?branch=master)](https://travis-ci.org/vilterp/treesql)
 
-![logo](logo.svg)
+![logo](logo.png)
 
 A simple database to explore alternative query languages which return trees of data instead of tables (hence the name).
 
