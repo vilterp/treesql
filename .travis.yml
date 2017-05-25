@@ -8,10 +8,10 @@ before_install:
   -in deploy/systemd/treesql-com.pem.enc -out treesql-com.pem -d
 - chmod 0600 treesql-com.pem
 install:
-# - nvm install 6.9
-# - nvm use 6.9
-# - go get github.com/tools/godep
-# - make deps
+- nvm install 6.9
+- nvm use 6.9
+- go get github.com/tools/godep
+- make deps
 deploy:
   skip_cleanup: true
   provider: script

@@ -1,3 +1,3 @@
 #/bin/sh
-./stop
-./start
+./deploy/systemd/stop
+./deploy/systemd/start
