@@ -1,0 +1,17 @@
+treesql:
+  autoredeploy: true
+  image: 'vilterp/treesql:latest'
+  ports:
+    - '9000:9000'
+  volumes:
+    - '/var/data/slacker:/data'
+treesql-slacker:
+  autoredeploy: true
+  image: 'vilterp/treesql-slacker:latest'
+  ports:
+    - '80:8080'
+treesql-webui:
+  autoredeploy: true
+  image: 'vilterp/treesql-webui:latest'
+  ports:
+    - '9001:8080'
