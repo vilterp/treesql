@@ -22,17 +22,23 @@ export const recordUpdate = (queryPath, oldRecord, newRecord) => ({
 
 // idk, maybe this should be in TreeSQLClient.js
 export function updateToAction(update) {
-  const payload = update.payload;
   switch (update.type) {
     case 'initial_result':
-      return initialResult(payload.Schema, payload.Data);
+      return initialResult(update.initial_result.Schema, update.initial_result.Data);
 
     case 'record_update':
-      return recordUpdate(payload.QueryPath, payload.TableEvent.OldRecord, payload.TableEvent.NewRecord);
+      return recordUpdate(
+        update.record_update.QueryPath,
+        update.record_update.TableEvent.OldRecord,
+        update.record_update.TableEvent.NewRecord
+      );
 
     case 'table_update':
       // TODO: this should come through as an empty list
-      return tableUpdate(payload.QueryPath || [], payload.Selection);
+      return tableUpdate(
+        update.table_update.QueryPath || [],
+        update.table_update.Selection
+      );
     
     default:
       console.warn('unhandled message from live query:', update);

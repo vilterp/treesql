@@ -1,7 +1,7 @@
-createtable rooms (id string primarykey, name string);
-createtable users (id string primarykey, name string);
-createtable room_users (id string primarykey, room_id string referencestable rooms, user_id string referencestable users);
-createtable messages (id string primarykey, room_id string referencestable rooms, user_id string referencestable users, timestamp string, body string);
-insert into users values ("0", "Alice");
-insert into users values ("1", "Bob");
-insert into rooms values ("0", "general");
+createtable rooms (id string primarykey, name string)
+createtable users (id string primarykey, name string)
+createtable room_users (id string primarykey, room_id string referencestable rooms, user_id string referencestable users)
+createtable messages (id string primarykey, room_id string referencestable rooms, user_id string referencestable users, timestamp string, body string)
+insert into users values ("0", "Alice")
+insert into users values ("1", "Bob")
+insert into rooms values ("0", "general")
