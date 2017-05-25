@@ -12,9 +12,3 @@ install:
 - nvm use 6.9
 - go get github.com/tools/godep
 - make deps
-deploy:
-  skip_cleanup: true
-  provider: script
-  script: deploy/systemd/deploy
-  on:
-    branch: deploy
