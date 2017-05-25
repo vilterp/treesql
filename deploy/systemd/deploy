@@ -1,6 +1,6 @@
 #/bin/sh
 ls -lh
-scp -i $TREESQL_DEPLOY_KEY ../../treesql-server-linux $TREESQL_DEPLOY_HOST:treesql-server
-scp -i $TREESQL_DEPLOY_KEY ran $TREESQL_DEPLOY_HOST:ran
-scp -i $TREESQL_DEPLOY_KEY -r ../../webui/build $TREESQL_DEPLOY_HOST:webui
+scp -o "StrictHostKeyChecking no" -i $TREESQL_DEPLOY_KEY ../../treesql-server-linux $TREESQL_DEPLOY_HOST:treesql-server
+scp -o "StrictHostKeyChecking no" -i $TREESQL_DEPLOY_KEY ran $TREESQL_DEPLOY_HOST:ran
+scp -o "StrictHostKeyChecking no" -i $TREESQL_DEPLOY_KEY -r ../../webui/build $TREESQL_DEPLOY_HOST:webui
 ./restart
