@@ -2,7 +2,10 @@
 
 ![logo](logo.png)
 
-A simple database to explore alternative query languages which return trees of data instead of tables (hence the name).
+A proof of concept of a database which:
+- Has a tree-structured query language
+- Returns tree-structured results
+- Can push live updates to those result trees
 
 Currently uses [BoltDB](https://github.com/boltdb/bolt) as a storage layer, which means it can't do concurrent write transactions.
 
