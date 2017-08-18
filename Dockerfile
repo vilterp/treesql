@@ -10,7 +10,8 @@ RUN godep restore
 
 RUN make treesql-server
 
-EXPOSE 9000
+EXPOSE 9001
 VOLUME ["/data"]
 
-CMD /go/src/github.com/vilterp/treesql/treesql-server --data-file /data/treesql.boltdb
+CMD /go/src/github.com/vilterp/treesql/treesql-server --data-file /data/treesql.boltdb --port 9001
+
