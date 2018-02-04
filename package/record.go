@@ -99,20 +99,19 @@ func (record *Record) fieldIndex(name string) int {
 }
 
 func (record *Record) ToBytes() []byte {
-	buffer := NewByteBuffer()
+	buf := new(bytes.Buffer)
 	for idx, column := range record.Table.Columns {
-		buffer.Write([]byte{byte(column.Type)})
+		buf.Write([]byte{byte(column.Type)})
 		value := record.Values[idx]
 		switch column.Type {
 		case TypeInt:
-			writeInteger(buffer, value.IntVal)
+			WriteInteger(buf, value.IntVal)
 		case TypeString:
-			writeInteger(buffer, len(value.StringVal))
-			buffer.WriteString(value.StringVal)
+			WriteInteger(buf, len(value.StringVal))
+			buf.WriteString(value.StringVal)
 		}
 	}
-	result := buffer.GetBytes()
-	return result
+	return buf.Bytes()
 }
 
 func (record *Record) MarshalJSON() ([]byte, error) {
@@ -143,8 +142,8 @@ func readInteger(buffer *bytes.Buffer) (int, error) {
 	return int(result), nil
 }
 
-func writeInteger(buffer *ByteBuffer, val int) {
-	bytes := make([]byte, 4)
-	binary.BigEndian.PutUint32(bytes, uint32(val))
-	buffer.Write(bytes)
+func WriteInteger(buf *bytes.Buffer, val int) {
+	intBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(intBytes, uint32(val))
+	buf.Write(intBytes)
 }
