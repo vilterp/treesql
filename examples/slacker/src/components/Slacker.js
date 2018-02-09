@@ -55,7 +55,6 @@ class Slacker extends Component {
 
   render() {
     const { queryTree } = this.props;
-    console.log('queryTree', queryTree);
     // ^v TODO: I guess make some sort of HOC that contains this
     if (!this.state.currentUserID) {
       return (
