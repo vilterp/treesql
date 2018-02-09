@@ -1,10 +1,11 @@
 package treesql
 
 import (
+	"context"
 	"fmt"
-	"log"
 
 	"github.com/gorilla/websocket"
+	clog "github.com/vilterp/treesql/package/log"
 )
 
 type ConnectionID int
@@ -16,27 +17,34 @@ type Connection struct {
 	ID              int
 	Database        *Database
 	NextStatementID int
+	Context         context.Context
 }
 
 func (db *Database) NewConnection(conn *websocket.Conn) *Connection {
+	ctx := context.WithValue(db.Ctx, clog.ConnIDKey, db.NextConnectionID)
 	dbConn := &Connection{
 		clientConn:      conn,
 		Messages:        make(chan *ChannelMessage),
 		ID:              db.NextConnectionID,
 		Database:        db,
 		NextStatementID: 0,
+		Context:         ctx,
 	}
 	db.NextConnectionID++
 	return dbConn
 }
 
+func (conn *Connection) Ctx() context.Context {
+	return conn.Context
+}
+
 func (conn *Connection) HandleStatements() {
-	log.Println("connection id", conn.ID, "from", conn.clientConn.RemoteAddr())
+	clog.Println(conn, "initiated from", conn.clientConn.RemoteAddr())
 	go conn.writeMessagesToSocket()
 	for {
 		_, message, readErr := conn.clientConn.ReadMessage()
 		if readErr != nil {
-			log.Println("connection", conn.ID, "terminated:", readErr)
+			clog.Println(conn, "terminated:", readErr)
 			return
 		}
 		stringMessage := string(message)
@@ -45,7 +53,7 @@ func (conn *Connection) HandleStatements() {
 		// parse what was sent to us
 		statement, err := Parse(stringMessage)
 		if err != nil {
-			log.Println("connection", conn.ID, "parse error:", err)
+			clog.Println(channel, "parse error:", err)
 			channel.WriteErrorMessage(fmt.Errorf("parse error: %s", err))
 			continue
 		}
@@ -53,8 +61,8 @@ func (conn *Connection) HandleStatements() {
 		// validate statement
 		queryErr := conn.Database.ValidateStatement(statement)
 		if queryErr != nil {
+			clog.Println(channel, "statement validation error:", queryErr)
 			channel.WriteErrorMessage(fmt.Errorf("validation error: %s", queryErr))
-			log.Println("connection", conn.ID, "statement validation error:", queryErr)
 			continue
 		}
 		conn.ExecuteStatement(statement, channel)
@@ -63,7 +71,7 @@ func (conn *Connection) HandleStatements() {
 
 func (conn *Connection) ExecuteStatement(statement *Statement, channel *Channel) {
 	if statement.Select != nil {
-		conn.ExecuteTopLevelQuery(statement.Select, conn.NextStatementID, channel)
+		conn.ExecuteTopLevelQuery(statement.Select, channel)
 	} else if statement.Insert != nil {
 		conn.ExecuteInsert(statement.Insert, channel)
 	} else if statement.CreateTable != nil {
@@ -80,7 +88,7 @@ func (conn *Connection) writeMessagesToSocket() {
 		message := <-conn.Messages
 		writeErr := conn.clientConn.WriteJSON(message)
 		if writeErr != nil {
-			log.Println("connection", conn.ID, "error couldn't write to socket", writeErr)
+			clog.Println(conn, "error couldn't write to socket", writeErr)
 			// TODO: when a connection closes, clear out listeners!
 		}
 	}

@@ -2,10 +2,10 @@ package treesql
 
 import (
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/boltdb/bolt"
+	clog "github.com/vilterp/treesql/package/log"
 )
 
 func (db *Database) validateUpdate(update *Update) error {
@@ -68,7 +68,7 @@ func (conn *Connection) ExecuteUpdate(update *Update, channel *Channel) {
 					return rowUpdateErr
 				}
 				// send live query updates
-				conn.Database.PushTableEvent(update.Table, clonedOldRecord, clonedNewRecord)
+				conn.Database.PushTableEvent(channel, update.Table, clonedOldRecord, clonedNewRecord)
 				rowsUpdated++
 			}
 			return nil
@@ -80,6 +80,6 @@ func (conn *Connection) ExecuteUpdate(update *Update, channel *Channel) {
 	} else {
 		channel.WriteAckMessage(fmt.Sprintf("UPDATE %d", rowsUpdated))
 		endTime := time.Now()
-		log.Println("connection", conn.ID, "handled update in", endTime.Sub(startTime))
+		clog.Println(channel, "handled update in", endTime.Sub(startTime))
 	}
 }

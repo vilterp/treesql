@@ -1,20 +1,34 @@
 package treesql
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+
+	"github.com/vilterp/treesql/package/log"
+)
 
 type Channel struct {
 	Connection   *Connection
 	RawStatement string
 	StatementID  int
+
+	Context context.Context
+}
+
+func (c *Channel) Ctx() context.Context {
+	return c.Context
 }
 
 func (conn *Connection) NewChannel(rawStatement string) *Channel {
+	stmtID := conn.NextStatementID
+	conn.NextStatementID++
+	ctx := context.WithValue(conn.Ctx(), log.StmtIDKey, stmtID)
 	channel := &Channel{
 		Connection:   conn,
 		RawStatement: rawStatement,
-		StatementID:  conn.NextStatementID,
+		StatementID:  stmtID,
+		Context:      ctx,
 	}
-	conn.NextStatementID++
 	return channel
 }
 

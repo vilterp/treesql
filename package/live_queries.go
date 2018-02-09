@@ -1,7 +1,7 @@
 package treesql
 
 import (
-	"log"
+	clog "github.com/vilterp/treesql/package/log"
 )
 
 // LiveQueryInfo lives in a table...
@@ -31,21 +31,27 @@ type TableEvent struct {
 	TableName string
 	OldRecord *Record
 	NewRecord *Record
+
+	channel *Channel
 }
 
 type TableSubscriptionEvent struct {
-	QueryExecution *QueryExecution
+	QueryExecution *SelectExecution
 	QueryPath      *QueryPath
 	SubQuery       *Select // where we are in the query
 	// vv this and value null => subscribe to whole table w/ no filter
 	ColumnName *string
 	Value      *Value
+
+	channel *Channel
 }
 
 type RecordSubscriptionEvent struct {
-	QueryExecution *QueryExecution
+	QueryExecution *SelectExecution
 	Value          *Value
 	QueryPath      *QueryPath
+
+	channel *Channel
 }
 
 func (table *Table) HandleEvents() {
@@ -97,7 +103,7 @@ func (table *Table) HandleEvents() {
 
 		case tableEvent := <-liveInfo.TableEvents:
 			if tableEvent.NewRecord != nil && tableEvent.OldRecord == nil {
-				log.Println("pushing insert event to table listeners")
+				clog.Println(tableEvent.channel, "pushing insert event to table listeners")
 				// whole table listeners
 				liveInfo.WholeTableListeners.SendEvent(tableEvent)
 				// filtered table listeners
@@ -109,7 +115,7 @@ func (table *Table) HandleEvents() {
 					}
 				}
 			} else if tableEvent.OldRecord != nil && tableEvent.NewRecord != nil {
-				log.Println("pushing update event to table listeners")
+				clog.Println(tableEvent.channel, "pushing update event to table listeners")
 				// record listeners
 				primaryKeyValue := tableEvent.NewRecord.GetField(table.PrimaryKey).StringVal
 				recordListeners := liveInfo.RecordListeners[primaryKeyValue]
@@ -117,7 +123,7 @@ func (table *Table) HandleEvents() {
 					recordListeners.SendEvent(tableEvent)
 				}
 			} else if tableEvent.OldRecord != nil && tableEvent.NewRecord == nil {
-				log.Println("TODO: handle delete events")
+				clog.Println(tableEvent.channel, "TODO: handle delete events")
 			}
 		}
 	}

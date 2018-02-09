@@ -13,7 +13,7 @@ type TableIterator interface {
 	Close()
 }
 
-func (ex *QueryExecution) getTableIterator(tableName string) (TableIterator, error) {
+func (ex *SelectExecution) getTableIterator(tableName string) (TableIterator, error) {
 	if tableName == "__tables__" {
 		return newTablesIterator(ex.Channel.Connection.Database)
 	} else if tableName == "__columns__" {
@@ -32,7 +32,7 @@ type BoltIterator struct {
 	table         *Table
 }
 
-func newBoltIterator(ex *QueryExecution, tableName string) (*BoltIterator, error) {
+func newBoltIterator(ex *SelectExecution, tableName string) (*BoltIterator, error) {
 	tableSchema := ex.Channel.Connection.Database.Schema.Tables[tableName]
 	cursor := ex.Transaction.Bucket([]byte(tableName)).Cursor()
 	return &BoltIterator{

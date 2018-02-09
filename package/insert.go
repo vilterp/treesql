@@ -1,9 +1,8 @@
 package treesql
 
 import (
-	"log"
-
 	"github.com/boltdb/bolt"
+	clog "github.com/vilterp/treesql/package/log"
 )
 
 func (db *Database) validateInsert(insert *Insert) error {
@@ -40,7 +39,7 @@ func (conn *Connection) ExecuteInsert(insert *Insert, channel *Channel) {
 		return nil
 	})
 	// push to live query listeners
-	conn.Database.PushTableEvent(insert.Table, nil, record)
-	log.Println("connection", conn.ID, "handled insert")
+	conn.Database.PushTableEvent(channel, insert.Table, nil, record)
+	clog.Println(channel, "handled insert")
 	channel.WriteAckMessage("INSERT 1")
 }

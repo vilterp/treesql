@@ -1,6 +1,7 @@
 package treesql
 
 import (
+	"context"
 	"errors"
 	"log"
 
@@ -12,6 +13,7 @@ type Database struct {
 	BoltDB                  *bolt.DB
 	QueryValidationRequests chan *QueryValidationRequest
 	NextConnectionID        int
+	Ctx                     context.Context
 }
 
 func Open(dataFile string) (*Database, error) {
@@ -20,12 +22,15 @@ func Open(dataFile string) (*Database, error) {
 		return nil, openErr
 	}
 
+	ctx := context.Background()
+
 	// TODO: load this from somewhere in data dir
 	database := &Database{
 		Schema:                  EmptySchema(),
 		BoltDB:                  boltDB,
 		QueryValidationRequests: make(chan *QueryValidationRequest),
 		NextConnectionID:        0,
+		Ctx:                     ctx,
 	}
 	database.AddBuiltinSchema()
 	database.EnsureBuiltinSchema()
@@ -74,10 +79,16 @@ func (db *Database) ValidateStatement(statement *Statement) error {
 	}
 }
 
-func (db *Database) PushTableEvent(tableName string, oldRecord *Record, newRecord *Record) {
+func (db *Database) PushTableEvent(
+	channel *Channel, // originating channel
+	tableName string,
+	oldRecord *Record,
+	newRecord *Record,
+) {
 	db.Schema.Tables[tableName].LiveQueryInfo.TableEvents <- &TableEvent{
 		TableName: tableName,
 		OldRecord: oldRecord,
 		NewRecord: newRecord,
+		channel:   channel,
 	}
 }

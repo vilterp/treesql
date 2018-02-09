@@ -135,10 +135,6 @@ func readInteger(buffer *bytes.Buffer) (int, error) {
 	bytes := make([]byte, 4)
 	buffer.Read(bytes)
 	result := binary.BigEndian.Uint32(bytes)
-	if result > 100000 {
-		log.Println("wut")
-		panic(int(result))
-	}
 	return int(result), nil
 }
 

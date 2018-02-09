@@ -1,12 +1,13 @@
 package treesql
 
 import (
+	"context"
 	"errors"
 	"fmt"
-	"log"
 	"time"
 
 	"github.com/boltdb/bolt"
+	clog "github.com/vilterp/treesql/package/log"
 )
 
 // want to not export this and do it via the server, but...
@@ -70,27 +71,23 @@ func (db *Database) validateSelect(query *Select, tableAbove *string) error {
 }
 
 // TODO: maybe these should be on Channel, not Connection
-func (conn *Connection) ExecuteTopLevelQuery(query *Select, statementID int, channel *Channel) {
-	result, duration, selectErr := conn.executeQuery(query, statementID, channel)
+func (conn *Connection) ExecuteTopLevelQuery(query *Select, channel *Channel) {
+	result, _, selectErr := conn.executeQuery(query, channel)
 	if selectErr != nil {
 		channel.WriteErrorMessage(selectErr)
-		log.Println("connection", conn.ID, "query error:", selectErr.Error())
+		clog.Println(conn, "query error:", selectErr.Error())
 	} else {
 		channel.WriteInitialResult(&InitialResult{
 			Data:   result,
 			Schema: schemaOfQuery(query),
 		})
-		log.Println(
-			"connection", conn.ID, "serviced query", statementID, "in", duration,
-			"live:", query.Live,
-		) // TODO: structured logging XD
 	}
 }
 
 func (conn *Connection) ExecuteQueryForTableListener(query *Select, statementID int, channel *Channel) (SelectResult, error) {
-	result, duration, selectErr := conn.executeQuery(query, statementID, channel)
-	log.Println(
-		"connection", conn.ID, "executed table listener query for statement", statementID, "in", duration,
+	result, duration, selectErr := conn.executeQuery(query, channel)
+	clog.Println(
+		channel, "executed table listener query for statement", statementID, "in", duration,
 	)
 	return result, selectErr
 }
@@ -109,16 +106,23 @@ func schemaOfQuery(query *Select) map[string]interface{} {
 }
 
 // can be from a live query or a top-level query
-func (conn *Connection) executeQuery(query *Select, statementID int, channel *Channel) (SelectResult, *time.Duration, error) {
+func (conn *Connection) executeQuery(
+	query *Select,
+	channel *Channel,
+) (SelectResult, *time.Duration, error) {
 	startTime := time.Now()
 	tx, _ := conn.Database.BoltDB.Begin(false)
-	execution := &QueryExecution{
-		ID:          StatementID(statementID),
+	ctx := context.WithValue(conn.Context, clog.StmtIDKey, channel.StatementID)
+
+	execution := &SelectExecution{
+		ID:          StatementID(channel.StatementID),
 		Channel:     channel,
 		Query:       query,
 		Transaction: tx,
+		Context:     ctx,
 	}
-	result, selectErr := executeSelect(execution, query, nil)
+
+	result, selectErr := execution.executeSelect(query, nil)
 	if selectErr != nil {
 		return nil, nil, selectErr
 	}
@@ -126,18 +130,27 @@ func (conn *Connection) executeQuery(query *Select, statementID int, channel *Ch
 	if commitErr != nil {
 		return nil, nil, commitErr
 	}
-	endTime := time.Now()
 
+	endTime := time.Now()
 	duration := endTime.Sub(startTime)
+
+	clog.Println(execution, "executed in:", duration, "live:", query.Live)
+	// TODO: structured logging XD
+
 	return result, &duration, nil
 }
 
 // maybe this should be called transaction? idk
-type QueryExecution struct {
+type SelectExecution struct {
 	ID          StatementID
 	Channel     *Channel
 	Query       *Select
 	Transaction *bolt.Tx
+	Context     context.Context
+}
+
+func (ex *SelectExecution) Ctx() context.Context {
+	return ex.Context
 }
 
 type Scope struct {
@@ -153,10 +166,10 @@ type FilterCondition struct {
 }
 
 // TODO: wrap & annotate with one/many
-type SelectResult [](map[string]interface{})
+type SelectResult []map[string]interface{}
 
-func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResult, error) {
-	result := make([](map[string]interface{}), 0)
+func (ex *SelectExecution) executeSelect(query *Select, scope *Scope) (SelectResult, error) {
+	result := make([]map[string]interface{}, 0)
 	database := ex.Channel.Connection.Database
 	tableSchema := database.Schema.Tables[query.Table]
 	// if we're an inner loop, figure out a condition for our loop
@@ -178,10 +191,7 @@ func executeSelect(ex *QueryExecution, query *Select, scope *Scope) (SelectResul
 			// TODO: unify these conditions and support ANDs in filtered table listeners
 			// so don't need to worry about this
 			if colNameForSub != nil {
-				log.Println(
-					"connection", ex.Channel.Connection.ID,
-					"warn:", "overriding filter cond with where cond for subscription",
-				)
+				clog.Println(ex, "warn:", "overriding filter cond with where cond for subscription")
 			}
 			colNameForSub = &query.Where.ColumnName
 			valueForSub = &Value{
@@ -268,7 +278,7 @@ func getRecordResults(
 	scope *Scope,
 	tableSchema *Table,
 	record *Record,
-	ex *QueryExecution,
+	ex *SelectExecution,
 	columnsMap map[string]*Column) (map[string]interface{}, error) {
 
 	recordResults := map[string]interface{}{}
@@ -297,7 +307,7 @@ func getRecordResults(
 				selectionName: selection.Name,
 				pathSoFar:     queryPathWithSelection,
 			}
-			subselectResult, subselectErr := executeSelect(ex, selection.SubSelect, nextScope)
+			subselectResult, subselectErr := ex.executeSelect(selection.SubSelect, nextScope)
 			if subselectErr != nil {
 				return nil, subselectErr
 			}

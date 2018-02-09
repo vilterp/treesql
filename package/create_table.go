@@ -3,9 +3,9 @@ package treesql
 import (
 	"encoding/binary"
 	"fmt"
-	"log"
 
 	"github.com/boltdb/bolt"
+	clog "github.com/vilterp/treesql/package/log"
 )
 
 func (db *Database) validateCreateTable(create *CreateTable) error {
@@ -99,9 +99,9 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 			columnRecords[idx] = columnRecord
 		}
 		// push live query messages
-		conn.Database.PushTableEvent("__tables__", nil, tableRecord)
+		conn.Database.PushTableEvent(channel, "__tables__", nil, tableRecord)
 		for _, columnRecord := range columnRecords {
-			conn.Database.PushTableEvent("__columns__", nil, columnRecord)
+			conn.Database.PushTableEvent(channel, "__columns__", nil, columnRecord)
 		}
 		// write next column id sequence
 		nextColumnIDBytes := make([]byte, 4)
@@ -112,9 +112,9 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 	if updateErr != nil {
 		// TODO: structured errors on the wire...
 		channel.WriteErrorMessage(fmt.Errorf("error creating table: %s", updateErr))
-		log.Println("connection", conn.ID, "error creating table:", updateErr)
+		clog.Println(channel, "error creating table:", updateErr)
 	} else {
-		log.Println("connection", conn.ID, "created table", create.Name)
+		clog.Println(channel, "created table", create.Name)
 		channel.WriteAckMessage("CREATE TABLE")
 	}
 }

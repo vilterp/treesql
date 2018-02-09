@@ -4,14 +4,14 @@ import (
 	"log"
 )
 
-// type ListenerList map[ConnectionID]([]*QueryExecution)
+// type ListenerList map[ConnectionID]([]*SelectExecution)
 type ListenerList struct {
 	Table     *Table
-	Listeners map[ConnectionID](map[StatementID]([]*Listener))
+	Listeners map[ConnectionID]map[StatementID]([]*Listener)
 }
 
 type Listener struct {
-	QueryExecution *QueryExecution
+	QueryExecution *SelectExecution
 	// vv nil for record listeners
 	Query     *Select
 	QueryPath *QueryPath
@@ -20,7 +20,7 @@ type Listener struct {
 func (table *Table) NewListenerList() *ListenerList {
 	return &ListenerList{
 		Table:     table,
-		Listeners: map[ConnectionID](map[StatementID]([]*Listener)){},
+		Listeners: map[ConnectionID]map[StatementID]([]*Listener){},
 	}
 }
 
@@ -29,7 +29,7 @@ func (list *ListenerList) addListener(listener *Listener) {
 	connID := ConnectionID(listener.QueryExecution.Channel.Connection.ID)
 	listenersForConn := list.Listeners[connID]
 	if listenersForConn == nil {
-		listenersForConn = map[StatementID]([]*Listener){}
+		listenersForConn = map[StatementID][]*Listener{}
 		list.Listeners[connID] = listenersForConn
 	}
 	listenersForStatement := listenersForConn[stmtID]
@@ -40,7 +40,7 @@ func (list *ListenerList) addListener(listener *Listener) {
 	listenersForConn[stmtID] = listenersForStatement
 }
 
-func (list *ListenerList) AddQueryListener(ex *QueryExecution, query *Select, queryPath *QueryPath) {
+func (list *ListenerList) AddQueryListener(ex *SelectExecution, query *Select, queryPath *QueryPath) {
 	list.addListener(&Listener{
 		QueryExecution: ex,
 		Query:          query,
@@ -48,7 +48,7 @@ func (list *ListenerList) AddQueryListener(ex *QueryExecution, query *Select, qu
 	})
 }
 
-func (list *ListenerList) AddRecordListener(ex *QueryExecution, queryPath *QueryPath) {
+func (list *ListenerList) AddRecordListener(ex *SelectExecution, queryPath *QueryPath) {
 	list.addListener(&Listener{
 		QueryExecution: ex,
 		QueryPath:      queryPath,
