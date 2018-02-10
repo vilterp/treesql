@@ -7,7 +7,6 @@ test-dir/
 vendor/
 
 treesql-server
-treesql-server-linux
 treesql-shell
 
 deploy/systemd/*.env.sh
