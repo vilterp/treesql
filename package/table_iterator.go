@@ -7,6 +7,8 @@ import (
 	"github.com/boltdb/bolt"
 )
 
+// TODO: just make a common ArrayIterator for internal tables
+
 type TableIterator interface {
 	Next() *Record
 	Get(key string) (*Record, error)
@@ -16,9 +18,11 @@ type TableIterator interface {
 func (ex *SelectExecution) getTableIterator(tableName string) (TableIterator, error) {
 	if tableName == "__tables__" {
 		return newTablesIterator(ex.Channel.Connection.Database)
-	} else if tableName == "__columns__" {
+	}
+	if tableName == "__columns__" {
 		return newColumnsIterator(ex.Channel.Connection.Database)
-	} else if tableName == "__record_listeners__" {
+	}
+	if tableName == "__record_listeners__" {
 		return newRecordListenersIterator(ex.Channel.Connection.Database)
 	}
 	return newBoltIterator(ex, tableName)

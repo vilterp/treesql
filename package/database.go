@@ -53,7 +53,7 @@ func (db *Database) Close() {
 	log.Println("Closing storage layer...")
 	err := db.BoltDB.Close()
 	if err != nil {
-		log.Printf("error closing storage layer:", err)
+		log.Println("error closing storage layer:", err)
 	}
 }
 
@@ -68,15 +68,17 @@ type QueryValidationRequest struct {
 func (db *Database) ValidateStatement(statement *Statement) error {
 	if statement.Select != nil {
 		return db.validateSelect(statement.Select, nil)
-	} else if statement.Insert != nil {
-		return db.validateInsert(statement.Insert)
-	} else if statement.CreateTable != nil {
-		return db.validateCreateTable(statement.CreateTable)
-	} else if statement.Update != nil {
-		return db.validateUpdate(statement.Update)
-	} else {
-		return errors.New("unknown statement type")
 	}
+	if statement.Insert != nil {
+		return db.validateInsert(statement.Insert)
+	}
+	if statement.CreateTable != nil {
+		return db.validateCreateTable(statement.CreateTable)
+	}
+	if statement.Update != nil {
+		return db.validateUpdate(statement.Update)
+	}
+	return errors.New("unknown statement type")
 }
 
 func (db *Database) PushTableEvent(
