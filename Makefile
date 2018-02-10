@@ -23,7 +23,7 @@ clean:
 	rm -r treesql-server
 	rm -r webui/build
 
-.PHONY: webui treesql-server-linux treesql-server
+.PHONY: webui treesql-server-linux treesql-server test
 
-# all:
-# 	echo sup
+test:
+	go test github.com/vilterp/treesql/package
