@@ -1,11 +1,14 @@
 package treesql
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"testing"
+
+	"github.com/phayes/freeport"
 )
 
 func NewTestServer() (*Server, *ClientConn, error) {
@@ -15,9 +18,8 @@ func NewTestServer() (*Server, *ClientConn, error) {
 	}
 	defer os.RemoveAll(dir)
 
-	// TODO: how to reliably find a port?
-	// maybe the answer is not to run a freaking server inside the test process
-	port := 12345
+	port := freeport.GetPort()
+
 	server := NewServer(dir+"/test.data", port)
 	go func() {
 		err := server.ListenAndServe()
@@ -35,9 +37,9 @@ func NewTestServer() (*Server, *ClientConn, error) {
 	return server, client, nil
 }
 
-// simpleTestCase is a test case for a statement that
-// is not a live query -- i.e. it just has one response.
-type simpleTestCase struct {
+// define stmt => define error or ack
+// define query => define error or initialResponse
+type simpleTestStmt struct {
 	stmt  string
 	query string
 
@@ -46,7 +48,10 @@ type simpleTestCase struct {
 	initialResult string
 }
 
-func runSimpleTestCases(t *testing.T, cases []simpleTestCase) {
+// runSimpleTestScript spins up a test server and runs statements on it,
+// checking each result. It doesn't support live queries; only initial results
+// are checked.
+func runSimpleTestScript(t *testing.T, cases []simpleTestStmt) {
 	server, client, err := NewTestServer()
 	if err != nil {
 		t.Fatal(err)
@@ -55,27 +60,37 @@ func runSimpleTestCases(t *testing.T, cases []simpleTestCase) {
 	defer server.Close()
 
 	for idx, testCase := range cases {
+		// Run a statement.
 		if testCase.stmt != "" {
 			result, err := client.Exec(testCase.stmt)
-			if err != nil {
-				if testCase.error == "" {
-					t.Fatalf(`case %d: expected success; got error "%s"`, idx, err.Error())
-				}
-				if err.Error() != testCase.error {
-					t.Fatalf(`case %d: expected error "%s"; got "%s"`, idx, testCase.error, err.Error())
-				}
-				continue
-			}
-			if err == nil && testCase.error != "" {
-				t.Fatalf(`case %d: expected error "%s"; got success`, idx, testCase.error)
-			}
-			// TODO: maybe move this to a validation phase
-			if testCase.ack == "" {
-				t.Fatal("no ack specified for statement")
-			}
+			assertError(t, idx, testCase.error, err)
 			if result != testCase.ack {
 				t.Fatalf(`case %d: expected ack "%s"; got "%s"`, idx, testCase.ack, result)
 			}
+			continue
 		}
+		// Run a query.
+		if testCase.query != "" {
+			res, err := client.Query(testCase.query)
+			assertError(t, idx, testCase.error, err)
+			indented, _ := json.MarshalIndent(res.Data, "", "  ")
+			if string(indented) != testCase.initialResult {
+				t.Fatalf("expected:\n%sgot:\n%s", testCase.initialResult, indented)
+			}
+		}
+	}
+}
+
+func assertError(t *testing.T, caseIdx int, expected string, err error) {
+	if err != nil {
+		if expected == "" {
+			t.Fatalf(`case %d: expected success; got error "%s"`, caseIdx, err.Error())
+		}
+		if err.Error() != expected {
+			t.Fatalf(`case %d: expected error "%s"; got "%s"`, caseIdx, expected, err.Error())
+		}
+	}
+	if err == nil && expected != "" {
+		t.Fatalf(`case %d: expected error "%s"; got success`, caseIdx, expected)
 	}
 }

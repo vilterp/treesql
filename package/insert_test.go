@@ -3,7 +3,7 @@ package treesql
 import "testing"
 
 func TestInsert(t *testing.T) {
-	runSimpleTestCases(t, []simpleTestCase{
+	runSimpleTestScript(t, []simpleTestStmt{
 		{
 			stmt: "CREATETABLE blog_posts (id string PRIMARYKEY, body string)",
 			ack:  "CREATE TABLE",

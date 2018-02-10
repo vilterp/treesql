@@ -6,6 +6,8 @@ package treesql
 import (
 	"errors"
 
+	"log"
+
 	"github.com/gorilla/websocket"
 )
 
@@ -72,7 +74,7 @@ func (conn *ClientConn) handleIncoming() {
 		parsedMessage := &ChannelMessage{}
 		err := conn.WebSocketConn.ReadJSON(&parsedMessage)
 		if err != nil {
-			panic(err)
+			log.Println("error in handleIncoming:", err)
 			// uh... should probably recover gracefully from this, but
 			// idk how to return an error from a goroutine. how would its
 			// supervisor (???) handle it? I want erlang lol
