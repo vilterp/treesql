@@ -1,4 +1,4 @@
-all: treesql-server treesql-server-linux webui treesql-cli
+all: treesql-server treesql-server-linux webui treesql-shell
 
 start:
 	go run server/server.go
@@ -19,14 +19,14 @@ treesql-server:
 treesql-server-linux:
 	GOOS=linux godep go build -o treesql-server-linux server/server.go
 
-treesql-cli:
-	godep go build -o treesql-cli cli/cli.go
+treesql-shell:
+	godep go build -o treesql-shell shell/shell.go
 
 clean:
 	rm -r treesql-server
 	rm -r webui/build
 
-.PHONY: webui treesql-server-linux treesql-server treesql-cli test
+.PHONY: webui treesql-server-linux treesql-server treesql-shell test
 
 test:
 	go test ./...
