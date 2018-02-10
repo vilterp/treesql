@@ -112,7 +112,7 @@ func (conn *ClientConn) Query(query string) (*InitialResult, error) {
 	panic("Query result neither error or initial result")
 }
 
-func (conn *ClientConn) Write(statement string) (string, error) {
+func (conn *ClientConn) Exec(statement string) (string, error) {
 	resultChan := conn.sendStatement(statement)
 	update := <-resultChan.Updates
 	if update.ErrorMessage != nil {
@@ -120,5 +120,5 @@ func (conn *ClientConn) Write(statement string) (string, error) {
 	} else if update.AckMessage != nil {
 		return *update.AckMessage, nil
 	}
-	panic("Write result neither error nor ack")
+	panic("Exec result neither error nor ack")
 }

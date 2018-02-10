@@ -34,7 +34,7 @@ func main() {
 	fmt.Println("new version:", newVersionID)
 
 	newVersionStmt := fmt.Sprintf("insert into versions values ('%s', '%s', '%v')", newVersionID, *appID, time.Now())
-	_, newVersionErr := clientConn.Write(newVersionStmt)
+	_, newVersionErr := clientConn.Exec(newVersionStmt)
 	if newVersionErr != nil {
 		fmt.Println("failed to write new version:", newVersionErr)
 		return
@@ -52,7 +52,7 @@ func main() {
 				"insert into files values ('%s', '%s', '%s', %s)",
 				newFileID, path, newVersionID, strconv.Quote(string(contents)),
 			)
-			_, newFileErr := clientConn.Write(newFileStmt)
+			_, newFileErr := clientConn.Exec(newFileStmt)
 			if newFileErr != nil {
 				fmt.Println("failed to write file:", newFileErr)
 				// lol, we don't have transactions :P
