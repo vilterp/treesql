@@ -56,7 +56,7 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 	}
 	columnRecords := make([]*Record, len(create.Columns))
 	updateErr := conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
-		tableSpec := conn.Database.AddTable(create.Name, primaryKey, make([]*Column, len(create.Columns)))
+		tableSpec := conn.Database.AddTable(create.Name, primaryKey, make([]*ColumnDescriptor, len(create.Columns)))
 		// create bucket for new table
 		tx.CreateBucket([]byte(create.Name))
 		// add to in-memory schema
@@ -77,7 +77,7 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 				}
 			}
 			// build column spec
-			columnSpec := &Column{
+			columnSpec := &ColumnDescriptor{
 				ID:               conn.Database.Schema.NextColumnID,
 				Name:             parsedColumn.Name,
 				ReferencesColumn: reference,

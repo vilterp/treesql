@@ -154,7 +154,7 @@ func (ex *SelectExecution) Ctx() context.Context {
 }
 
 type Scope struct {
-	table         *Table
+	table         *TableDescriptor
 	document      *Record
 	pathSoFar     *QueryPath
 	selectionName string
@@ -212,7 +212,7 @@ func (ex *SelectExecution) executeSelect(query *Select, scope *Scope) (SelectRes
 		}
 	}
 	// get schema fields into a map (maybe it should be this in the schema? idk)
-	columnsMap := map[string]*Column{}
+	columnsMap := map[string]*ColumnDescriptor{}
 	for _, column := range tableSchema.Columns {
 		columnsMap[column.Name] = column
 	}
@@ -276,10 +276,10 @@ func (ex *SelectExecution) executeSelect(query *Select, scope *Scope) (SelectRes
 func getRecordResults(
 	query *Select,
 	scope *Scope,
-	tableSchema *Table,
+	tableSchema *TableDescriptor,
 	record *Record,
 	ex *SelectExecution,
-	columnsMap map[string]*Column) (map[string]interface{}, error) {
+	columnsMap map[string]*ColumnDescriptor) (map[string]interface{}, error) {
 
 	recordResults := map[string]interface{}{}
 	// extract & write fields
@@ -335,7 +335,7 @@ func recordMatchesFilter(condition *FilterCondition, innerRec *Record, outerRec 
 	return innerField.StringVal == outerField.StringVal // TODO: more than strings someday
 }
 
-func getFilterCondition(query *Select, tableSchema *Table, scope *Scope) *FilterCondition {
+func getFilterCondition(query *Select, tableSchema *TableDescriptor, scope *Scope) *FilterCondition {
 	var filterCondition *FilterCondition
 	if query.Many {
 		// find reference from inner table to outer table

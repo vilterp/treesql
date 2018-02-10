@@ -9,19 +9,19 @@ import (
 )
 
 type Schema struct {
-	Tables       map[string]*Table
+	Tables       map[string]*TableDescriptor
 	NextColumnID int
 }
 
-type Table struct {
+type TableDescriptor struct {
 	Name          string
-	Columns       []*Column
+	Columns       []*ColumnDescriptor
 	PrimaryKey    string
 	LiveQueryInfo *LiveQueryInfo
 }
 
 type ColumnName string
-type Column struct {
+type ColumnDescriptor struct {
 	ID               int
 	Name             string
 	Type             ColumnType
@@ -48,7 +48,7 @@ var NameToType = map[string]ColumnType{
 	"int":    TypeInt,
 }
 
-func (column *Column) ToRecord(tableName string, db *Database) *Record {
+func (column *ColumnDescriptor) ToRecord(tableName string, db *Database) *Record {
 	columnsTable := db.Schema.Tables["__columns__"]
 	record := columnsTable.NewRecord()
 	record.SetString("id", fmt.Sprintf("%d", column.ID))
@@ -61,7 +61,7 @@ func (column *Column) ToRecord(tableName string, db *Database) *Record {
 	return record
 }
 
-func ColumnFromRecord(record *Record) *Column {
+func ColumnFromRecord(record *Record) *ColumnDescriptor {
 	idInt, _ := strconv.Atoi(record.GetField("id").StringVal)
 	references := record.GetField("references").StringVal
 	var columnReference *ColumnReference
@@ -70,7 +70,7 @@ func ColumnFromRecord(record *Record) *Column {
 			TableName: references,
 		}
 	}
-	return &Column{
+	return &ColumnDescriptor{
 		ID:               idInt,
 		Name:             record.GetField("name").StringVal,
 		Type:             NameToType[record.GetField("type").StringVal],
@@ -78,16 +78,16 @@ func ColumnFromRecord(record *Record) *Column {
 	}
 }
 
-func (table *Table) ToRecord(db *Database) *Record {
+func (table *TableDescriptor) ToRecord(db *Database) *Record {
 	record := db.Schema.Tables["__tables__"].NewRecord()
 	record.SetString("name", table.Name)
 	record.SetString("primary_key", table.PrimaryKey)
 	return record
 }
 
-func TableFromRecord(record *Record) *Table {
-	return &Table{
-		Columns:    make([]*Column, 0),
+func TableFromRecord(record *Record) *TableDescriptor {
+	return &TableDescriptor{
+		Columns:    make([]*ColumnDescriptor, 0),
 		Name:       record.GetField("name").StringVal,
 		PrimaryKey: record.GetField("primary_key").StringVal,
 	}
@@ -118,13 +118,13 @@ func (db *Database) LoadUserSchema() {
 	tablesTable := db.Schema.Tables["__tables__"]
 	columnsTable := db.Schema.Tables["__columns__"]
 	db.BoltDB.View(func(tx *bolt.Tx) error {
-		tables := map[string]*Table{}
+		tables := map[string]*TableDescriptor{}
 		tx.Bucket([]byte("__tables__")).ForEach(func(_ []byte, tableBytes []byte) error {
 			tableRecord := tablesTable.RecordFromBytes(tableBytes)
 			tableSpec := db.AddTable(
 				tableRecord.GetField("name").StringVal,
 				tableRecord.GetField("primary_key").StringVal,
-				make([]*Column, 0),
+				make([]*ColumnDescriptor, 0),
 			)
 			tables[tableSpec.Name] = tableSpec
 			return nil
@@ -140,8 +140,8 @@ func (db *Database) LoadUserSchema() {
 	})
 }
 
-func (db *Database) AddTable(name string, primaryKey string, columns []*Column) *Table {
-	table := &Table{
+func (db *Database) AddTable(name string, primaryKey string, columns []*ColumnDescriptor) *TableDescriptor {
+	table := &TableDescriptor{
 		Name:       name,
 		PrimaryKey: primaryKey,
 		Columns:    columns,
@@ -154,37 +154,37 @@ func (db *Database) AddTable(name string, primaryKey string, columns []*Column) 
 
 func EmptySchema() *Schema {
 	return &Schema{
-		Tables: map[string]*Table{},
+		Tables: map[string]*TableDescriptor{},
 	}
 }
 
 func (db *Database) AddBuiltinSchema() {
 	// these never go in the on-disk __tables__ and __columns__ Bolt buckets
 	// doing ids like this is kind of precarious...
-	db.AddTable("__tables__", "name", []*Column{
-		&Column{
+	db.AddTable("__tables__", "name", []*ColumnDescriptor{
+		&ColumnDescriptor{
 			ID:   0,
 			Name: "name",
 			Type: TypeString,
 		},
-		&Column{
+		&ColumnDescriptor{
 			ID:   1,
 			Name: "primary_key",
 			Type: TypeString,
 		},
 	})
-	db.AddTable("__columns__", "id", []*Column{
-		&Column{
+	db.AddTable("__columns__", "id", []*ColumnDescriptor{
+		&ColumnDescriptor{
 			ID:   2,
 			Name: "id",
 			Type: TypeString, // TODO: switch to int when they work
 		},
-		&Column{
+		&ColumnDescriptor{
 			ID:   3,
 			Name: "name",
 			Type: TypeString,
 		},
-		&Column{
+		&ColumnDescriptor{
 			ID:   4,
 			Name: "table_name",
 			Type: TypeString,
@@ -192,34 +192,34 @@ func (db *Database) AddBuiltinSchema() {
 				TableName: "__tables__",
 			},
 		},
-		&Column{
+		&ColumnDescriptor{
 			ID:   5,
 			Name: "type",
 			Type: TypeString,
 		},
-		&Column{
+		&ColumnDescriptor{
 			ID:   6,
 			Name: "references", // TODO: this is a keyword. rename to "references_table"
 			Type: TypeString,
 		},
 	})
-	db.AddTable("__record_listeners__", "id", []*Column{
-		&Column{
+	db.AddTable("__record_listeners__", "id", []*ColumnDescriptor{
+		&ColumnDescriptor{
 			ID:   7,
 			Name: "id",
 			Type: TypeString,
 		},
-		&Column{
+		&ColumnDescriptor{
 			ID:   8,
 			Name: "connection_id",
 			Type: TypeString,
 		},
-		&Column{
+		&ColumnDescriptor{
 			ID:   9,
 			Name: "channel_id",
 			Type: TypeString,
 		},
-		&Column{
+		&ColumnDescriptor{
 			ID:   10,
 			Name: "table_name",
 			Type: TypeString,
@@ -227,12 +227,12 @@ func (db *Database) AddBuiltinSchema() {
 				TableName: "__tables__",
 			},
 		},
-		&Column{
+		&ColumnDescriptor{
 			ID:   11,
 			Name: "pk_value",
 			Type: TypeString,
 		},
-		&Column{
+		&ColumnDescriptor{
 			ID:   12,
 			Name: "query_path",
 			Type: TypeString,

@@ -6,7 +6,7 @@ import (
 
 // type ListenerList map[ConnectionID]([]*SelectExecution)
 type ListenerList struct {
-	Table     *Table
+	Table     *TableDescriptor
 	Listeners map[ConnectionID]map[StatementID]([]*Listener)
 }
 
@@ -17,7 +17,7 @@ type Listener struct {
 	QueryPath *QueryPath
 }
 
-func (table *Table) NewListenerList() *ListenerList {
+func (table *TableDescriptor) NewListenerList() *ListenerList {
 	return &ListenerList{
 		Table:     table,
 		Listeners: map[ConnectionID]map[StatementID]([]*Listener){},

@@ -9,7 +9,7 @@ import (
 )
 
 type Record struct {
-	Table  *Table
+	Table  *TableDescriptor
 	Values []Value
 }
 
@@ -20,14 +20,14 @@ type Value struct {
 	IntVal    int
 }
 
-func (table *Table) NewRecord() *Record {
+func (table *TableDescriptor) NewRecord() *Record {
 	return &Record{
 		Table:  table,
 		Values: make([]Value, len(table.Columns)),
 	}
 }
 
-func (table *Table) RecordFromBytes(raw []byte) *Record {
+func (table *TableDescriptor) RecordFromBytes(raw []byte) *Record {
 	record := &Record{
 		Table:  table,
 		Values: make([]Value, len(table.Columns)),

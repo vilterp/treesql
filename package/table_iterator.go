@@ -29,7 +29,7 @@ func (ex *SelectExecution) getTableIterator(tableName string) (TableIterator, er
 type BoltIterator struct {
 	cursor        *bolt.Cursor
 	seekedToFirst bool
-	table         *Table
+	table         *TableDescriptor
 }
 
 func newBoltIterator(ex *SelectExecution, tableName string) (*BoltIterator, error) {
@@ -73,12 +73,12 @@ func (it *BoltIterator) Close() {
 // how do I clone the tables?
 type SchemaTablesIterator struct {
 	db          *Database
-	tablesArray []*Table
+	tablesArray []*TableDescriptor
 	idx         int
 }
 
 func newTablesIterator(db *Database) (*SchemaTablesIterator, error) {
-	tables := make([]*Table, len(db.Schema.Tables))
+	tables := make([]*TableDescriptor, len(db.Schema.Tables))
 	i := 0
 	for _, table := range db.Schema.Tables {
 		tables[i] = table

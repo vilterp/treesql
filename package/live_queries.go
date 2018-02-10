@@ -16,7 +16,7 @@ type LiveQueryInfo struct {
 	RecordListeners     map[string]*ListenerList
 }
 
-func (table *Table) EmptyLiveQueryInfo() *LiveQueryInfo {
+func (table *TableDescriptor) EmptyLiveQueryInfo() *LiveQueryInfo {
 	return &LiveQueryInfo{
 		TableEvents:              make(chan *TableEvent),
 		TableSubscriptionEvents:  make(chan *TableSubscriptionEvent),
@@ -54,7 +54,7 @@ type RecordSubscriptionEvent struct {
 	channel *Channel
 }
 
-func (table *Table) HandleEvents() {
+func (table *TableDescriptor) HandleEvents() {
 	// PERF: I guess all writes and (live) reads are serialized through here
 	// that seems bad for perf
 	// you'd have to shard the channels themselves somehow... e.g. for p.k. listeners,
