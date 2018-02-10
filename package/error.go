@@ -87,3 +87,12 @@ type ValidationError struct {
 func (e *ValidationError) Error() string {
 	return fmt.Sprintf("validation error: %s", e.error.Error())
 }
+
+type RecordAlreadyExists struct {
+	ColName string
+	Val     string
+}
+
+func (e *RecordAlreadyExists) Error() string {
+	return fmt.Sprintf("record already exists with primary key %s=%s", e.ColName, e.Val)
+}

@@ -33,11 +33,12 @@ func (conn *Connection) ExecuteInsert(insert *Insert, channel *Channel) error {
 	}
 	key := record.GetField(table.PrimaryKey).StringVal
 	// write to table
-	// TODO: handle any errors
 	err := conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(insert.Table))
-		bucket.Put([]byte(key), record.ToBytes())
-		return nil
+		if current := bucket.Get([]byte(key)); current != nil {
+			return &RecordAlreadyExists{ColName: table.PrimaryKey, Val: key}
+		}
+		return bucket.Put([]byte(key), record.ToBytes())
 	})
 	if err != nil {
 		return errors.Wrap(err, "executing insert")
