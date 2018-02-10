@@ -1,4 +1,5 @@
 .DS_Store
+.idea/
 journal.txt
 thoughts_on_go.txt
 treesql.data
