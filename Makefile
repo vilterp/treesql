@@ -26,4 +26,4 @@ clean:
 .PHONY: webui treesql-server-linux treesql-server test
 
 test:
-	go test github.com/vilterp/treesql/package
+	go test ./...
