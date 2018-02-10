@@ -50,37 +50,42 @@ func (conn *Connection) HandleStatements() {
 		stringMessage := string(message)
 		channel := conn.NewChannel(stringMessage)
 
-		// parse what was sent to us
-		statement, err := Parse(stringMessage)
-		if err != nil {
-			clog.Println(channel, "parse error:", err)
-			channel.WriteErrorMessage(fmt.Errorf("parse error: %s", err))
-			continue
+		if err := channel.HandleStatement(stringMessage); err != nil {
+			clog.Printf(channel, err.Error())
+			channel.WriteErrorMessage(err)
 		}
-
-		// validate statement
-		queryErr := conn.Database.ValidateStatement(statement)
-		if queryErr != nil {
-			clog.Println(channel, "statement validation error:", queryErr)
-			channel.WriteErrorMessage(fmt.Errorf("validation error: %s", queryErr))
-			continue
-		}
-		conn.ExecuteStatement(statement, channel)
 	}
 }
 
-func (conn *Connection) ExecuteStatement(statement *Statement, channel *Channel) {
-	if statement.Select != nil {
-		conn.ExecuteTopLevelQuery(statement.Select, channel)
-	} else if statement.Insert != nil {
-		conn.ExecuteInsert(statement.Insert, channel)
-	} else if statement.CreateTable != nil {
-		conn.ExecuteCreateTable(statement.CreateTable, channel)
-	} else if statement.Update != nil {
-		conn.ExecuteUpdate(statement.Update, channel)
-	} else {
-		panic(fmt.Sprintf("unknown statement type %v", statement))
+func (channel *Channel) HandleStatement(source string) error {
+	// parse what was sent to us
+	statement, err := Parse(source)
+	if err != nil {
+		return &ParseError{error: err}
 	}
+
+	// validate statement
+	queryErr := channel.Connection.Database.ValidateStatement(statement)
+	if queryErr != nil {
+		return &ValidationError{error: queryErr}
+	}
+	return channel.Connection.ExecuteStatement(statement, channel)
+}
+
+func (conn *Connection) ExecuteStatement(statement *Statement, channel *Channel) error {
+	if statement.Select != nil {
+		return conn.ExecuteTopLevelQuery(statement.Select, channel)
+	}
+	if statement.Insert != nil {
+		return conn.ExecuteInsert(statement.Insert, channel)
+	}
+	if statement.CreateTable != nil {
+		return conn.ExecuteCreateTable(statement.CreateTable, channel)
+	}
+	if statement.Update != nil {
+		return conn.ExecuteUpdate(statement.Update, channel)
+	}
+	panic(fmt.Sprintf("unknown statement type %v", statement))
 }
 
 func (conn *Connection) writeMessagesToSocket() {

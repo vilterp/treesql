@@ -69,3 +69,21 @@ type NoReferenceForJoin struct {
 func (e *NoReferenceForJoin) Error() string {
 	return fmt.Sprintf("query requires a column in table `%s` referencing table `%s`; none found", e.FromTable, e.ToTable)
 }
+
+// TODO: maybe just use errors.Wrap for these
+
+type ParseError struct {
+	error error
+}
+
+func (e *ParseError) Error() string {
+	return fmt.Sprintf("parse error: %s", e.error.Error())
+}
+
+type ValidationError struct {
+	error error
+}
+
+func (e *ValidationError) Error() string {
+	return fmt.Sprintf("validation error: %s", e.error.Error())
+}

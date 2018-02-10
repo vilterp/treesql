@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/boltdb/bolt"
+	"github.com/pkg/errors"
 	clog "github.com/vilterp/treesql/package/log"
 )
 
@@ -45,7 +46,7 @@ func (db *Database) validateCreateTable(create *CreateTable) error {
 	return nil
 }
 
-func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel) {
+func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel) error {
 	// find primary key
 	var primaryKey string
 	for _, column := range create.Columns {
@@ -110,11 +111,9 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 		return nil
 	})
 	if updateErr != nil {
-		// TODO: structured errors on the wire...
-		channel.WriteErrorMessage(fmt.Errorf("error creating table: %s", updateErr))
-		clog.Println(channel, "error creating table:", updateErr)
-	} else {
-		clog.Println(channel, "created table", create.Name)
-		channel.WriteAckMessage("CREATE TABLE")
+		return errors.Wrap(updateErr, "creating table")
 	}
+	clog.Println(channel, "created table", create.Name)
+	channel.WriteAckMessage("CREATE TABLE")
+	return nil
 }

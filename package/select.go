@@ -2,11 +2,11 @@ package treesql
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/pkg/errors"
 	clog "github.com/vilterp/treesql/package/log"
 )
 
@@ -71,17 +71,16 @@ func (db *Database) validateSelect(query *Select, tableAbove *string) error {
 }
 
 // TODO: maybe these should be on Channel, not Connection
-func (conn *Connection) ExecuteTopLevelQuery(query *Select, channel *Channel) {
+func (conn *Connection) ExecuteTopLevelQuery(query *Select, channel *Channel) error {
 	result, _, selectErr := conn.executeQuery(query, channel)
 	if selectErr != nil {
-		channel.WriteErrorMessage(selectErr)
-		clog.Println(conn, "query error:", selectErr.Error())
-	} else {
-		channel.WriteInitialResult(&InitialResult{
-			Data:   result,
-			Schema: schemaOfQuery(query),
-		})
+		return errors.Wrap(selectErr, "query error")
 	}
+	channel.WriteInitialResult(&InitialResult{
+		Data:   result,
+		Schema: schemaOfQuery(query),
+	})
+	return nil
 }
 
 func (conn *Connection) ExecuteQueryForTableListener(query *Select, statementID int, channel *Channel) (SelectResult, error) {

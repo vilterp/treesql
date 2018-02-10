@@ -2,6 +2,7 @@ package treesql
 
 import (
 	"github.com/boltdb/bolt"
+	"github.com/pkg/errors"
 	clog "github.com/vilterp/treesql/package/log"
 )
 
@@ -24,7 +25,7 @@ func (db *Database) validateInsert(insert *Insert) error {
 	return nil
 }
 
-func (conn *Connection) ExecuteInsert(insert *Insert, channel *Channel) {
+func (conn *Connection) ExecuteInsert(insert *Insert, channel *Channel) error {
 	table := conn.Database.Schema.Tables[insert.Table]
 	record := table.NewRecord()
 	for idx, value := range insert.Values {
@@ -33,13 +34,17 @@ func (conn *Connection) ExecuteInsert(insert *Insert, channel *Channel) {
 	key := record.GetField(table.PrimaryKey).StringVal
 	// write to table
 	// TODO: handle any errors
-	conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
+	err := conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(insert.Table))
 		bucket.Put([]byte(key), record.ToBytes())
 		return nil
 	})
+	if err != nil {
+		return errors.Wrap(err, "executing insert")
+	}
 	// push to live query listeners
 	conn.Database.PushTableEvent(channel, insert.Table, nil, record)
 	clog.Println(channel, "handled insert")
 	channel.WriteAckMessage("INSERT 1")
+	return nil
 }

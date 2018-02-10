@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/vilterp/treesql",
-	"GoVersion": "go1.8",
+	"GoVersion": "go1.9",
 	"GodepVersion": "v79",
 	"Packages": [
 		"./..."
@@ -25,13 +25,24 @@
 			"Rev": "41eea22f717c616615e1e59aa06cf831f9901f35"
 		},
 		{
+			"ImportPath": "github.com/davecgh/go-spew/spew",
+			"Comment": "v1.1.0-11-g87df7c6",
+			"Rev": "87df7c60d5820d0f8ae11afede5aa52325c09717"
+		},
+		{
+			"ImportPath": "github.com/google/uuid",
+			"Comment": "0.2-21-gdec09d7",
+			"Rev": "dec09d789f3dba190787f8b4454c7d3c936fed9e"
+		},
+		{
 			"ImportPath": "github.com/gorilla/websocket",
 			"Comment": "v1.1.0-29-ga91eba7",
 			"Rev": "a91eba7f97777409bc2c443f5534d41dd20c5720"
 		},
 		{
-			"ImportPath": "github.com/hashicorp/yamux",
-			"Rev": "d1caa6c97c9fc1cc9e83bbe34d0603f9ff0ce8bd"
+			"ImportPath": "github.com/pkg/errors",
+			"Comment": "v0.8.0-11-g30136e2",
+			"Rev": "30136e27e2ac8d167177e8a583aa4c3fea5be833"
 		},
 		{
 			"ImportPath": "github.com/robertkrimen/isatty",

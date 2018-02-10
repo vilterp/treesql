@@ -15,8 +15,8 @@ type Channel struct {
 	Context context.Context
 }
 
-func (c *Channel) Ctx() context.Context {
-	return c.Context
+func (channel *Channel) Ctx() context.Context {
+	return channel.Context
 }
 
 func (conn *Connection) NewChannel(rawStatement string) *Channel {
@@ -146,6 +146,7 @@ func (channel *Channel) WriteRecordUpdate(update *TableEvent, queryPath *QueryPa
 }
 
 func (channel *Channel) writeMessage(message *MessageToClient) {
+	// TODO: why send this to a channel? why not just write it here?
 	channel.Connection.Messages <- &ChannelMessage{
 		StatementID: channel.StatementID,
 		Message:     message,

@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/boltdb/bolt"
+	"github.com/pkg/errors"
 	clog "github.com/vilterp/treesql/package/log"
 )
 
@@ -51,7 +52,7 @@ func (db *Database) validateUpdate(update *Update) error {
 	return nil
 }
 
-func (conn *Connection) ExecuteUpdate(update *Update, channel *Channel) {
+func (conn *Connection) ExecuteUpdate(update *Update, channel *Channel) error {
 	startTime := time.Now()
 	table := conn.Database.Schema.Tables[update.Table]
 	rowsUpdated := 0
@@ -76,10 +77,10 @@ func (conn *Connection) ExecuteUpdate(update *Update, channel *Channel) {
 		return nil
 	})
 	if updateErr != nil {
-		channel.WriteErrorMessage(fmt.Errorf("error executing update: %s", updateErr))
-	} else {
-		channel.WriteAckMessage(fmt.Sprintf("UPDATE %d", rowsUpdated))
-		endTime := time.Now()
-		clog.Println(channel, "handled update in", endTime.Sub(startTime))
+		return errors.Wrap(updateErr, "executing update")
 	}
+	channel.WriteAckMessage(fmt.Sprintf("UPDATE %d", rowsUpdated))
+	endTime := time.Now()
+	clog.Println(channel, "handled update in", endTime.Sub(startTime))
+	return nil
 }
