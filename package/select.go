@@ -132,7 +132,6 @@ func (conn *Connection) executeQuery(
 
 	endTime := time.Now()
 	duration := endTime.Sub(startTime)
-
 	clog.Println(execution, "executed in:", duration, "live:", query.Live)
 	// TODO: structured logging XD
 
@@ -278,7 +277,8 @@ func getRecordResults(
 	tableSchema *TableDescriptor,
 	record *Record,
 	ex *SelectExecution,
-	columnsMap map[string]*ColumnDescriptor) (map[string]interface{}, error) {
+	columnsMap map[string]*ColumnDescriptor,
+) (map[string]interface{}, error) {
 
 	recordResults := map[string]interface{}{}
 	// extract & write fields

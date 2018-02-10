@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/vilterp/treesql/package/log"
+	clog "github.com/vilterp/treesql/package/log"
 )
 
 type Channel struct {
@@ -22,7 +22,7 @@ func (channel *Channel) Ctx() context.Context {
 func (conn *Connection) NewChannel(rawStatement string) *Channel {
 	stmtID := conn.NextStatementID
 	conn.NextStatementID++
-	ctx := context.WithValue(conn.Ctx(), log.StmtIDKey, stmtID)
+	ctx := context.WithValue(conn.Ctx(), clog.StmtIDKey, stmtID)
 	channel := &Channel{
 		Connection:   conn,
 		RawStatement: rawStatement,
@@ -146,9 +146,11 @@ func (channel *Channel) WriteRecordUpdate(update *TableEvent, queryPath *QueryPa
 }
 
 func (channel *Channel) writeMessage(message *MessageToClient) {
-	// TODO: why send this to a channel? why not just write it here?
-	channel.Connection.Messages <- &ChannelMessage{
+	err := channel.Connection.clientConn.WriteJSON(&ChannelMessage{
 		StatementID: channel.StatementID,
 		Message:     message,
+	})
+	if err != nil {
+		clog.Println(channel, "error: couldn't write to socket:", err)
 	}
 }

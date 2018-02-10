@@ -13,7 +13,6 @@ type StatementID int
 
 type Connection struct {
 	clientConn      *websocket.Conn
-	Messages        chan *ChannelMessage
 	ID              int
 	Database        *Database
 	NextStatementID int
@@ -24,7 +23,6 @@ func (db *Database) NewConnection(conn *websocket.Conn) *Connection {
 	ctx := context.WithValue(db.Ctx, clog.ConnIDKey, db.NextConnectionID)
 	dbConn := &Connection{
 		clientConn:      conn,
-		Messages:        make(chan *ChannelMessage),
 		ID:              db.NextConnectionID,
 		Database:        db,
 		NextStatementID: 0,
@@ -40,7 +38,6 @@ func (conn *Connection) Ctx() context.Context {
 
 func (conn *Connection) HandleStatements() {
 	clog.Println(conn, "initiated from", conn.clientConn.RemoteAddr())
-	go conn.writeMessagesToSocket()
 	for {
 		_, message, readErr := conn.clientConn.ReadMessage()
 		if readErr != nil {
@@ -50,16 +47,16 @@ func (conn *Connection) HandleStatements() {
 		stringMessage := string(message)
 		channel := conn.NewChannel(stringMessage)
 
-		if err := channel.HandleStatement(stringMessage); err != nil {
+		if err := channel.HandleStatement(); err != nil {
 			clog.Printf(channel, err.Error())
 			channel.WriteErrorMessage(err)
 		}
 	}
 }
 
-func (channel *Channel) HandleStatement(source string) error {
+func (channel *Channel) HandleStatement() error {
 	// parse what was sent to us
-	statement, err := Parse(source)
+	statement, err := Parse(channel.RawStatement)
 	if err != nil {
 		return &ParseError{error: err}
 	}
@@ -86,15 +83,4 @@ func (conn *Connection) ExecuteStatement(statement *Statement, channel *Channel)
 		return conn.ExecuteUpdate(statement.Update, channel)
 	}
 	panic(fmt.Sprintf("unknown statement type %v", statement))
-}
-
-func (conn *Connection) writeMessagesToSocket() {
-	for {
-		message := <-conn.Messages
-		writeErr := conn.clientConn.WriteJSON(message)
-		if writeErr != nil {
-			clog.Println(conn, "error couldn't write to socket", writeErr)
-			// TODO: when a connection closes, clear out listeners!
-		}
-	}
 }

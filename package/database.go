@@ -3,7 +3,6 @@ package treesql
 import (
 	"context"
 	"errors"
-	"log"
 
 	"github.com/boltdb/bolt"
 )
@@ -49,12 +48,8 @@ func Open(dataFile string) (*Database, error) {
 	return database, nil
 }
 
-func (db *Database) Close() {
-	log.Println("Closing storage layer...")
-	err := db.BoltDB.Close()
-	if err != nil {
-		log.Println("error closing storage layer:", err)
-	}
+func (db *Database) Close() error {
+	return db.BoltDB.Close()
 }
 
 // query validation
