@@ -8,6 +8,7 @@ vendor/
 
 treesql-server
 treesql-server-linux
+treesql-cli
 
 deploy/systemd/*.env.sh
 
