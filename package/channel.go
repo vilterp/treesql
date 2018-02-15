@@ -146,11 +146,8 @@ func (channel *Channel) WriteRecordUpdate(update *TableEvent, queryPath *QueryPa
 }
 
 func (channel *Channel) writeMessage(message *MessageToClient) {
-	err := channel.Connection.clientConn.WriteJSON(&ChannelMessage{
+	channel.Connection.Messages <- &ChannelMessage{
 		StatementID: channel.StatementID,
 		Message:     message,
-	})
-	if err != nil {
-		clog.Println(channel, "error: couldn't write to socket:", err)
 	}
 }

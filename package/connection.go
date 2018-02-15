@@ -16,6 +16,7 @@ type Connection struct {
 	ID              int
 	Database        *Database
 	NextStatementID int
+	Messages        chan *ChannelMessage
 	Context         context.Context
 }
 
@@ -26,14 +27,24 @@ func (db *Database) NewConnection(conn *websocket.Conn) *Connection {
 		ID:              db.NextConnectionID,
 		Database:        db,
 		NextStatementID: 0,
+		Messages:        make(chan *ChannelMessage),
 		Context:         ctx,
 	}
 	db.NextConnectionID++
+	go dbConn.writeMessagesToSocket()
 	return dbConn
 }
 
 func (conn *Connection) Ctx() context.Context {
 	return conn.Context
+}
+
+func (conn *Connection) writeMessagesToSocket() {
+	for msg := range conn.Messages {
+		if err := conn.clientConn.WriteJSON(msg); err != nil {
+			clog.Println(conn, "error writing to socket:", err)
+		}
+	}
 }
 
 func (conn *Connection) HandleStatements() {
