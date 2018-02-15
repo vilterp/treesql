@@ -16,7 +16,7 @@ func NewTestServer() (*Server, *ClientConn, error) {
 	}
 	defer os.RemoveAll(dir)
 
-	port := 10000
+	port := 35595
 
 	server := NewServer(dir+"/test.data", port)
 	go func() {
