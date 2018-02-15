@@ -13,6 +13,7 @@ import (
 
 type ClientConn struct {
 	WebSocketConn    *websocket.Conn
+	URL              string
 	NextStatementID  int
 	StatementsToSend chan *StatementRequest
 	IncomingMessages chan *ChannelMessage
@@ -32,6 +33,7 @@ func NewClientConn(url string) (*ClientConn, error) {
 	clientConn := &ClientConn{
 		NextStatementID:  0,
 		WebSocketConn:    conn,
+		URL:              url,
 		StatementsToSend: make(chan *StatementRequest),
 		IncomingMessages: make(chan *ChannelMessage),
 		Channels:         map[int]*ClientChannel{},

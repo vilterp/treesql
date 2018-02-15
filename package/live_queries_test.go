@@ -1,8 +1,6 @@
 package treesql
 
-import (
-	"testing"
-)
+import "testing"
 
 func TestLiveQueries(t *testing.T) {
 	_, client, err := NewTestServer()
@@ -36,49 +34,92 @@ func TestLiveQueries(t *testing.T) {
 			comments: MANY comments {
 				id
 			}
-		}
-	`)
+		} live
+	`) // wait this doesn't even say "live"
 
 	// TODO: assert against actual message contents.
 
+	messagesReceived := 0
+
 	// Verify table listener is hit.
 	go func() {
-		initialResult := <-lqChan.Updates // throw away initial result
-		if initialResult.Type != InitialResultMessage {
-			t.Fatalf("expected %v but got %v", InitialResultMessage, initialResult.Type)
+		msg1 := <-lqChan.Updates // throw away initial result
+		t.Log("received initial result")
+		messagesReceived++
+		if msg1.Type != InitialResultMessage {
+			t.Fatalf("expected %v but got %v", InitialResultMessage, msg1.Type)
 		}
 
-		msg := <-lqChan.Updates
-		if msg.Type != TableUpdateMessage {
-			t.Fatalf("expected %v but got %v", TableUpdateMessage, msg.Type)
+		msg2 := <-lqChan.Updates
+		t.Log("received table listener update")
+		messagesReceived++
+		if msg2.Type != TableUpdateMessage {
+			t.Fatalf("expected %v but got %v", TableUpdateMessage, msg2.Type)
+		}
+
+		msg3 := <-lqChan.Updates
+		t.Log("received record listener update")
+		messagesReceived++
+		if msg3.Type != RecordUpdateMessage {
+			t.Fatalf("expected %v but got %v", RecordUpdateMessage, msg3.Type)
+		}
+
+		msg4 := <-lqChan.Updates
+		t.Log("received nested table listener update")
+		messagesReceived++
+		if msg4.Type != TableUpdateMessage {
+			t.Fatalf("expected %v but got %v", TableUpdateMessage, msg4.Type)
+		}
+
+		msg5 := <-lqChan.Updates
+		t.Log("received nested record listener update")
+		messagesReceived++
+		if msg5.Type != RecordUpdateMessage {
+			t.Fatalf("expected %v but got %v", RecordUpdateMessage, msg5.Type)
 		}
 	}()
-	client.Exec(`INSERT INTO blog_posts VALUES ("0", "hello world")`)
+
+	if _, err := client.Exec(`INSERT INTO blog_posts VALUES ("0", "hello world")`); err != nil {
+		t.Fatal(err)
+	}
 
 	// Verify record listener is hit.
-	go func() {
-		msg := <-lqChan.Updates
-		if msg.Type != RecordUpdateMessage {
-			t.Fatalf("expected %v but got %v", RecordUpdateMessage, msg.Type)
-		}
-	}()
-	client.Exec(`UPDATE blog_posts SET title = "hello world!" WHERE id = "0"`)
+	if _, err := client.Exec(`UPDATE blog_posts SET title = "hello world!" WHERE id = "0"`); err != nil {
+		t.Fatal(err)
+	}
 
 	// Verify nested table listener is hit.
-	go func() {
-		msg := <-lqChan.Updates
-		if msg.Type != TableUpdateMessage {
-			t.Fatalf("expected %v but got %v", TableUpdateMessage, msg.Type)
-		}
-	}()
-	client.Exec(`INSERT INTO comments VALUES ("0", "0", "nice post")`)
+	if _, err := client.Exec(`INSERT INTO comments VALUES ("0", "0", "nice post")`); err != nil {
+		t.Fatal(err)
+	}
 
 	// Verify nested record listener is hit.
-	go func() {
-		msg := <-lqChan.Updates
-		if msg.Type != RecordUpdateMessage {
-			t.Fatalf("expected %v but got %v", RecordUpdateMessage, msg.Type)
-		}
-	}()
-	client.Exec(`UPDATE comments SET body = "nice post!" WHERE id = "0"`)
+	if _, err := client.Exec(`UPDATE comments SET body = "nice post!" WHERE id = "0"`); err != nil {
+		t.Fatal(err)
+	}
 }
+
+//func TestLiveQueriesMultipleClients(t *testing.T) {
+//	_, client, err := NewTestServer()
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//	defer client.Close()
+//	defer client.Close()
+//
+//	client2, err := NewClientConn(client.URL)
+//	if err != nil {
+//		t.Fatal(err)
+//	}
+//
+//	if _, err := client.Exec(`
+//		CREATETABLE blog_posts (
+//			id string PRIMARYKEY,
+//			title string
+//		)
+//	`); err != nil {
+//		t.Fatal(err)
+//	}
+//
+//
+//}

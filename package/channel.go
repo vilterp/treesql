@@ -97,8 +97,8 @@ type InitialResult struct {
 }
 
 type TableUpdate struct {
-	QueryPath *QueryPath
 	Selection SelectResult
+	QueryPath *QueryPath
 }
 
 type RecordUpdate struct {
