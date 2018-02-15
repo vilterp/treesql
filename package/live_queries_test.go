@@ -3,12 +3,12 @@ package treesql
 import "testing"
 
 func TestLiveQueries(t *testing.T) {
-	_, client, err := NewTestServer()
+	server, client, err := NewTestServer()
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer client.Close()
-	defer client.Close()
+	defer server.Close()
 
 	if _, err := client.Exec(`
 		CREATETABLE blog_posts (

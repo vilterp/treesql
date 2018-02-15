@@ -7,8 +7,6 @@ import (
 	"net/http"
 	"os"
 	"testing"
-
-	"github.com/phayes/freeport"
 )
 
 func NewTestServer() (*Server, *ClientConn, error) {
@@ -18,7 +16,7 @@ func NewTestServer() (*Server, *ClientConn, error) {
 	}
 	defer os.RemoveAll(dir)
 
-	port := freeport.GetPort()
+	port := 10000
 
 	server := NewServer(dir+"/test.data", port)
 	go func() {
