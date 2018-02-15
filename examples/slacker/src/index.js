@@ -18,7 +18,7 @@ const store = createStore(
   applyMiddleware(thunk, logger)
 );
 
-window.CLIENT = new TreeSQLClient(`ws://${window.location.host.split(':')[0]}:9000/ws`)
+window.CLIENT = new TreeSQLClient(`ws://${window.location.host}/ws`)
 window.CLIENT.on('open', () => {
   const channel = window.CLIENT.sendStatement(QUERY);
   channel.on('update', (update) => {
