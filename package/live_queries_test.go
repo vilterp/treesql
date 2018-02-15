@@ -35,48 +35,45 @@ func TestLiveQueries(t *testing.T) {
 				id
 			}
 		} live
-	`) // wait this doesn't even say "live"
+	`)
 
 	// TODO: assert against actual message contents.
 
-	messagesReceived := 0
+	done := make(chan bool)
 
 	// Verify table listener is hit.
 	go func() {
 		msg1 := <-lqChan.Updates // throw away initial result
 		t.Log("received initial result")
-		messagesReceived++
 		if msg1.Type != InitialResultMessage {
 			t.Fatalf("expected %v but got %v", InitialResultMessage, msg1.Type)
 		}
 
 		msg2 := <-lqChan.Updates
 		t.Log("received table listener update")
-		messagesReceived++
 		if msg2.Type != TableUpdateMessage {
 			t.Fatalf("expected %v but got %v", TableUpdateMessage, msg2.Type)
 		}
 
 		msg3 := <-lqChan.Updates
 		t.Log("received record listener update")
-		messagesReceived++
 		if msg3.Type != RecordUpdateMessage {
 			t.Fatalf("expected %v but got %v", RecordUpdateMessage, msg3.Type)
 		}
 
 		msg4 := <-lqChan.Updates
 		t.Log("received nested table listener update")
-		messagesReceived++
 		if msg4.Type != TableUpdateMessage {
 			t.Fatalf("expected %v but got %v", TableUpdateMessage, msg4.Type)
 		}
 
 		msg5 := <-lqChan.Updates
 		t.Log("received nested record listener update")
-		messagesReceived++
 		if msg5.Type != RecordUpdateMessage {
 			t.Fatalf("expected %v but got %v", RecordUpdateMessage, msg5.Type)
 		}
+
+		done <- true
 	}()
 
 	if _, err := client.Exec(`INSERT INTO blog_posts VALUES ("0", "hello world")`); err != nil {
@@ -97,29 +94,6 @@ func TestLiveQueries(t *testing.T) {
 	if _, err := client.Exec(`UPDATE comments SET body = "nice post!" WHERE id = "0"`); err != nil {
 		t.Fatal(err)
 	}
-}
 
-//func TestLiveQueriesMultipleClients(t *testing.T) {
-//	_, client, err := NewTestServer()
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//	defer client.Close()
-//	defer client.Close()
-//
-//	client2, err := NewClientConn(client.URL)
-//	if err != nil {
-//		t.Fatal(err)
-//	}
-//
-//	if _, err := client.Exec(`
-//		CREATETABLE blog_posts (
-//			id string PRIMARYKEY,
-//			title string
-//		)
-//	`); err != nil {
-//		t.Fatal(err)
-//	}
-//
-//
-//}
+	<-done // Make sure we're done
+}
