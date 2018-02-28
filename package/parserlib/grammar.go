@@ -38,6 +38,7 @@ func (g *Grammar) String() string {
 type Rule interface {
 	String() string
 	Validate(g *Grammar) error
+	Completions(g *Grammar) []string
 }
 
 // choice
