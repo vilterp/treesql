@@ -8,3 +8,6 @@ func Intercalate(r Rule, sep Rule) Rule {
 		},
 	}
 }
+
+// TODO: intercalate whitespace
+// TODO: stdlib of ident, int, float, stringLit, etc

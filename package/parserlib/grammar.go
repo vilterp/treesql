@@ -6,10 +6,16 @@ import (
 	"strings"
 )
 
-type RuleName string
-
 type Grammar struct {
 	rules map[string]Rule
+}
+
+func NewGrammar(rules map[string]Rule) (*Grammar, error) {
+	g := &Grammar{rules: rules}
+	if err := g.Validate(); err != nil {
+		return nil, err
+	}
+	return g, nil
 }
 
 func (g *Grammar) Validate() error {
@@ -89,6 +95,11 @@ func (k *Keyword) String() string {
 }
 
 func (k *Keyword) Validate(_ *Grammar) error {
+	for _, char := range k.Value {
+		if char == '\n' {
+			return fmt.Errorf("newlines not allowed in keywords: %v", k.Value)
+		}
+	}
 	return nil
 }
 
@@ -101,7 +112,7 @@ type Ref struct {
 var _ Rule = &Ref{}
 
 func (r *Ref) String() string {
-	return r.Name
+	return string(r.Name)
 }
 
 func (r *Ref) Validate(g *Grammar) error {
