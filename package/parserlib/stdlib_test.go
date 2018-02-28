@@ -4,26 +4,6 @@ import (
 	"testing"
 )
 
-func TestIntercalate(t *testing.T) {
-	t.Skip("skipping until repetition is a thing")
-	g, err := NewGrammar(map[string]Rule{
-		"derps": Intercalate(
-			Keyword("derp"),
-			Keyword(","),
-		),
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	t.Log(g)
-	if _, err := Parse(g, "derps", `derp, derp, derp`); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := Parse(g, "derps", `derp`); err != nil {
-		t.Fatal(err)
-	}
-}
-
 func TestOpt(t *testing.T) {
 	g, err := NewGrammar(map[string]Rule{
 		"optbar": Opt(Keyword("bar")),
@@ -36,7 +16,6 @@ func TestOpt(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(g)
 
 	allShouldSucceed(t, g, []succeedCase{
 		{"optbar", "bar"},
@@ -56,7 +35,6 @@ func TestRegexes(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(g)
 
 	allShouldSucceed(t, g, []succeedCase{
 		{"int_lit", "0"},
@@ -84,7 +62,6 @@ func TestWhitespaceSeq(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	t.Log(g)
 
 	allShouldSucceed(t, g, []succeedCase{
 		{"whitespace_seq", "a b c"},

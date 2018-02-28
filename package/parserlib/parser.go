@@ -20,6 +20,7 @@ type ParserState struct {
 }
 
 type ParserStackFrame struct {
+	input string
 	// position we're at, exclusive
 	// TODO: record start pos
 	pos Position
@@ -30,19 +31,6 @@ type ParserStackFrame struct {
 func (psf *ParserStackFrame) String() string {
 	// TODO: rule-specific state
 	return fmt.Sprintf("%s %s", psf.pos, psf.rule)
-}
-
-type ParseError struct {
-	msg      string
-	pos      Position
-	innerErr *ParseError
-}
-
-func (pe *ParseError) Error() string {
-	if pe.innerErr != nil {
-		return fmt.Sprintf("%s: %s: %s", pe.pos.CompactString(), pe.msg, pe.innerErr)
-	}
-	return fmt.Sprintf("%s: %s", pe.pos.CompactString(), pe.msg)
 }
 
 // TODO: return something other than just an error or not
@@ -69,8 +57,9 @@ func Parse(g *Grammar, startRuleName string, input string) (*TraceTree, error) {
 func (ps *ParserState) callRule(rule Rule, pos Position) (*TraceTree, *ParseError) {
 	// Create and push stack frame.
 	stackFrame := &ParserStackFrame{
-		rule: rule,
-		pos:  pos,
+		input: ps.input,
+		rule:  rule,
+		pos:   pos,
 	}
 	ps.stack = append(ps.stack, stackFrame)
 	// Run the rule.
@@ -88,6 +77,7 @@ func (sf *ParserStackFrame) Errorf(
 	innerErr *ParseError, fmtString string, params ...interface{},
 ) *ParseError {
 	return &ParseError{
+		input:    sf.input,
 		innerErr: innerErr,
 		msg:      fmt.Sprintf(fmtString, params...),
 		pos:      sf.pos,
