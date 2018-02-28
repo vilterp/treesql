@@ -126,7 +126,7 @@ MANY 09notatable {SELECTION}
 		},
 	}
 	for caseIdx, testCase := range cases {
-		_, err := Parse(TestTreeSQLGrammar, testCase.rule, testCase.input)
+		_, err := TestTreeSQLGrammar.Parse(testCase.rule, testCase.input)
 		// TODO: I love you traces; will get back to you when I do completion
 		if err == nil {
 			if testCase.error != "" {
@@ -150,7 +150,7 @@ MANY 09notatable {SELECTION}
 
 func BenchmarkParse(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, err := Parse(TestTreeSQLGrammar, "select", `MANY blog_posts {
+		_, err := TestTreeSQLGrammar.Parse("select", `MANY blog_posts {
 	id,
 	body,
 	comments: MANY comments {
