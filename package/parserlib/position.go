@@ -1,6 +1,9 @@
 package parserlib
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
+)
 
 type Position struct {
 	Line   int
@@ -30,4 +33,14 @@ func (pos *Position) Newline() Position {
 		Line:   pos.Line + 1,
 		Offset: pos.Offset + 1,
 	}
+}
+
+func (pos *Position) ShowInContext(input string) string {
+	lines := strings.Split(input, "\n")
+	inputLine := lines[pos.Line-1]
+	return fmt.Sprintf(
+		"%s\n%s",
+		inputLine,
+		strings.Repeat(" ", pos.Col-1)+"^",
+	)
 }
