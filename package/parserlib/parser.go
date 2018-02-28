@@ -2,7 +2,6 @@ package parserlib
 
 import (
 	"fmt"
-	"strings"
 )
 
 // TODO: structured parse errors
@@ -33,6 +32,19 @@ func (psf *ParserStackFrame) String() string {
 	return fmt.Sprintf("%s %s", psf.pos, psf.rule)
 }
 
+type ParseError struct {
+	msg      string
+	pos      Position
+	innerErr *ParseError
+}
+
+func (pe *ParseError) Error() string {
+	if pe.innerErr != nil {
+		return fmt.Sprintf("%s: %s: %s", pe.pos.CompactString(), pe.msg, pe.innerErr)
+	}
+	return fmt.Sprintf("%s: %s", pe.pos.CompactString(), pe.msg)
+}
+
 // TODO: return something other than just an error or not
 func Parse(g *Grammar, startRuleName string, input string) (*TraceTree, error) {
 	ps := ParserState{
@@ -54,7 +66,7 @@ func Parse(g *Grammar, startRuleName string, input string) (*TraceTree, error) {
 	return traceTree, nil
 }
 
-func (ps *ParserState) callRule(rule Rule, pos Position) (*TraceTree, error) {
+func (ps *ParserState) callRule(rule Rule, pos Position) (*TraceTree, *ParseError) {
 	// Create and push stack frame.
 	stackFrame := &ParserStackFrame{
 		rule: rule,
@@ -72,11 +84,17 @@ func (ps *ParserState) callRule(rule Rule, pos Position) (*TraceTree, error) {
 	return traceTree, nil
 }
 
-func (ps *ParserState) indent() string {
-	return strings.Repeat("  ", len(ps.stack))
+func (sf *ParserStackFrame) Errorf(
+	innerErr *ParseError, fmtString string, params ...interface{},
+) *ParseError {
+	return &ParseError{
+		innerErr: innerErr,
+		msg:      fmt.Sprintf(fmtString, params...),
+		pos:      sf.pos,
+	}
 }
 
-func (ps *ParserState) runRule() (*TraceTree, error) {
+func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 	frame := ps.stack[len(ps.stack)-1]
 	rule := frame.rule
 	switch tRule := rule.(type) {
@@ -93,7 +111,7 @@ func (ps *ParserState) runRule() (*TraceTree, error) {
 				}, nil
 			}
 		}
-		return nil, fmt.Errorf(`no match for rule "%s" at pos %v`, rule.String(), frame.pos)
+		return nil, frame.Errorf(nil, `no match for rule "%s"`, rule.String())
 	case *Sequence:
 		trace := &TraceTree{
 			rule:       rule,
@@ -102,9 +120,7 @@ func (ps *ParserState) runRule() (*TraceTree, error) {
 		for itemIdx, item := range tRule.Items {
 			itemTrace, err := ps.callRule(item, frame.pos)
 			if err != nil {
-				return nil, fmt.Errorf(
-					"no match for sequence item %d: %v", itemIdx, err,
-				)
+				return nil, frame.Errorf(err, "no match for sequence item %d", itemIdx)
 			}
 			frame.pos = itemTrace.endPos
 			trace.itemTraces[itemIdx] = itemTrace
@@ -112,6 +128,12 @@ func (ps *ParserState) runRule() (*TraceTree, error) {
 		trace.endPos = frame.pos
 		return trace, nil
 	case *Keyword:
+		inputLeft := len(ps.input) - frame.pos.Offset
+		if len(tRule.Value) > inputLeft {
+			return nil, frame.Errorf(
+				nil, `expected "%s"; got "%s"<EOF>`, tRule.Value, ps.input[frame.pos.Offset:],
+			)
+		}
 		nextNChars := ps.input[frame.pos.Offset : frame.pos.Offset+len(tRule.Value)]
 		if nextNChars == tRule.Value {
 			return &TraceTree{
@@ -119,7 +141,7 @@ func (ps *ParserState) runRule() (*TraceTree, error) {
 				endPos: frame.pos.MoreOnLine(len(tRule.Value)),
 			}, nil
 		}
-		return nil, fmt.Errorf(`expected "%s"; got "%s"`, tRule.Value, nextNChars)
+		return nil, frame.Errorf(nil, `expected "%s"; got "%s"`, tRule.Value, nextNChars)
 	case *Ref:
 		refRule, ok := ps.grammar.rules[tRule.Name]
 		if !ok {
@@ -127,7 +149,7 @@ func (ps *ParserState) runRule() (*TraceTree, error) {
 		}
 		refTrace, err := ps.callRule(refRule, frame.pos)
 		if err != nil {
-			return nil, fmt.Errorf(`no match for rule "%s": %v`, tRule.Name, err)
+			return nil, frame.Errorf(err, `no match for rule "%s"`, tRule.Name)
 		}
 		return &TraceTree{
 			rule:     rule,
@@ -137,13 +159,18 @@ func (ps *ParserState) runRule() (*TraceTree, error) {
 	case *Regex:
 		loc := tRule.Regex.FindStringIndex(ps.input[frame.pos.Offset:])
 		if loc == nil || loc[0] != 0 {
-			return nil, fmt.Errorf("no match found for regex %s", tRule.Regex)
+			return nil, frame.Errorf(nil, "no match found for regex %s", tRule.Regex)
 		}
 		matchText := ps.input[frame.pos.Offset : frame.pos.Offset+loc[1]]
 		return &TraceTree{
 			rule:       rule,
 			endPos:     frame.pos.MoreOnLine(loc[1]),
 			regexMatch: matchText,
+		}, nil
+	case *AlwaysSucceed:
+		return &TraceTree{
+			rule:   rule,
+			endPos: frame.pos,
 		}, nil
 	default:
 		panic(fmt.Sprintf("not implemented: %T", rule))
