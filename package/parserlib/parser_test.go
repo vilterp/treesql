@@ -150,7 +150,14 @@ MANY 09notatable {SELECTION}
 
 func BenchmarkParse(b *testing.B) {
 	for i := 0; i < b.N; i++ {
-		_, err := Parse(TestTreeSQLGrammar, "select", "MANYTABLENAME{SELECTION}")
+		_, err := Parse(TestTreeSQLGrammar, "select", `MANY blog_posts {
+	id,
+	body,
+	comments: MANY comments {
+		id,
+		body
+	}
+}`)
 		if err != nil {
 			b.Fatal(err)
 		}
