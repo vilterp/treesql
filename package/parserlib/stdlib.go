@@ -4,17 +4,17 @@ import "regexp"
 
 // TODO: this only does it once. need "repeat" combinator of some kind
 func Intercalate(r Rule, sep Rule) Rule {
-	return &Choice{
-		Choices: []Rule{
-			&Sequence{Items: []Rule{sep, r}},
+	return &choice{
+		choices: []Rule{
+			&sequence{items: []Rule{sep, r}},
 			r, // TODO: recur here, not just r
 		},
 	}
 }
 
 func Opt(r Rule) Rule {
-	return &Choice{
-		Choices: []Rule{
+	return &choice{
+		choices: []Rule{
 			r,
 			Succeed,
 		},
@@ -30,18 +30,18 @@ func WhitespaceSeq(items []Rule) Rule {
 		}
 		outItems = append(outItems, item)
 	}
-	return &Sequence{
-		Items: outItems,
+	return &sequence{
+		items: outItems,
 	}
 }
 
-var Whitespace = &Regex{Regex: regexp.MustCompile("\\s+")}
+var Whitespace = &regex{regex: regexp.MustCompile("\\s+")}
 
-var UnsignedIntLit = &Regex{Regex: regexp.MustCompile("[0-9]+")}
+var UnsignedIntLit = &regex{regex: regexp.MustCompile("[0-9]+")}
 
-var SignedIntLit = &Regex{Regex: regexp.MustCompile("-?[0-9]+")}
+var SignedIntLit = &regex{regex: regexp.MustCompile("-?[0-9]+")}
 
 // Thank you https://stackoverflow.com/a/2039820
-var StringLit = &Regex{Regex: regexp.MustCompile(`\"(\\.|[^"\\])*\"`)}
+var StringLit = &regex{regex: regexp.MustCompile(`\"(\\.|[^"\\])*\"`)}
 
-var Ident = &Regex{Regex: regexp.MustCompile("[a-zA-Z][a-zA-Z0-9_]+")}
+var Ident = &regex{regex: regexp.MustCompile("[a-zA-Z][a-zA-Z0-9_]+")}
