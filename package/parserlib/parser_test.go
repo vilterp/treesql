@@ -13,35 +13,53 @@ import (
 
 var TestTreeSQLGrammar = &Grammar{
 	rules: map[string]Rule{
-		"select": WhitespaceSeq([]Rule{
+		"select": Sequence([]Rule{
 			Choice([]Rule{
 				Keyword("ONE"),
 				Keyword("MANY"),
 			}),
+			Whitespace,
 			Ref("table_name"),
+			Whitespace,
+			Opt(Ref("where_clause")),
+			OptWhitespace,
 			Ref("selection"),
 		}),
 		"table_name": Regex(regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_-]+")),
+		"where_clause": Sequence([]Rule{
+			Keyword("WHERE"),
+			Whitespace,
+			Ident,
+			OptWhitespace,
+			Keyword("="),
+			OptWhitespace,
+			Ref("expr"),
+		}),
 		"selection": Sequence([]Rule{
 			Keyword("{"),
-			Opt(Whitespace),
-			Ref("selection_fields"),
-			Opt(Whitespace),
+			OptWhitespaceSurround(
+				Ref("selection_fields"),
+			),
 			Keyword("}"),
 		}),
 		// TODO: intercalate combinator (??)
 		"selection_fields": ListRule(
 			"selection_field",
 			"selection_fields",
-			Sequence([]Rule{Keyword(","), Opt(Whitespace)}),
+			Sequence([]Rule{Keyword(","), OptWhitespace}),
 		),
 		"selection_field": Sequence([]Rule{
 			Ident,
 			Opt(Sequence([]Rule{
 				Keyword(":"),
-				Opt(Whitespace),
+				OptWhitespace,
 				Ref("select"),
 			})),
+		}),
+		"expr": Choice([]Rule{
+			Ident,
+			StringLit,
+			SignedIntLit,
 		}),
 	},
 }
@@ -52,6 +70,16 @@ func TestParse(t *testing.T) {
 		input string
 		error string
 	}{
+		{
+			"selection_field",
+			"id",
+			"",
+		},
+		{
+			"selection_fields",
+			"id, body",
+			"",
+		},
 		{
 			"select",
 			"MANY comments {id}",
@@ -82,6 +110,11 @@ func TestParse(t *testing.T) {
 		body
 	}
 }`,
+			"",
+		},
+		{
+			"select",
+			"ONE blog_posts WHERE id = 1 { title }",
 			"",
 		},
 		{
