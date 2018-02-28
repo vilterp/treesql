@@ -13,6 +13,7 @@ type TraceTree struct {
 	choiceIdx   int
 	choiceTrace *TraceTree
 	// If it's a sequence
+	atItemIdx  int
 	itemTraces []*TraceTree
 	// If it's a regex
 	regexMatch string
@@ -22,8 +23,7 @@ type TraceTree struct {
 
 func (tt *TraceTree) String() string {
 	if tt == nil {
-		fmt.Println("nil trace")
-		return "GUUUU"
+		return "<nil>"
 	}
 	return fmt.Sprintf("<%s => %s>", tt.stringInner(), tt.endPos.CompactString())
 }
