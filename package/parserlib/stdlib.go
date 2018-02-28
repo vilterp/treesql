@@ -2,14 +2,15 @@ package parserlib
 
 import "regexp"
 
-// TODO: this only does it once. need "repeat" combinator of some kind
-func Intercalate(r Rule, sep Rule) Rule {
-	return &choice{
-		choices: []Rule{
-			&sequence{items: []Rule{sep, r}},
-			r, // TODO: recur here, not just r
-		},
-	}
+func ListRule(ruleName string, listName string, sep Rule) Rule {
+	return Choice([]Rule{
+		Sequence([]Rule{
+			Ref(ruleName),
+			sep,
+			Ref(listName),
+		}),
+		Ref(ruleName),
+	})
 }
 
 func Opt(r Rule) Rule {
