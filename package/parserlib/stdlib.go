@@ -24,7 +24,7 @@ func Opt(r Rule) Rule {
 func WhitespaceSeq(items []Rule) Rule {
 	// hoo, a generic intercalate function sure would be nice
 	var outItems []Rule
-	for idx, item := range outItems {
+	for idx, item := range items {
 		if idx > 0 {
 			outItems = append(outItems, Whitespace)
 		}
@@ -37,11 +37,11 @@ func WhitespaceSeq(items []Rule) Rule {
 
 var Whitespace = &Regex{Regex: regexp.MustCompile("\\s+")}
 
-var UnsignedInt = &Regex{Regex: regexp.MustCompile("[0-9]+")}
+var UnsignedIntLit = &Regex{Regex: regexp.MustCompile("[0-9]+")}
 
-var SignedInt = &Regex{Regex: regexp.MustCompile("(-)[0-9]+")}
+var SignedIntLit = &Regex{Regex: regexp.MustCompile("-?[0-9]+")}
 
 // Thank you https://stackoverflow.com/a/2039820
 var StringLit = &Regex{Regex: regexp.MustCompile(`\"(\\.|[^"\\])*\"`)}
 
-var Ident = &Regex{Regex: regexp.MustCompile("[a-z][A-Z0-9_]")}
+var Ident = &Regex{Regex: regexp.MustCompile("[a-zA-Z][a-zA-Z0-9_]+")}
