@@ -152,9 +152,17 @@ func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 			return nil, frame.Errorf(nil, "no match found for regex %s", tRule.regex)
 		}
 		matchText := ps.input[frame.pos.Offset : frame.pos.Offset+loc[1]]
+		endPos := frame.pos
+		for _, char := range matchText {
+			if char == '\n' {
+				endPos = endPos.Newline()
+			} else {
+				endPos = endPos.MoreOnLine(1)
+			}
+		}
 		return &TraceTree{
 			rule:       rule,
-			endPos:     frame.pos.MoreOnLine(loc[1]),
+			endPos:     endPos,
 			regexMatch: matchText,
 		}, nil
 	case *succeed:

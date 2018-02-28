@@ -110,6 +110,7 @@ type keyword struct {
 
 var _ Rule = &keyword{}
 
+// TODO: case insensitivity
 func Keyword(value string) *keyword {
 	return &keyword{
 		value: value,
