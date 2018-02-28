@@ -2,7 +2,7 @@ package parserlib
 
 import "testing"
 
-var TreeSQLGrammar = Grammar{
+var TreeSQLGrammarPartial = Grammar{
 	rules: map[string]Rule{
 		"select": &Sequence{
 			Items: []Rule{
@@ -22,7 +22,7 @@ var TreeSQLGrammar = Grammar{
 }
 
 func TestFormat(t *testing.T) {
-	actual := TreeSQLGrammar.rules["select"].String()
+	actual := TreeSQLGrammarPartial.rules["select"].String()
 	expected := `["ONE" | "MANY", table_name, "{", selection, "}"]`
 	if actual != expected {
 		t.Fatalf("expected `%s`; got `%s`", expected, actual)
@@ -30,7 +30,7 @@ func TestFormat(t *testing.T) {
 }
 
 func TestValidate(t *testing.T) {
-	actual := TreeSQLGrammar.Validate().Error()
+	actual := TreeSQLGrammarPartial.Validate().Error()
 	expected := `in rule "select": in seq item 1: ref not found: "table_name"`
 	if actual != expected {
 		t.Fatalf("expected `%v`; got `%v`", expected, actual)
