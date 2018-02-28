@@ -4,20 +4,16 @@ import "testing"
 
 var TreeSQLGrammarPartial = Grammar{
 	rules: map[string]Rule{
-		"select": &Sequence{
-			Items: []Rule{
-				&Choice{
-					Choices: []Rule{
-						&Keyword{Value: "ONE"},
-						&Keyword{Value: "MANY"},
-					},
-				},
-				&Ref{Name: "table_name"},
-				&Keyword{Value: "{"},
-				&Ref{Name: "selection"},
-				&Keyword{Value: "}"},
-			},
-		},
+		"select": Sequence([]Rule{
+			Choice([]Rule{
+				&keyword{value: "ONE"},
+				&keyword{value: "MANY"},
+			}),
+			Ref("table_name"),
+			Keyword("{"),
+			Ref("selection"),
+			Keyword("}"),
+		}),
 	},
 }
 
