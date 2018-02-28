@@ -77,7 +77,7 @@ type succeedCase struct {
 
 func allShouldSucceed(t *testing.T, g *Grammar, cases []succeedCase) {
 	for caseIdx, testCase := range cases {
-		if _, err := Parse(g, testCase.rule, testCase.input); err != nil {
+		if _, err := g.Parse(testCase.rule, testCase.input); err != nil {
 			t.Errorf("case %d: rule=%s, input=%s, err=%v", caseIdx, testCase.rule, testCase.input, err)
 		}
 	}
