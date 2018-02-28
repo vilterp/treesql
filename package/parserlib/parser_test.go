@@ -13,51 +13,104 @@ import (
 
 var TestTreeSQLGrammar = &Grammar{
 	rules: map[string]Rule{
-		"select": Sequence([]Rule{
+		"select": WhitespaceSeq([]Rule{
 			Choice([]Rule{
 				Keyword("ONE"),
 				Keyword("MANY"),
 			}),
 			Ref("table_name"),
-			Keyword("{"),
 			Ref("selection"),
-			Keyword("}"),
 		}),
 		"table_name": Regex(regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_-]+")),
-		"selection":  Intercalate(Keyword("SELECTION"), Keyword(",")),
+		"selection": Sequence([]Rule{
+			Keyword("{"),
+			Opt(Whitespace),
+			Ref("selection_fields"),
+			Opt(Whitespace),
+			Keyword("}"),
+		}),
+		// TODO: intercalate combinator (??)
+		"selection_fields": ListRule(
+			"selection_field",
+			"selection_fields",
+			Sequence([]Rule{Keyword(","), Opt(Whitespace)}),
+		),
+		"selection_field": Sequence([]Rule{
+			Ident,
+			Opt(Sequence([]Rule{
+				Keyword(":"),
+				Opt(Whitespace),
+				Ref("select"),
+			})),
+		}),
 	},
 }
 
 func TestParse(t *testing.T) {
 	cases := []struct {
+		rule  string
 		input string
-		trace string
 		error string
 	}{
 		{
-			"MANYTABLENAME{SELECTION}",
-			`<SEQ [<CHOICE 1 <KW "MANY" => 1:5> => 1:5>, <REF table_name <REGEX "TABLENAME" => 1:14> => 1:14>, <KW "{" => 1:15>, <REF selection <CHOICE 1 <KW "SELECTION" => 1:24> => 1:24> => 1:24>, <KW "}" => 1:25>] => 1:25>`,
+			"select",
+			"MANY comments {id}",
 			"",
 		},
 		{
-			"MANY09notatable{SELECTION}",
-			``,
-			`1:5: no match for sequence item 1: 1:5: no match for rule "table_name": 1:5: no match found for regex [a-zA-Z_][a-zA-Z0-9_-]+`,
+			"select",
+			"MANY comments {id,body}",
+			"",
+		},
+		{
+			"select",
+			"MANY blog_posts {id, body, comments: MANY comments {id}}",
+			"",
+		},
+		{
+			"select",
+			"MANY blog_posts {id, body, comments: MANY comments { id }}",
+			"",
+		},
+		{
+			"select",
+			`MANY blog_posts {
+	id,
+	body,
+	comments: MANY comments {
+		id,
+		body
+	}
+}`,
+			"",
+		},
+		{
+			"select",
+			"MANY 09notatable {SELECTION}",
+			`line 1, col 6: no match found for regex [a-zA-Z_][a-zA-Z0-9_-]+
+MANY 09notatable {SELECTION}
+     ^`,
 		},
 	}
 	for caseIdx, testCase := range cases {
-		trace, err := Parse(TestTreeSQLGrammar, "select", testCase.input)
+		_, err := Parse(TestTreeSQLGrammar, testCase.rule, testCase.input)
+		// TODO: I love you traces; will get back to you when I do completion
 		if err == nil {
 			if testCase.error != "" {
-				t.Fatalf(`case %d: got no error; expected "%s"`, caseIdx, testCase.error)
-			}
-			if testCase.trace != trace.String() {
-				t.Fatalf(`case %d: expected trace "%s"; got "%s"`, caseIdx, testCase.trace, trace.String())
+				t.Errorf(`case %d: got no error; expected "%s"`, caseIdx, testCase.error)
 			}
 			continue
 		}
-		if err.Error() != testCase.error {
-			t.Fatalf(`case %d: expected "%s"; got "%s"`, caseIdx, testCase.error, err.Error())
+		switch parseErr := err.(type) {
+		case *ParseError:
+			inContext := parseErr.ShowInContext()
+			if inContext != testCase.error {
+				t.Errorf(`case %d: expected err "%s"; got "%s"`, caseIdx, testCase.error, inContext)
+			}
+		default:
+			if err.Error() != testCase.error {
+				t.Errorf(`case %d: expected err "%s"; got "%s"`, caseIdx, testCase.error, err)
+			}
 		}
 	}
 }
