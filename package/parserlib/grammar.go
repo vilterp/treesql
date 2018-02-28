@@ -27,6 +27,14 @@ func (g *Grammar) Validate() error {
 	return nil
 }
 
+func (g *Grammar) String() string {
+	var rulesStrings []string
+	for name, rule := range g.rules {
+		rulesStrings = append(rulesStrings, fmt.Sprintf("%s: %s", name, rule))
+	}
+	return strings.Join(rulesStrings, "\n")
+}
+
 type Rule interface {
 	String() string
 	Validate(g *Grammar) error
@@ -135,5 +143,21 @@ func (r *Regex) String() string {
 }
 
 func (r *Regex) Validate(g *Grammar) error {
+	return nil
+}
+
+// AlwaysSucceed
+
+var Succeed = &AlwaysSucceed{}
+
+type AlwaysSucceed struct{}
+
+var _ Rule = &AlwaysSucceed{}
+
+func (s *AlwaysSucceed) String() string {
+	return "<succeed>"
+}
+
+func (s *AlwaysSucceed) Validate(g *Grammar) error {
 	return nil
 }

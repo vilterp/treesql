@@ -44,6 +44,8 @@ func (tt *TraceTree) stringInner() string {
 		return fmt.Sprintf(`REGEX "%s"`, tt.regexMatch)
 	case *Ref:
 		return fmt.Sprintf("REF %s %s", tRule.Name, tt.refTrace)
+	case *AlwaysSucceed:
+		return "<succeed>"
 	default:
 		panic(fmt.Sprintf("unimplemented: %T", tt.rule))
 	}

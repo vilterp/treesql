@@ -46,7 +46,7 @@ func TestParse(t *testing.T) {
 		{
 			"MANY09notatable{SELECTION}",
 			``,
-			`no match for sequence item 1: no match for rule "table_name": no match found for regex [a-zA-Z_][a-zA-Z0-9_-]+`,
+			`1:5: no match for sequence item 1: 1:5: no match for rule "table_name": 1:5: no match found for regex [a-zA-Z_][a-zA-Z0-9_-]+`,
 		},
 	}
 	for caseIdx, testCase := range cases {
