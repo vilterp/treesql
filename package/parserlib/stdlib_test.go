@@ -8,8 +8,8 @@ func TestIntercalate(t *testing.T) {
 	t.Skip("skipping until repetition is a thing")
 	g, err := NewGrammar(map[string]Rule{
 		"derps": Intercalate(
-			&Keyword{Value: "derp"},
-			&Keyword{Value: ","},
+			Keyword("derp"),
+			Keyword(","),
 		),
 	})
 	if err != nil {
@@ -26,14 +26,12 @@ func TestIntercalate(t *testing.T) {
 
 func TestOpt(t *testing.T) {
 	g, err := NewGrammar(map[string]Rule{
-		"optbar": Opt(&Keyword{Value: "bar"}),
-		"foo_optbar_baz": &Sequence{
-			Items: []Rule{
-				&Keyword{Value: "foo"},
-				&Ref{Name: "optbar"},
-				&Keyword{Value: "baz"},
-			},
-		},
+		"optbar": Opt(Keyword("bar")),
+		"foo_optbar_baz": Sequence([]Rule{
+			Keyword("foo"),
+			Ref("optbar"),
+			Keyword("baz"),
+		}),
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -78,9 +76,9 @@ func TestRegexes(t *testing.T) {
 func TestWhitespaceSeq(t *testing.T) {
 	g, err := NewGrammar(map[string]Rule{
 		"whitespace_seq": WhitespaceSeq([]Rule{
-			&Keyword{"a"},
-			&Keyword{"b"},
-			&Keyword{"c"},
+			Keyword("a"),
+			Keyword("b"),
+			Keyword("c"),
 		}),
 	})
 	if err != nil {
