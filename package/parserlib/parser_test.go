@@ -13,22 +13,18 @@ import (
 
 var TestTreeSQLGrammar = &Grammar{
 	rules: map[string]Rule{
-		"select": &Sequence{
-			Items: []Rule{
-				&Choice{
-					Choices: []Rule{
-						&Keyword{Value: "ONE"},
-						&Keyword{Value: "MANY"},
-					},
-				},
-				&Ref{Name: "table_name"},
-				&Keyword{Value: "{"},
-				&Ref{Name: "selection"},
-				&Keyword{Value: "}"},
-			},
-		},
-		"table_name": &Regex{Regex: regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_-]+")},
-		"selection":  Intercalate(&Keyword{Value: "SELECTION"}, &Keyword{","}),
+		"select": Sequence([]Rule{
+			Choice([]Rule{
+				Keyword("ONE"),
+				Keyword("MANY"),
+			}),
+			Ref("table_name"),
+			Keyword("{"),
+			Ref("selection"),
+			Keyword("}"),
+		}),
+		"table_name": Regex(regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_-]+")),
+		"selection":  Intercalate(Keyword("SELECTION"), Keyword(",")),
 	},
 }
 
