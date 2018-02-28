@@ -22,6 +22,8 @@ func Opt(r Rule) Rule {
 	}
 }
 
+var OptWhitespace = Opt(Whitespace)
+
 func WhitespaceSeq(items []Rule) Rule {
 	// hoo, a generic intercalate function sure would be nice
 	var outItems []Rule
@@ -34,6 +36,28 @@ func WhitespaceSeq(items []Rule) Rule {
 	return &sequence{
 		items: outItems,
 	}
+}
+
+func OptWhitespaceSeq(items []Rule) Rule {
+	// hoo, a generic intercalate function sure would be nice
+	var outItems []Rule
+	for idx, item := range items {
+		if idx > 0 {
+			outItems = append(outItems, Opt(Whitespace))
+		}
+		outItems = append(outItems, item)
+	}
+	return &sequence{
+		items: outItems,
+	}
+}
+
+func OptWhitespaceSurround(r Rule) Rule {
+	return Sequence([]Rule{
+		Opt(Whitespace),
+		r,
+		Opt(Whitespace),
+	})
 }
 
 var Whitespace = &regex{regex: regexp.MustCompile("\\s+")}
