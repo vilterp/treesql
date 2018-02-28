@@ -30,21 +30,21 @@ func (tt *TraceTree) String() string {
 
 func (tt *TraceTree) stringInner() string {
 	switch tRule := tt.rule.(type) {
-	case *Choice:
+	case *choice:
 		return fmt.Sprintf("CHOICE %d %s", tt.choiceIdx, tt.choiceTrace.String())
-	case *Sequence:
+	case *sequence:
 		seqTraces := make([]string, len(tt.itemTraces))
 		for idx, itemTrace := range tt.itemTraces {
 			seqTraces[idx] = itemTrace.String()
 		}
 		return fmt.Sprintf("SEQ [%s]", strings.Join(seqTraces, ", "))
-	case *Keyword:
-		return fmt.Sprintf("KW %#v", tRule.Value)
-	case *Regex:
+	case *keyword:
+		return fmt.Sprintf("KW %#v", tRule.value)
+	case *regex:
 		return fmt.Sprintf(`REGEX "%s"`, tt.regexMatch)
-	case *Ref:
-		return fmt.Sprintf("REF %s %s", tRule.Name, tt.refTrace)
-	case *AlwaysSucceed:
+	case *ref:
+		return fmt.Sprintf("REF %s %s", tRule.name, tt.refTrace)
+	case *succeed:
 		return "<succeed>"
 	default:
 		panic(fmt.Sprintf("unimplemented: %T", tt.rule))
