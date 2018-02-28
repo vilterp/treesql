@@ -98,8 +98,8 @@ func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 	frame := ps.stack[len(ps.stack)-1]
 	rule := frame.rule
 	switch tRule := rule.(type) {
-	case *Choice:
-		for choiceIdx, choice := range tRule.Choices {
+	case *choice:
+		for choiceIdx, choice := range tRule.choices {
 			trace, err := ps.callRule(choice, frame.pos)
 			if err == nil {
 				// We found a match!
@@ -112,12 +112,12 @@ func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 			}
 		}
 		return nil, frame.Errorf(nil, `no match for rule "%s"`, rule.String())
-	case *Sequence:
+	case *sequence:
 		trace := &TraceTree{
 			rule:       rule,
-			itemTraces: make([]*TraceTree, len(tRule.Items)),
+			itemTraces: make([]*TraceTree, len(tRule.items)),
 		}
-		for itemIdx, item := range tRule.Items {
+		for itemIdx, item := range tRule.items {
 			itemTrace, err := ps.callRule(item, frame.pos)
 			if err != nil {
 				return nil, frame.Errorf(err, "no match for sequence item %d", itemIdx)
@@ -127,39 +127,39 @@ func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 		}
 		trace.endPos = frame.pos
 		return trace, nil
-	case *Keyword:
+	case *keyword:
 		inputLeft := len(ps.input) - frame.pos.Offset
-		if len(tRule.Value) > inputLeft {
+		if len(tRule.value) > inputLeft {
 			return nil, frame.Errorf(
-				nil, `expected "%s"; got "%s"<EOF>`, tRule.Value, ps.input[frame.pos.Offset:],
+				nil, `expected "%s"; got "%s"<EOF>`, tRule.value, ps.input[frame.pos.Offset:],
 			)
 		}
-		nextNChars := ps.input[frame.pos.Offset : frame.pos.Offset+len(tRule.Value)]
-		if nextNChars == tRule.Value {
+		nextNChars := ps.input[frame.pos.Offset : frame.pos.Offset+len(tRule.value)]
+		if nextNChars == tRule.value {
 			return &TraceTree{
 				rule:   rule,
-				endPos: frame.pos.MoreOnLine(len(tRule.Value)),
+				endPos: frame.pos.MoreOnLine(len(tRule.value)),
 			}, nil
 		}
-		return nil, frame.Errorf(nil, `expected "%s"; got "%s"`, tRule.Value, nextNChars)
-	case *Ref:
-		refRule, ok := ps.grammar.rules[tRule.Name]
+		return nil, frame.Errorf(nil, `expected "%s"; got "%s"`, tRule.value, nextNChars)
+	case *ref:
+		refRule, ok := ps.grammar.rules[tRule.name]
 		if !ok {
-			panic(fmt.Sprintf("nonexistent rule slipped through validation: %s", tRule.Name))
+			panic(fmt.Sprintf("nonexistent rule slipped through validation: %s", tRule.name))
 		}
 		refTrace, err := ps.callRule(refRule, frame.pos)
 		if err != nil {
-			return nil, frame.Errorf(err, `no match for rule "%s"`, tRule.Name)
+			return nil, frame.Errorf(err, `no match for rule "%s"`, tRule.name)
 		}
 		return &TraceTree{
 			rule:     rule,
 			endPos:   refTrace.endPos,
 			refTrace: refTrace,
 		}, nil
-	case *Regex:
-		loc := tRule.Regex.FindStringIndex(ps.input[frame.pos.Offset:])
+	case *regex:
+		loc := tRule.regex.FindStringIndex(ps.input[frame.pos.Offset:])
 		if loc == nil || loc[0] != 0 {
-			return nil, frame.Errorf(nil, "no match found for regex %s", tRule.Regex)
+			return nil, frame.Errorf(nil, "no match found for regex %s", tRule.regex)
 		}
 		matchText := ps.input[frame.pos.Offset : frame.pos.Offset+loc[1]]
 		return &TraceTree{
@@ -167,7 +167,7 @@ func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 			endPos:     frame.pos.MoreOnLine(loc[1]),
 			regexMatch: matchText,
 		}, nil
-	case *AlwaysSucceed:
+	case *succeed:
 		return &TraceTree{
 			rule:   rule,
 			endPos: frame.pos,
