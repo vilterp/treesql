@@ -34,22 +34,43 @@ var TestTreeSQLGrammar = &Grammar{
 
 func TestParse(t *testing.T) {
 	cases := []struct {
-		input  string
-		output string
+		input string
+		trace string
+		error string
 	}{
-		{"MANYTABLENAME{SELECTION}", ""},
-		{"MANY09notatable{SELECTION}", `no match for sequence item 1: no match for rule "table_name": no match found for regex [a-zA-Z_][a-zA-Z0-9_-]+`},
+		{
+			"MANYTABLENAME{SELECTION}",
+			`<SEQ [<CHOICE 1 <KW "MANY" => 1:5> => 1:5>, <REF table_name <REGEX "TABLENAME" => 1:14> => 1:14>, <KW "{" => 1:15>, <REF selection <CHOICE 1 <KW "SELECTION" => 1:24> => 1:24> => 1:24>, <KW "}" => 1:25>] => 1:25>`,
+			"",
+		},
+		{
+			"MANY09notatable{SELECTION}",
+			``,
+			`no match for sequence item 1: no match for rule "table_name": no match found for regex [a-zA-Z_][a-zA-Z0-9_-]+`,
+		},
 	}
 	for caseIdx, testCase := range cases {
-		err := Parse(TestTreeSQLGrammar, "select", testCase.input)
+		trace, err := Parse(TestTreeSQLGrammar, "select", testCase.input)
 		if err == nil {
-			if testCase.output != "" {
-				t.Fatalf(`case %d: got no error; expected "%s"`, caseIdx, testCase.output)
+			if testCase.error != "" {
+				t.Fatalf(`case %d: got no error; expected "%s"`, caseIdx, testCase.error)
+			}
+			if testCase.trace != trace.String() {
+				t.Fatalf(`case %d: expected trace "%s"; got "%s"`, caseIdx, testCase.trace, trace.String())
 			}
 			continue
 		}
-		if err.Error() != testCase.output {
-			t.Fatalf(`case %d: expected "%s"; got "%s"`, caseIdx, testCase.output, err.Error())
+		if err.Error() != testCase.error {
+			t.Fatalf(`case %d: expected "%s"; got "%s"`, caseIdx, testCase.error, err.Error())
+		}
+	}
+}
+
+func BenchmarkParse(b *testing.B) {
+	for i := 0; i < b.N; i++ {
+		_, err := Parse(TestTreeSQLGrammar, "select", "MANYTABLENAME{SELECTION}")
+		if err != nil {
+			b.Fatal(err)
 		}
 	}
 }
