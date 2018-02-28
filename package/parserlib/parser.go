@@ -138,7 +138,7 @@ func (ps *ParserState) doStep() (Position, error) {
 				return newPos, nil
 			}
 		}
-		return Position{}, fmt.Errorf("no match for rule `%s` at pos %v", rule.String(), frame.pos)
+		return Position{}, fmt.Errorf(`no match for rule "%s" at pos %v`, rule.String(), frame.pos)
 	case *Sequence:
 		for itemIdx, item := range tRule.Items {
 			ps.pushRule(item, frame.pos)
@@ -146,7 +146,7 @@ func (ps *ParserState) doStep() (Position, error) {
 			ps.popRule()
 			if err != nil {
 				return Position{}, fmt.Errorf(
-					"no match for sequence item %d (`%s`): %v", itemIdx, item.String(), err,
+					"no match for sequence item %d: %v", itemIdx, err,
 				)
 			}
 			frame.pos = newPos
@@ -167,11 +167,17 @@ func (ps *ParserState) doStep() (Position, error) {
 		newPos, err := ps.step()
 		ps.popRule()
 		if err != nil {
-			return Position{}, fmt.Errorf("no match for rule %s: %v", tRule.Name, err)
+			return Position{}, fmt.Errorf(`no match for rule "%s": %v`, tRule.Name, err)
 		}
 		return newPos, nil
+	case *Regex:
+		loc := tRule.Regex.FindStringIndex(ps.input[frame.pos.Offset:])
+		if loc == nil || loc[0] != 0 {
+			return Position{}, fmt.Errorf("no match found for regex %s", tRule.Regex)
+		}
+		return frame.pos.MoreOnLine(loc[1]), nil
 	default:
-		panic(fmt.Sprintf("not implemented: %s", rule.String()))
+		panic(fmt.Sprintf("not implemented: %T", rule))
 	}
 	panic("shouldn't get here")
 	return Position{}, nil

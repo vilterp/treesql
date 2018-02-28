@@ -125,7 +125,7 @@ func (r *Ref) Validate(g *Grammar) error {
 // Regex
 
 type Regex struct {
-	Regex regexp.Regexp
+	Regex *regexp.Regexp
 }
 
 var _ Rule = &Regex{}
