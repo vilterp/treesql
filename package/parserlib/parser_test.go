@@ -1,6 +1,9 @@
 package parserlib
 
-import "testing"
+import (
+	"regexp"
+	"testing"
+)
 
 // So, what does the parser actually return?
 // at minimum, it just returns true/false...
@@ -24,7 +27,7 @@ var TestTreeSQLGrammar = &Grammar{
 				&Keyword{Value: "}"},
 			},
 		},
-		"table_name": &Keyword{Value: "TABLENAME"},
+		"table_name": &Regex{Regex: regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_-]+")},
 		"selection":  Intercalate(&Keyword{Value: "SELECTION"}, &Keyword{","}),
 	},
 }
@@ -35,6 +38,7 @@ func TestParse(t *testing.T) {
 		output string
 	}{
 		{"MANYTABLENAME{SELECTION}", ""},
+		{"MANY09notatable{SELECTION}", `no match for sequence item 1: no match for rule "table_name": no match found for regex [a-zA-Z_][a-zA-Z0-9_-]+`},
 	}
 	for caseIdx, testCase := range cases {
 		err := Parse(TestTreeSQLGrammar, "select", testCase.input)
