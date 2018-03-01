@@ -1,4 +1,7 @@
 import React from "react";
+import "./TraceView.css";
+import "./GrammarView.css"; // factor out the common parts? idk
+import { RuleNameView } from './RuleNameView';
 
 function renderPos(pos) {
   return `${pos.Line}:${pos.Col}`
@@ -9,6 +12,21 @@ function renderSpan(trace) {
 }
 
 export class TraceView extends React.Component {
+  render() {
+    return (
+      <div className="trace-view">
+        <TraceNode
+          trace={this.props.trace}
+          grammar={this.props.grammar}
+          onHighlightRule={this.props.onHighlightRule}
+          highlightedRuleID={this.props.highlightedRuleID}
+        />
+      </div>
+    )
+  }
+}
+
+class TraceNode extends React.Component {
   render() {
     const { trace, grammar } = this.props;
 
@@ -25,7 +43,12 @@ export class TraceView extends React.Component {
             <ol style={{ marginTop: 0 }}>
               {trace.ItemTraces.map((itemTrace, idx) => (
                 <li key={idx}>
-                  <TraceView grammar={grammar} trace={itemTrace} />
+                  <TraceNode
+                    grammar={grammar}
+                    trace={itemTrace}
+                    onHighlightRule={this.props.onHighlightRule}
+                    highlightedRuleID={this.props.highlightedRuleID}
+                  />
                 </li>
               ))}
             </ol>
@@ -35,23 +58,47 @@ export class TraceView extends React.Component {
         return (
           <div>
             Choice {trace.ChoiceIdx}<br/>
-            <TraceView grammar={grammar} trace={trace.ChoiceTrace} />
+            <TraceNode
+              grammar={grammar}
+              trace={trace.ChoiceTrace}
+              onHighlightRule={this.props.onHighlightRule}
+              highlightedRuleID={this.props.highlightedRuleID}
+            />
           </div>
         );
       case "REF": {
         return (
           <div>
-            Ref: {rule.Ref}<br />
-            <TraceView grammar={grammar} trace={trace.RefTrace} />
+            <RuleNameView
+              id={grammar.TopLevelRules[rule.Ref]}
+              name={rule.Ref}
+              onHighlightRule={this.props.onHighlightRule}
+              highlightedRuleID={this.props.highlightedRuleID}
+            />
+            <br />
+            <TraceNode
+              grammar={grammar}
+              trace={trace.RefTrace}
+              onHighlightRule={this.props.onHighlightRule}
+              highlightedRuleID={this.props.highlightedRuleID}
+            />
           </div>
         );
       }
       case "KEYWORD":
-        return <span>Keyword "{rule.Keyword}"</span>;
+        // TODO: hover-ify
+        return (
+          <span className="rule-keyword">"{rule.Keyword}"</span>
+        );
       case "REGEX":
-        return <span>Regex "{trace.RegexMatch}"</span>;
+        // TODO: hover-ify
+        return (
+          <span className="rule-regex">
+            "{trace.RegexMatch.replace("\n", "\\n").replace("\t", "\\t")}"
+          </span>
+        );
       case "SUCCEED":
-        return <span>Succeed</span>;
+        return <span className="rule-succeed">&lt;succeed&gt;</span>;
       default:
         console.error(trace);
         return <pre>{JSON.stringify(trace)}</pre>
