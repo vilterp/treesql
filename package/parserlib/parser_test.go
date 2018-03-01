@@ -72,7 +72,7 @@ func TestParse(t *testing.T) {
 		{
 			"select",
 			"MANY 09notatable {SELECTION}",
-			`line 1, col 6: no match found for regex [a-zA-Z_][a-zA-Z0-9_-]+
+			`line 1, col 6: no match found for regex [a-zA-Z_][a-zA-Z0-9_-]*
 MANY 09notatable {SELECTION}
      ^`,
 		},
