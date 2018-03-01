@@ -1,6 +1,6 @@
 import React from "react";
 import _ from "lodash";
-import classNames from "classnames";
+import { RuleNameView } from './RuleNameView';
 import "./GrammarView.css";
 
 export class GrammarView extends React.Component {
@@ -16,7 +16,7 @@ export class GrammarView extends React.Component {
             <th>Definition</th>
           </tr>
         </thead>
-        <tbody style={{ fontFamily: "monospace" }}>
+        <tbody>
           {_.map(grammar.TopLevelRules, (ruleID, name) => (
             <tr key={name}>
               <td>
@@ -111,22 +111,6 @@ class RuleView extends React.Component {
     }
   }
 
-}
-
-class RuleNameView extends React.Component {
-  render() {
-    return (
-      <span
-        className={classNames("rule-ref", {
-          highlighted: this.props.id === this.props.highlightedRuleID
-        })}
-        onMouseOver={() => this.props.onHighlightRule(this.props.id, true)}
-        onMouseOut={() => this.props.onHighlightRule(this.props.id, false)}
-      >
-        {this.props.name}
-      </span>
-    )
-  }
 }
 
 // e.g. intersperse(["foo", "bar", "baz"], "-") => ["foo", "-", "bar", "-", "baz"]
