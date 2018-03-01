@@ -1,5 +1,6 @@
 import React from "react";
 import _ from "lodash";
+import classNames from "classnames";
 import "./GrammarView.css";
 
 export class GrammarView extends React.Component {
@@ -18,9 +19,21 @@ export class GrammarView extends React.Component {
         <tbody style={{ fontFamily: "monospace" }}>
           {_.map(grammar.TopLevelRules, (ruleID, name) => (
             <tr key={name}>
-              <td className="rule-ref">{name}</td>
               <td>
-                <RuleView ruleID={ruleID} grammar={grammar} />
+                <RuleNameView
+                  onHighlightRule={this.props.onHighlightRule}
+                  id={ruleID}
+                  name={name}
+                  highlightedRuleID={this.props.highlightedRuleID}
+                />
+              </td>
+              <td>
+                <RuleView
+                  ruleID={ruleID}
+                  grammar={grammar}
+                  onHighlightRule={this.props.onHighlightRule}
+                  highlightedRuleID={this.props.highlightedRuleID}
+                />
               </td>
             </tr>
           ))}
@@ -32,15 +45,11 @@ export class GrammarView extends React.Component {
 }
 
 class RuleView extends React.Component {
-
   render() {
     const ruleID = this.props.ruleID;
     const grammar = this.props.grammar;
+    const ohr = this.props.onHighlightRule;
     const rule = grammar.RulesByID[ruleID];
-
-    if (!rule) {
-      return <span>nil rule???</span>
-    }
 
     switch (rule.RuleType) {
       case "SEQUENCE": {
@@ -50,7 +59,12 @@ class RuleView extends React.Component {
             {intersperse(
               rule.SeqItems.map((ruleID, idx) => (
                 <span key={`item-${idx}`}>
-                  <RuleView ruleID={ruleID} grammar={grammar} />
+                  <RuleView
+                    ruleID={ruleID}
+                    grammar={grammar}
+                    onHighlightRule={ohr}
+                    highlightedRuleID={this.props.highlightedRuleID}
+                  />
                 </span>
               )),
               (i) => <span key={i}>, </span>,
@@ -65,7 +79,12 @@ class RuleView extends React.Component {
             {intersperse(
               rule.Choices.map((ruleID, idx) => (
                 <span key={`item-${idx}`}>
-                  <RuleView ruleID={ruleID} grammar={grammar} />
+                  <RuleView
+                    ruleID={ruleID}
+                    grammar={grammar}
+                    onHighlightRule={ohr}
+                    highlightedRuleID={this.props.highlightedRuleID}
+                  />
                 </span>
               )),
               (i) => <span key={i} className="rule-symbol"> | </span>,
@@ -79,13 +98,35 @@ class RuleView extends React.Component {
       case "SUCCEED":
         return <span className="rule-succeed">&lt;succeed&gt;</span>;
       case "REF":
-        // TODO: hover-ify
-        return <span className="rule-ref">{rule.Ref}</span>;
+        return (
+          <RuleNameView
+            onHighlightRule={ohr}
+            id={grammar.TopLevelRules[rule.Ref]}
+            name={rule.Ref}
+            highlightedRuleID={this.props.highlightedRuleID}
+          />
+        );
       default:
         return JSON.stringify(rule);
     }
   }
 
+}
+
+class RuleNameView extends React.Component {
+  render() {
+    return (
+      <span
+        className={classNames("rule-ref", {
+          highlighted: this.props.id === this.props.highlightedRuleID
+        })}
+        onMouseOver={() => this.props.onHighlightRule(this.props.id, true)}
+        onMouseOut={() => this.props.onHighlightRule(this.props.id, false)}
+      >
+        {this.props.name}
+      </span>
+    )
+  }
 }
 
 // e.g. intersperse(["foo", "bar", "baz"], "-") => ["foo", "-", "bar", "-", "baz"]
