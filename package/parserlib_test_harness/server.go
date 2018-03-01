@@ -6,10 +6,8 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-
 	"time"
 
-	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/vilterp/treesql/package/parserlib"
 )
 
@@ -92,7 +90,7 @@ func main() {
 			http.Error(w, err.Error(), 500)
 		}
 
-		end := timeutil.Now()
+		end := time.Now()
 		log.Println("/completions responded in", end.Sub(start))
 	})
 
