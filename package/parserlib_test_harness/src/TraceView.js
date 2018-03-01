@@ -2,14 +2,9 @@ import React from "react";
 import "./TraceView.css";
 import "./GrammarView.css"; // factor out the common parts? idk
 import { RuleNameView } from './RuleNameView';
-
-function renderPos(pos) {
-  return `${pos.Line}:${pos.Col}`
-}
-
-function renderSpan(trace) {
-  return `${renderPos(trace.StartPos)} => ${renderPos(trace.EndPos)}`
-}
+import { formatSpan } from './span';
+import classNames from "classnames";
+import "./SourceView.css";
 
 export class TraceView extends React.Component {
   render() {
@@ -20,6 +15,8 @@ export class TraceView extends React.Component {
           grammar={this.props.grammar}
           onHighlightRule={this.props.onHighlightRule}
           highlightedRuleID={this.props.highlightedRuleID}
+          onHighlightSpan={this.props.onHighlightSpan}
+          highlightedSpan={this.props.highlightedSpan}
         />
       </div>
     )
@@ -28,10 +25,40 @@ export class TraceView extends React.Component {
 
 class TraceNode extends React.Component {
   render() {
-    const { trace, grammar } = this.props;
+    const {
+      trace,
+      grammar,
+      onHighlightSpan,
+      highlightedSpan,
+    } = this.props;
 
     if (!trace) {
       return <span>(empty)</span>;
+    }
+
+    const highlightProps = {
+      onHighlightRule: this.props.onHighlightRule,
+      highlightedRuleID: this.props.highlightedRuleID,
+      onHighlightSpan: onHighlightSpan,
+      highlightedSpan: highlightedSpan,
+    };
+
+    const formattedSpan = formatSpan(trace);
+    const isHighlightedSpan = formattedSpan === highlightedSpan;
+
+    function highlightWrapper(className, element) {
+      return (
+        <span
+          className={classNames(
+            className, "source-span",
+            { highlighted: isHighlightedSpan },
+          )}
+          onMouseOver={() => onHighlightSpan(formattedSpan, true)}
+          onMouseOut={() => onHighlightSpan(formattedSpan, false)}
+        >
+          {element}
+        </span>
+      )
     }
 
     const rule = grammar.RulesByID[trace.RuleID];
@@ -39,15 +66,14 @@ class TraceNode extends React.Component {
       case "SEQUENCE":
         return (
           <div>
-            Sequence ({renderSpan(trace)})
+            Sequence ({formatSpan(trace)})
             <ol style={{ marginTop: 0 }}>
               {trace.ItemTraces.map((itemTrace, idx) => (
                 <li key={idx}>
                   <TraceNode
                     grammar={grammar}
                     trace={itemTrace}
-                    onHighlightRule={this.props.onHighlightRule}
-                    highlightedRuleID={this.props.highlightedRuleID}
+                    {...highlightProps}
                   />
                 </li>
               ))}
@@ -61,41 +87,36 @@ class TraceNode extends React.Component {
             <TraceNode
               grammar={grammar}
               trace={trace.ChoiceTrace}
-              onHighlightRule={this.props.onHighlightRule}
-              highlightedRuleID={this.props.highlightedRuleID}
+              {...highlightProps}
             />
           </div>
         );
       case "REF": {
         return (
           <div>
-            <RuleNameView
-              id={grammar.TopLevelRules[rule.Ref]}
-              name={rule.Ref}
-              onHighlightRule={this.props.onHighlightRule}
-              highlightedRuleID={this.props.highlightedRuleID}
-            />
+            {highlightWrapper(
+              null,
+              <RuleNameView
+                id={grammar.TopLevelRules[rule.Ref]}
+                name={rule.Ref}
+                {...highlightProps}
+              />,
+            )}
             <br />
             <TraceNode
               grammar={grammar}
               trace={trace.RefTrace}
-              onHighlightRule={this.props.onHighlightRule}
-              highlightedRuleID={this.props.highlightedRuleID}
+              {...highlightProps}
             />
           </div>
         );
       }
       case "KEYWORD":
-        // TODO: hover-ify
-        return (
-          <span className="rule-keyword">"{rule.Keyword}"</span>
-        );
+        return highlightWrapper("rule-keyword", `"${rule.Keyword}"`);
       case "REGEX":
-        // TODO: hover-ify
-        return (
-          <span className="rule-regex">
-            "{trace.RegexMatch.replace("\n", "\\n").replace("\t", "\\t")}"
-          </span>
+        return highlightWrapper(
+          "rule-regex",
+          `"${trace.RegexMatch.replace("\n", "\\n").replace("\t", "\\t")}"`,
         );
       case "SUCCEED":
         return <span className="rule-succeed">&lt;succeed&gt;</span>;
