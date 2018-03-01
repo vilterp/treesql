@@ -1,0 +1,33 @@
+.rule-keyword {
+  color: green;
+}
+
+.rule-regex {
+  color: orangered;
+}
+
+.rule-symbol {
+  font-weight: bold;
+}
+
+.rule-ref {
+  color: blue;
+}
+
+.rule-succeed {
+  color: purple;
+}
+
+.grammar-view {
+  border-collapse: collapse;
+}
+
+.grammar-view td, .grammar-view th {
+  border-left: 1px solid lightgrey;
+  border-right: 1px solid lightgrey;
+  padding: 3px;
+}
+
+.grammar-view th {
+  border-bottom: 1px solid black;
+}
