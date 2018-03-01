@@ -12,6 +12,9 @@ const INITIAL_QUERY = `MANY blog_posts {
   }
 }`;
 
+// TODO: generalize all these "onhighlightX" and "highlightedX" props to a
+// highlightContext or something
+
 class App extends Component {
   constructor() {
     super();
@@ -100,7 +103,10 @@ class App extends Component {
                 {this.state.trace && this.state.grammar
                   ? <TraceView
                       trace={this.state.trace.Trace}
-                      grammar={this.state.grammar} />
+                      grammar={this.state.grammar}
+                      onHighlightRule={this.handleHighlightRule}
+                      highlightedRuleID={this.state.highlightedRuleID}
+                    />
                   : "<no trace yet>"}
               </td>
               <td>
