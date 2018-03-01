@@ -11,6 +11,9 @@ export class TraceView extends React.Component {
     return (
       <div className="trace-view">
         <TraceNode {...this.props} />
+        {this.props.error
+          ? <p>Error: {this.props.error}</p>
+          : null}
       </div>
     )
   }
