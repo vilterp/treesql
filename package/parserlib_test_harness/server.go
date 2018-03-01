@@ -26,8 +26,12 @@ type completionsResponse struct {
 // TODO: use some logging middleware
 // which prints statuses, urls, and times
 
+// TODO: parameterize this server so it can be started up with other grammars
+
 func main() {
 	flag.Parse()
+
+	// Create a serialized version of the grammar.
 
 	tsg, err := parserlib.TestTreeSQLGrammar()
 	if err != nil {
@@ -35,12 +39,18 @@ func main() {
 	}
 	tsgSerialized := tsg.Serialize()
 
-	// TODO: parameterize this server so it can be started up with other grammars
+	// Serve UI static files.
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("/index.html")
-		http.ServeFile(w, r, "index.html")
+		http.ServeFile(w, r, "build/index.html")
 	})
+
+	fileServer := http.FileServer(http.Dir("build/static"))
+	http.Handle("/static/", http.StripPrefix("/static/", fileServer))
+
+	// Serve grammar and completions.
+
 	http.HandleFunc("/grammar", func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -50,6 +60,7 @@ func main() {
 		end := time.Now()
 		log.Println("/grammar responded in", end.Sub(start))
 	})
+
 	http.HandleFunc("/completions", func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		w.Header().Set("Access-Control-Allow-Origin", "*")
@@ -94,6 +105,7 @@ func main() {
 		log.Println("/completions responded in", end.Sub(start))
 	})
 
+	// Start 'er up.
 	addr := fmt.Sprintf(":%s", *port)
 	log.Printf("serving on %s", addr)
 	if err := http.ListenAndServe(addr, nil); err != nil {
