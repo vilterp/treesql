@@ -13,7 +13,7 @@ const INITIAL_QUERY = `MANY blog_posts {
   }
 }`;
 
-// TODO: generalize all these "onhighlightX" and "highlightedX" props to a
+// TODO: bundle all these "onhighlightX" and "highlightedX" props to a
 // highlightContext or something
 
 class App extends Component {
@@ -25,6 +25,7 @@ class App extends Component {
       trace: null,
 
       highlightedRuleID: null,
+      highlightedSpan: null,
     }
   }
 
@@ -79,15 +80,22 @@ class App extends Component {
     });
   }
 
+  handleHighlightSpan = (span, highlight) => {
+    this.setState({
+      highlightedSpan: highlight ? span : null,
+    });
+  }
+
   render() {
     return (
       <div className="App">
-        <h1>TreeSQL Test Harness</h1>
+        <h1>TreeSQL Parser Test Harness</h1>
         <table>
           <tbody>
             <tr style={{ verticalAlign: "top" }}>
               <td>
               <textarea
+                style={{ fontFamily: "monospace" }}
                 cols={80}
                 rows={10}
                 value={this.state.query}
@@ -96,12 +104,17 @@ class App extends Component {
               </td>
               <td style={{ padding: 10 }}>
                 {this.state.trace && this.state.grammar
-                  ? <SourceView trace={this.state.trace.Trace} grammar={this.state.grammar} />
+                  ? <SourceView
+                      trace={this.state.trace.Trace}
+                      grammar={this.state.grammar}
+                      onHighlightSpan={this.handleHighlightSpan}
+                      highlightedSpan={this.state.highlightedSpan}
+                    />
                   : <span>&lt;don't have both trace & grammar yet&gt;</span>}
               </td>
             </tr>
             <tr style={{ verticalAlign: "top" }}>
-              <td>
+              <td style={{ height: 500, overflow: "hidden" }}>
                 <h3>Trace</h3>
                 {this.state.trace && this.state.grammar
                   ? <TraceView
@@ -109,6 +122,8 @@ class App extends Component {
                       grammar={this.state.grammar}
                       onHighlightRule={this.handleHighlightRule}
                       highlightedRuleID={this.state.highlightedRuleID}
+                      onHighlightSpan={this.handleHighlightSpan}
+                      highlightedSpan={this.state.highlightedSpan}
                     />
                   : <span>&lt;don't have both trace & grammar yet&gt;</span>}
               </td>
