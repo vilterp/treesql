@@ -10,14 +10,14 @@ func (g *Grammar) GetCompletions(rule string, input string) ([]string, error) {
 	default:
 		return nil, err
 	}
-	switch tRule := trace.rule.(type) {
+	switch tRule := trace.Rule.(type) {
 	case *choice:
 		return tRule.Completions(g), nil
 	case *sequence:
-		stoppedAtRule := tRule.items[trace.atItemIdx]
+		stoppedAtRule := tRule.items[trace.AtItemIdx]
 		return stoppedAtRule.Completions(g), nil
 	default:
-		panic(fmt.Sprintf("unimplemented: %T", trace.rule))
+		panic(fmt.Sprintf("unimplemented: %T", trace.Rule))
 	}
 }
 
