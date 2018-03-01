@@ -1,10 +1,10 @@
 import React from "react";
-import "./TraceView.css";
-import "./GrammarView.css"; // factor out the common parts? idk
 import { RuleNameView } from './RuleNameView';
 import { formatSpan } from './span';
 import classNames from "classnames";
 import "./SourceView.css";
+import "./TraceView.css";
+import "./GrammarView.css"; // factor out the common parts? idk
 
 export class TraceView extends React.Component {
   render() {
@@ -21,6 +21,8 @@ class TraceNode extends React.Component {
     const {
       trace,
       grammar,
+      onHighlightRule,
+      highlightedRuleID,
       onHighlightSpan,
       highlightedSpan,
     } = this.props;
@@ -30,8 +32,8 @@ class TraceNode extends React.Component {
     }
 
     const highlightProps = {
-      onHighlightRule: this.props.onHighlightRule,
-      highlightedRuleID: this.props.highlightedRuleID,
+      onHighlightRule: onHighlightRule,
+      highlightedRuleID: highlightedRuleID,
       onHighlightSpan: onHighlightSpan,
       highlightedSpan: highlightedSpan,
     };
@@ -39,7 +41,7 @@ class TraceNode extends React.Component {
     const formattedSpan = formatSpan(trace);
     const isHighlightedSpan = formattedSpan === highlightedSpan;
 
-    function highlightWrapper(className, element) {
+    function highlightSpanWrapper(className, element) {
       return (
         <span
           className={classNames(
@@ -52,6 +54,21 @@ class TraceNode extends React.Component {
           {element}
         </span>
       )
+    }
+
+    const isHighlightedRule = highlightedRuleID === trace.RuleID;
+
+    function highlightRuleWrapper(element) {
+      // TODO: DRY w/ GrammarView...?
+      return (
+        <span
+          className={classNames("rule-def", { highlighted: isHighlightedRule })}
+          onMouseOver={() => onHighlightRule(trace.RuleID, true)}
+          onMouseOut={() => onHighlightRule(trace.RuleID, false)}
+        >
+          {element}
+        </span>
+      );
     }
 
     const rule = grammar.RulesByID[trace.RuleID];
@@ -90,7 +107,7 @@ class TraceNode extends React.Component {
       case "REF": {
         return (
           <div>
-            {highlightWrapper(
+            {highlightSpanWrapper(
               null,
               <RuleNameView
                 id={grammar.TopLevelRules[rule.Ref]}
@@ -108,11 +125,15 @@ class TraceNode extends React.Component {
         );
       }
       case "KEYWORD":
-        return highlightWrapper("rule-keyword", `"${rule.Keyword}"`);
+        return highlightRuleWrapper(
+          highlightSpanWrapper("rule-keyword", `"${rule.Keyword}"`),
+        );
       case "REGEX":
-        return highlightWrapper(
-          "rule-regex",
-          `"${trace.RegexMatch.replace("\n", "\\n").replace("\t", "\\t")}"`,
+        return highlightRuleWrapper(
+          highlightSpanWrapper(
+            "rule-regex",
+            `"${trace.RegexMatch.replace("\n", "\\n").replace("\t", "\\t")}"`,
+          ),
         );
       case "SUCCEED":
         return <span className="rule-succeed">&lt;succeed&gt;</span>;

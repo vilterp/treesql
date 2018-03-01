@@ -1,6 +1,7 @@
 import React from "react";
 import _ from "lodash";
 import { RuleNameView } from './RuleNameView';
+import classNames from "classnames";
 import "./GrammarView.css";
 
 export class GrammarView extends React.Component {
@@ -46,10 +47,33 @@ export class GrammarView extends React.Component {
 
 class RuleView extends React.Component {
   render() {
-    const ruleID = this.props.ruleID;
-    const grammar = this.props.grammar;
-    const ohr = this.props.onHighlightRule;
+    const {
+      ruleID,
+      grammar,
+      onHighlightRule,
+      highlightedRuleID,
+    } = this.props;
+
     const rule = grammar.RulesByID[ruleID];
+
+    const highlightProps = {
+      onHighlightRule: onHighlightRule,
+      highlightedRuleID: highlightedRuleID,
+    };
+
+    const isHighlighted = ruleID === highlightedRuleID;
+
+    function highlightWrapper(element) {
+      return (
+        <span
+          className={classNames("rule-def", { highlighted: isHighlighted })}
+          onMouseOver={() => onHighlightRule(ruleID, true)}
+          onMouseOut={() => onHighlightRule(ruleID, false)}
+        >
+          {element}
+        </span>
+      );
+    }
 
     switch (rule.RuleType) {
       case "SEQUENCE": {
@@ -62,8 +86,7 @@ class RuleView extends React.Component {
                   <RuleView
                     ruleID={ruleID}
                     grammar={grammar}
-                    onHighlightRule={ohr}
-                    highlightedRuleID={this.props.highlightedRuleID}
+                    {...highlightProps}
                   />
                 </span>
               )),
@@ -82,8 +105,7 @@ class RuleView extends React.Component {
                   <RuleView
                     ruleID={ruleID}
                     grammar={grammar}
-                    onHighlightRule={ohr}
-                    highlightedRuleID={this.props.highlightedRuleID}
+                    {...highlightProps}
                   />
                 </span>
               )),
@@ -92,18 +114,17 @@ class RuleView extends React.Component {
           </span>
         );
       case "KEYWORD":
-        return <span className="rule-keyword">"{rule.Keyword}"</span>;
+        return highlightWrapper(<span className="rule-keyword">"{rule.Keyword}"</span>);
       case "REGEX":
-        return <span className="rule-regex">/${rule.Regex}/</span>;
+        return highlightWrapper(<span className="rule-regex">/${rule.Regex}/</span>);
       case "SUCCEED":
         return <span className="rule-succeed">&lt;succeed&gt;</span>;
       case "REF":
         return (
           <RuleNameView
-            onHighlightRule={ohr}
             id={grammar.TopLevelRules[rule.Ref]}
             name={rule.Ref}
-            highlightedRuleID={this.props.highlightedRuleID}
+            {...highlightProps}
           />
         );
       default:
