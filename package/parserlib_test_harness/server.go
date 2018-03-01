@@ -20,7 +20,7 @@ type completionsRequest struct {
 
 type completionsResponse struct {
 	Trace *parserlib.TraceTree
-	Err   *parserlib.ParseError
+	Err   string
 }
 
 // TODO: use some logging middleware
@@ -86,9 +86,9 @@ func main() {
 		trace, err := tsg.Parse("select", cr.Input)
 		resp.Trace = trace
 		if err != nil {
-			switch tErr := err.(type) {
+			switch err.(type) {
 			case *parserlib.ParseError:
-				resp.Err = tErr
+				resp.Err = err.Error()
 			default:
 				log.Println("error parsing:", err)
 				http.Error(w, fmt.Sprintf("error parsing: %v", err), 500)

@@ -92,24 +92,21 @@ func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 	}
 	switch tRule := rule.(type) {
 	case *choice:
-		for choiceIdx, choice := range tRule.choices {
-			trace, err := ps.callRule(choice, frame.pos)
-			if err == nil {
-				// We found a match!
-				return &TraceTree{
-					RuleID:      ps.grammar.idForRule[rule],
-					StartPos:    startPos,
-					EndPos:      trace.EndPos,
-					ChoiceIdx:   choiceIdx,
-					ChoiceTrace: trace,
-				}, nil
-			}
-		}
-		return &TraceTree{
+		trace := &TraceTree{
 			RuleID:   ps.grammar.idForRule[rule],
 			StartPos: startPos,
-			EndPos:   frame.pos,
-		}, frame.Errorf(nil, `no match for rule "%s"`, rule.String())
+		}
+		for choiceIdx, choice := range tRule.choices {
+			choiceTrace, err := ps.callRule(choice, frame.pos)
+			trace.EndPos = choiceTrace.EndPos
+			trace.ChoiceIdx = choiceIdx
+			trace.ChoiceTrace = choiceTrace
+			if err == nil {
+				// We found a match!
+				return trace, nil
+			}
+		}
+		return trace, frame.Errorf(nil, `no match for rule "%s"`, rule.String())
 	case *sequence:
 		trace := &TraceTree{
 			RuleID:     ps.grammar.idForRule[rule],
@@ -120,11 +117,11 @@ func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 			trace.AtItemIdx = itemIdx
 			itemTrace, err := ps.callRule(item, frame.pos)
 			trace.EndPos = itemTrace.EndPos
+			trace.ItemTraces[itemIdx] = itemTrace
 			if err != nil {
 				return trace, frame.Errorf(err, "no match for sequence item %d", itemIdx)
 			}
 			frame.pos = itemTrace.EndPos
-			trace.ItemTraces[itemIdx] = itemTrace
 		}
 		trace.EndPos = frame.pos
 		return trace, nil
@@ -150,6 +147,8 @@ func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 			panic(fmt.Sprintf("nonexistent rule slipped through validation: %s", tRule.name))
 		}
 		refTrace, err := ps.callRule(refRule, frame.pos)
+		minimalTrace.RefTrace = refTrace
+		minimalTrace.EndPos = refTrace.EndPos
 		if err != nil {
 			return minimalTrace, frame.Errorf(err, `no match for rule "%s"`, tRule.name)
 		}

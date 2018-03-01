@@ -110,29 +110,30 @@ class App extends Component {
           <div className="grid-cell app-sourceview">
             {this.state.trace && this.state.grammar
               ? <SourceView
-                trace={this.state.trace.Trace}
-                grammar={this.state.grammar}
-                {...highlightProps}
-              />
+                  trace={this.state.trace.Trace}
+                  grammar={this.state.grammar}
+                  {...highlightProps}
+                />
               : <span>&lt;don't have both trace & grammar yet&gt;</span>}
           </div>
           <div className="grid-cell app-traceview">
             <h3>Trace</h3>
             {this.state.trace && this.state.grammar
               ? <TraceView
-                trace={this.state.trace.Trace}
-                grammar={this.state.grammar}
-                {...highlightProps}
-              />
+                  trace={this.state.trace.Trace}
+                  error={this.state.trace.Err}
+                  grammar={this.state.grammar}
+                  {...highlightProps}
+                />
               : <span>&lt;don't have both trace & grammar yet&gt;</span>}
           </div>
           <div className="grid-cell app-grammar">
             <h3>Grammar</h3>
             {this.state.grammar
               ? <GrammarView
-                grammar={this.state.grammar}
-                {...highlightProps}
-              />
+                  grammar={this.state.grammar}
+                  {...highlightProps}
+                />
               : <span>&lt;don't have grammar yet&gt;</span>}
           </div>
         </div>
