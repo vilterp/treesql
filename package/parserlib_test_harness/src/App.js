@@ -19,6 +19,8 @@ class App extends Component {
       query: INITIAL_QUERY,
       grammar: null,
       trace: null,
+
+      highlightedRuleID: null,
     }
   }
 
@@ -67,6 +69,12 @@ class App extends Component {
     this.fetchQuery(val);
   }
 
+  handleHighlightRule = (ruleID, highlight) => {
+    this.setState({
+      highlightedRuleID: highlight ? ruleID : null,
+    });
+  }
+
   render() {
     return (
       <div className="App">
@@ -98,7 +106,11 @@ class App extends Component {
               <td>
                 <h3>Grammar</h3>
                 {this.state.grammar
-                  ? <GrammarView grammar={this.state.grammar} />
+                  ? <GrammarView
+                      grammar={this.state.grammar}
+                      onHighlightRule={this.handleHighlightRule}
+                      highlightedRuleID={this.state.highlightedRuleID}
+                    />
                   : "<no grammar yet>"}
               </td>
             </tr>
