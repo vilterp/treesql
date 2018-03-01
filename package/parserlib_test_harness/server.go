@@ -40,15 +40,17 @@ func main() {
 	// TODO: parameterize this server so it can be started up with other grammars
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
-		log.Println("serving index.html")
+		log.Println("/index.html")
 		http.ServeFile(w, r, "index.html")
 	})
 	http.HandleFunc("/grammar", func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		log.Println("serving grammar")
 		if err := json.NewEncoder(w).Encode(&tsgSerialized); err != nil {
 			log.Println("err encoding json:", err)
 		}
+		end := time.Now()
+		log.Println("/grammar responded in", end.Sub(start))
 	})
 	http.HandleFunc("/completions", func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
