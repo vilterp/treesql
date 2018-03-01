@@ -26,6 +26,10 @@ func NewServer(dataFile string, port int) *Server {
 	// set up HTTP server for static files
 	fileServer := http.FileServer(http.Dir("webui/build/static"))
 	serveMux.Handle("/static/", http.StripPrefix("/static/", fileServer))
+	serveMux.HandleFunc("/favicon-96x96.png", func(resp http.ResponseWriter, req *http.Request) {
+		log.Println("serving favicon.-96x96.png")
+		http.ServeFile(resp, req, "webui/build/favicon-96x96.png")
+	})
 	serveMux.HandleFunc("/", func(resp http.ResponseWriter, req *http.Request) {
 		log.Println("serving index.html")
 		http.ServeFile(resp, req, "webui/build/index.html")
