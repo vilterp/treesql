@@ -6,8 +6,12 @@ import (
 	"strings"
 )
 
+// TODO: type RuleID int
+
 type Grammar struct {
 	rules map[string]Rule
+	// TODO: idForRule map[Rule]RuleID
+	// TODO: ruleForID map[RuleID]Rule
 }
 
 func NewGrammar(rules map[string]Rule) (*Grammar, error) {
@@ -15,6 +19,7 @@ func NewGrammar(rules map[string]Rule) (*Grammar, error) {
 	if err := g.Validate(); err != nil {
 		return nil, err
 	}
+	// TODO: assign ids
 	return g, nil
 }
 
