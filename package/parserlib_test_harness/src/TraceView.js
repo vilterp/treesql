@@ -79,7 +79,9 @@ class TraceNode extends React.Component {
         // span equality; this covers multiple spans
         return (
           <div>
-            Sequence ({formatSpan(trace)})
+            {highlightRuleWrapper(
+              <span>Sequence ({formatSpan(trace)})</span>
+            )}
             <ol style={{ marginTop: 0 }}>
               {trace.ItemTraces.map((itemTrace, idx) => (
                 <li key={idx}>
@@ -96,7 +98,10 @@ class TraceNode extends React.Component {
       case "CHOICE":
         return (
           <div>
-            Choice {trace.ChoiceIdx}<br/>
+            {highlightRuleWrapper(
+              <span>Choice {trace.ChoiceIdx}</span>
+            )}
+            <br/>
             <TraceNode
               grammar={grammar}
               trace={trace.ChoiceTrace}
