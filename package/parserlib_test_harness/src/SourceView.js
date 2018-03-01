@@ -9,6 +9,16 @@ import "./SourceView.css";
 
 export class SourceView extends React.Component {
   render() {
+    return (
+      <div className="source-view">
+        <SourceViewNode {...this.props} />
+      </div>
+    );
+  }
+}
+
+class SourceViewNode extends React.Component {
+  render() {
     const {
       trace,
       grammar,
@@ -16,14 +26,14 @@ export class SourceView extends React.Component {
       onHighlightSpan,
     } = this.props;
 
-    const formattedSpan = formatSpan(trace);
+    const formattedSpan = trace ? formatSpan(trace) : null;
     const isHighlighted = formattedSpan === highlightedSpan;
 
     function highlightWrapper(element) {
       return (
         <span
           className={classNames("source-span", { highlighted: isHighlighted })}
-          onMouseOver={() => { console.log(trace); onHighlightSpan(formattedSpan, true) }}
+          onMouseOver={() => onHighlightSpan(formattedSpan, true)}
           onMouseOut={() => onHighlightSpan(formattedSpan, false)}
         >
           {element}
@@ -46,7 +56,7 @@ export class SourceView extends React.Component {
         return (
           <span>
             {trace.ItemTraces.map((itemTrace, idx) => (
-              <SourceView
+              <SourceViewNode
                 key={idx}
                 trace={itemTrace}
                 grammar={grammar}
@@ -57,7 +67,7 @@ export class SourceView extends React.Component {
         );
       case "CHOICE":
         return (
-          <SourceView
+          <SourceViewNode
             trace={trace.ChoiceTrace}
             grammar={grammar}
             {...highlightProps}
@@ -65,7 +75,7 @@ export class SourceView extends React.Component {
         );
       case "REF": {
         return (
-          <SourceView
+          <SourceViewNode
             trace={trace.RefTrace}
             grammar={grammar}
             {...highlightProps}
