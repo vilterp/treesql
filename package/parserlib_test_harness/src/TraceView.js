@@ -11,6 +11,11 @@ function renderSpan(trace) {
 export class TraceView extends React.Component {
   render() {
     const { trace, grammar } = this.props;
+
+    if (!trace) {
+      return <span>(empty)</span>;
+    }
+
     const rule = grammar.RulesByID[trace.RuleID];
     switch (rule.RuleType) {
       case "SEQUENCE":
