@@ -11,6 +11,12 @@ import (
 // it returns its state.
 
 func TestParse(t *testing.T) {
+	// TODO: DRY this up
+	tsg, err := TestTreeSQLGrammar()
+	if err != nil {
+		t.Fatal(err)
+	}
+
 	cases := []struct {
 		rule  string
 		input string
@@ -72,7 +78,7 @@ MANY 09notatable {SELECTION}
 		},
 	}
 	for caseIdx, testCase := range cases {
-		_, err := TestTreeSQLGrammar.Parse(testCase.rule, testCase.input)
+		_, err := tsg.Parse(testCase.rule, testCase.input)
 		// TODO: I love you traces; will get back to you when I do completion
 		if err == nil {
 			if testCase.error != "" {
@@ -95,8 +101,14 @@ MANY 09notatable {SELECTION}
 }
 
 func BenchmarkParse(b *testing.B) {
+	tsg, err := TestTreeSQLGrammar()
+	if err != nil {
+		b.Fatal(err)
+	}
+
+	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
-		_, err := TestTreeSQLGrammar.Parse("select", `MANY blog_posts {
+		_, err := tsg.Parse("select", `MANY blog_posts {
 	id,
 	body,
 	comments: MANY comments {

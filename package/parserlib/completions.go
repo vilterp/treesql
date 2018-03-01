@@ -2,22 +2,26 @@ package parserlib
 
 import "fmt"
 
-func (g *Grammar) GetCompletions(rule string, input string) ([]string, error) {
-	trace, err := g.Parse(rule, input)
+func (g *Grammar) GetCompletions(startRule string, input string) ([]string, error) {
+	trace, err := g.Parse(startRule, input)
+	fmt.Println("trace:", trace.String(g))
 	switch err.(type) {
 	case *ParseError:
 		break
 	default:
 		return nil, err
 	}
-	switch tRule := trace.Rule.(type) {
+	rule := g.ruleForID[trace.RuleID]
+	switch tRule := rule.(type) {
 	case *choice:
 		return tRule.Completions(g), nil
 	case *sequence:
 		stoppedAtRule := tRule.items[trace.AtItemIdx]
 		return stoppedAtRule.Completions(g), nil
+	case *keyword:
+		return []string{}, nil
 	default:
-		panic(fmt.Sprintf("unimplemented: %T", trace.Rule))
+		panic(fmt.Sprintf("unimplemented: %T", rule))
 	}
 }
 
