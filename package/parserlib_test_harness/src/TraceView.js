@@ -80,7 +80,7 @@ class TraceNode extends React.Component {
         return (
           <div>
             {highlightRuleWrapper(
-              <span>Sequence ({formatSpan(trace)})</span>
+              <span>Sequence</span>
             )}
             <ol style={{ marginTop: 0 }}>
               {trace.ItemTraces.map((itemTrace, idx) => (

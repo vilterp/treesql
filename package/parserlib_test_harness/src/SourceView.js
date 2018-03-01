@@ -24,17 +24,28 @@ class SourceViewNode extends React.Component {
       grammar,
       highlightedSpan,
       onHighlightSpan,
+      highlightedRuleID,
+      onHighlightRule,
     } = this.props;
 
     const formattedSpan = trace ? formatSpan(trace) : null;
-    const isHighlighted = formattedSpan === highlightedSpan;
+    const isHighlightedSpan = formattedSpan === highlightedSpan;
+    const isHighlightedRule = highlightedRuleID === trace.RuleID;
 
     function highlightWrapper(element) {
       return (
         <span
-          className={classNames("source-span", { highlighted: isHighlighted })}
-          onMouseOver={() => onHighlightSpan(formattedSpan, true)}
-          onMouseOut={() => onHighlightSpan(formattedSpan, false)}
+          className={classNames("source-span", {
+            highlighted: isHighlightedSpan || isHighlightedRule,
+          })}
+          onMouseOver={() => {
+            onHighlightSpan(formattedSpan, true);
+            onHighlightRule(trace.RuleID, true);
+          }}
+          onMouseOut={() => {
+            onHighlightSpan(formattedSpan, false);
+            onHighlightRule(trace.RuleID, false);
+          }}
         >
           {element}
         </span>
@@ -48,6 +59,8 @@ class SourceViewNode extends React.Component {
     const highlightProps = {
       onHighlightSpan: onHighlightSpan,
       highlightedSpan: highlightedSpan,
+      onHighlightRule: onHighlightRule,
+      highlightedRuleID: highlightedRuleID,
     };
 
     const rule = grammar.RulesByID[trace.RuleID];
