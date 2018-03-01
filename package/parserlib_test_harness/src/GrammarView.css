@@ -40,3 +40,7 @@
 .grammar-view th {
   border-bottom: 1px solid black;
 }
+
+.rule-def.highlighted {
+  background-color: lightgrey;
+}
