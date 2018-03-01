@@ -1,5 +1,6 @@
 import React, { Component } from 'react';
 import "./App.css";
+import { TraceView } from './TraceView';
 
 const INITIAL_QUERY = `MANY blog_posts {
   id,
@@ -28,6 +29,7 @@ class App extends Component {
   fetchGrammar() {
     fetch("http://localhost:9999/grammar").then((resp) => {
       resp.json().then((grammar) => {
+        console.log("grammar:", grammar);
         this.setState({
           grammar: grammar,
         })
@@ -47,6 +49,7 @@ class App extends Component {
       body: JSON.stringify(completionReq),
     }).then((resp) => {
       resp.json().then((completionResp) => {
+        console.log("trace:", completionResp);
         this.setState({
           trace: completionResp,
         });
@@ -85,7 +88,11 @@ class App extends Component {
             <tr style={{ verticalAlign: "top" }}>
               <td>
                 <h3>Trace</h3>
-                <pre>{JSON.stringify(this.state.trace, null, 2)}</pre>
+                {this.state.trace && this.state.grammar
+                  ? <TraceView
+                      trace={this.state.trace.Trace}
+                      grammar={this.state.grammar} />
+                  : "<no trace yet>"}
               </td>
               <td>
                 <h3>Grammar</h3>
