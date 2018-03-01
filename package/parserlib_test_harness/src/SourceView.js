@@ -30,13 +30,12 @@ class SourceViewNode extends React.Component {
 
     const formattedSpan = trace ? formatSpan(trace) : null;
     const isHighlightedSpan = formattedSpan === highlightedSpan;
-    const isHighlightedRule = highlightedRuleID === trace.RuleID;
 
     function highlightWrapper(element) {
       return (
         <span
           className={classNames("source-span", {
-            highlighted: isHighlightedSpan || isHighlightedRule,
+            highlighted: isHighlightedSpan,
           })}
           onMouseOver={() => {
             onHighlightSpan(formattedSpan, true);
