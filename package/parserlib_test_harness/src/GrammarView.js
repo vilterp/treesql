@@ -67,8 +67,8 @@ class RuleView extends React.Component {
       return (
         <span
           className={classNames("rule-def", { highlighted: isHighlighted })}
-          onMouseOver={() => onHighlightRule(ruleID, true)}
-          onMouseOut={() => onHighlightRule(ruleID, false)}
+          onMouseEnter={() => onHighlightRule(ruleID, true)}
+          onMouseLeave={() => onHighlightRule(ruleID, false)}
         >
           {element}
         </span>
@@ -78,27 +78,30 @@ class RuleView extends React.Component {
     switch (rule.RuleType) {
       case "SEQUENCE": {
         return (
-          <span>
-            <span className="rule-symbol">[</span>
-            {intersperse(
-              rule.SeqItems.map((ruleID, idx) => (
-                <span key={`item-${idx}`}>
-                  <RuleView
-                    ruleID={ruleID}
-                    grammar={grammar}
-                    {...highlightProps}
-                  />
-                </span>
-              )),
-              (i) => <span key={i}>, </span>,
-            )}
-            <span className="rule-symbol">]</span>
-          </span>
+          highlightWrapper(
+            <span>
+              <span className="rule-symbol">[</span>
+              {intersperse(
+                rule.SeqItems.map((ruleID, idx) => (
+                  <span key={`item-${idx}`}>
+                    <RuleView
+                      ruleID={ruleID}
+                      grammar={grammar}
+                      {...highlightProps}
+                    />
+                  </span>
+                )),
+                (i) => <span key={i}>, </span>,
+              )}
+              <span className="rule-symbol">]</span>
+            </span>
+          )
         );
       }
       case "CHOICE":
         return (
-          <span>
+          highlightWrapper(
+            <span>
             {intersperse(
               rule.Choices.map((ruleID, idx) => (
                 <span key={`item-${idx}`}>
@@ -112,6 +115,7 @@ class RuleView extends React.Component {
               (i) => <span key={i} className="rule-symbol"> | </span>,
             )}
           </span>
+          )
         );
       case "KEYWORD":
         return highlightWrapper(<span className="rule-keyword">"{rule.Keyword}"</span>);
