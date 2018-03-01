@@ -12,14 +12,14 @@ type TraceTree struct {
 
 	// If it's a choice node.
 	ChoiceIdx   int
-	ChoiceTrace *TraceTree
+	ChoiceTrace *TraceTree `json:",omitempty"`
 	// If it's a sequence
 	AtItemIdx  int
-	ItemTraces []*TraceTree
+	ItemTraces []*TraceTree `json:",omitempty"`
 	// If it's a regex
 	RegexMatch string
 	// If it's a ref
-	RefTrace *TraceTree
+	RefTrace *TraceTree `json:",omitempty"`
 }
 
 func (tt *TraceTree) String(g *Grammar) string {
