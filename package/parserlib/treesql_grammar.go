@@ -1,7 +1,5 @@
 package parserlib
 
-import "regexp"
-
 var treeSQLGrammarRules = map[string]Rule{
 	"select": Sequence([]Rule{
 		Choice([]Rule{
@@ -15,11 +13,12 @@ var treeSQLGrammarRules = map[string]Rule{
 		OptWhitespace,
 		Ref("selection"),
 	}),
-	"table_name": Regex(regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_-]*")),
+	"table_name":  Ident,
+	"column_name": Ident,
 	"where_clause": Sequence([]Rule{
 		Keyword("WHERE"),
 		Whitespace,
-		Ident,
+		Ref("column_name"),
 		OptWhitespace,
 		Keyword("="),
 		OptWhitespace,
@@ -39,7 +38,7 @@ var treeSQLGrammarRules = map[string]Rule{
 		Sequence([]Rule{Keyword(","), OptWhitespace}),
 	),
 	"selection_field": Sequence([]Rule{
-		Ident,
+		Ref("column_name"),
 		Opt(Sequence([]Rule{
 			Keyword(":"),
 			OptWhitespace,
