@@ -17,7 +17,7 @@ var partialTreeSQLGrammarRules = map[string]Rule{
 
 func TestFormat(t *testing.T) {
 	actual := partialTreeSQLGrammarRules["select"].String()
-	expected := `["ONE" | "MANY", table_name, "{", selection, "}"]`
+	expected := `[("ONE" | "MANY"), table_name, "{", selection, "}"]`
 	if actual != expected {
 		t.Fatalf("expected `%s`; got `%s`", expected, actual)
 	}

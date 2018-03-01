@@ -43,7 +43,7 @@ func OptWhitespaceSeq(items []Rule) Rule {
 	var outItems []Rule
 	for idx, item := range items {
 		if idx > 0 {
-			outItems = append(outItems, Opt(Whitespace))
+			outItems = append(outItems, OptWhitespace)
 		}
 		outItems = append(outItems, item)
 	}
@@ -54,9 +54,9 @@ func OptWhitespaceSeq(items []Rule) Rule {
 
 func OptWhitespaceSurround(r Rule) Rule {
 	return Sequence([]Rule{
-		Opt(Whitespace),
+		OptWhitespace,
 		r,
-		Opt(Whitespace),
+		OptWhitespace,
 	})
 }
 
@@ -69,4 +69,4 @@ var SignedIntLit = &regex{regex: regexp.MustCompile("-?[0-9]+")}
 // Thank you https://stackoverflow.com/a/2039820
 var StringLit = &regex{regex: regexp.MustCompile(`\"(\\.|[^"\\])*\"`)}
 
-var Ident = &regex{regex: regexp.MustCompile("[a-zA-Z][a-zA-Z0-9_]*")}
+var Ident = &regex{regex: regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_]*")}

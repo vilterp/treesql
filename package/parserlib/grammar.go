@@ -87,7 +87,7 @@ func (c *choice) String() string {
 	for idx, choice := range c.choices {
 		choicesStrs[idx] = choice.String()
 	}
-	return strings.Join(choicesStrs, " | ")
+	return fmt.Sprintf("(%s)", strings.Join(choicesStrs, " | "))
 }
 
 func (c *choice) Validate(g *Grammar) error {
