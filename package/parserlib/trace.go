@@ -6,47 +6,47 @@ import (
 )
 
 type TraceTree struct {
-	rule   Rule
-	endPos Position
+	Rule   Rule
+	EndPos Position
 
 	// If it's a choice node.
-	choiceIdx   int
-	choiceTrace *TraceTree
+	ChoiceIdx   int
+	ChoiceTrace *TraceTree
 	// If it's a sequence
-	atItemIdx  int
-	itemTraces []*TraceTree
+	AtItemIdx  int
+	ItemTraces []*TraceTree
 	// If it's a regex
-	regexMatch string
+	RegexMatch string
 	// If it's a ref
-	refTrace *TraceTree
+	RefTrace *TraceTree
 }
 
 func (tt *TraceTree) String() string {
 	if tt == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("<%s => %s>", tt.stringInner(), tt.endPos.CompactString())
+	return fmt.Sprintf("<%s => %s>", tt.stringInner(), tt.EndPos.CompactString())
 }
 
 func (tt *TraceTree) stringInner() string {
-	switch tRule := tt.rule.(type) {
+	switch tRule := tt.Rule.(type) {
 	case *choice:
-		return fmt.Sprintf("CHOICE %d %s", tt.choiceIdx, tt.choiceTrace.String())
+		return fmt.Sprintf("CHOICE %d %s", tt.ChoiceIdx, tt.ChoiceTrace.String())
 	case *sequence:
-		seqTraces := make([]string, len(tt.itemTraces))
-		for idx, itemTrace := range tt.itemTraces {
+		seqTraces := make([]string, len(tt.ItemTraces))
+		for idx, itemTrace := range tt.ItemTraces {
 			seqTraces[idx] = itemTrace.String()
 		}
 		return fmt.Sprintf("SEQ [%s]", strings.Join(seqTraces, ", "))
 	case *keyword:
 		return fmt.Sprintf("KW %#v", tRule.value)
 	case *regex:
-		return fmt.Sprintf(`REGEX "%s"`, tt.regexMatch)
+		return fmt.Sprintf(`REGEX "%s"`, tt.RegexMatch)
 	case *ref:
-		return fmt.Sprintf("REF %s %s", tRule.name, tt.refTrace)
+		return fmt.Sprintf("REF %s %s", tRule.name, tt.RefTrace)
 	case *succeed:
 		return "<succeed>"
 	default:
-		panic(fmt.Sprintf("unimplemented: %T", tt.rule))
+		panic(fmt.Sprintf("unimplemented: %T", tt.Rule))
 	}
 }
