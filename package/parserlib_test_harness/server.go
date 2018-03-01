@@ -1,4 +1,4 @@
-package main
+package parserlib_test_harness
 
 import (
 	"encoding/json"
