@@ -102,19 +102,21 @@ class RuleView extends React.Component {
         return (
           highlightWrapper(
             <span>
-            {intersperse(
-              rule.Choices.map((ruleID, idx) => (
-                <span key={`item-${idx}`}>
-                  <RuleView
-                    ruleID={ruleID}
-                    grammar={grammar}
-                    {...highlightProps}
-                  />
-                </span>
-              )),
-              (i) => <span key={i} className="rule-symbol"> | </span>,
-            )}
-          </span>
+              <span className="rule-symbol">(</span>
+              {intersperse(
+                rule.Choices.map((ruleID, idx) => (
+                  <span key={`item-${idx}`}>
+                    <RuleView
+                      ruleID={ruleID}
+                      grammar={grammar}
+                      {...highlightProps}
+                    />
+                  </span>
+                )),
+                (i) => <span key={i} className="rule-symbol"> | </span>,
+              )}
+              <span className="rule-symbol">)</span>
+            </span>
           )
         );
       case "KEYWORD":
