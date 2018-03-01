@@ -56,6 +56,7 @@ func main() {
 		start := time.Now()
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		if r.Method != "POST" {
+			log.Println("/completions: expecting GET")
 			http.Error(w, "expecting GET", 400)
 			return
 		}
@@ -80,6 +81,7 @@ func main() {
 			case *parserlib.ParseError:
 				resp.Err = tErr
 			default:
+				log.Println("error parsing:", err)
 				http.Error(w, fmt.Sprintf("error parsing: %v", err), 500)
 			}
 		}

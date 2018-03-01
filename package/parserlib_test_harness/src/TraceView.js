@@ -10,14 +10,7 @@ export class TraceView extends React.Component {
   render() {
     return (
       <div className="trace-view">
-        <TraceNode
-          trace={this.props.trace}
-          grammar={this.props.grammar}
-          onHighlightRule={this.props.onHighlightRule}
-          highlightedRuleID={this.props.highlightedRuleID}
-          onHighlightSpan={this.props.onHighlightSpan}
-          highlightedSpan={this.props.highlightedSpan}
-        />
+        <TraceNode {...this.props} />
       </div>
     )
   }
@@ -64,6 +57,9 @@ class TraceNode extends React.Component {
     const rule = grammar.RulesByID[trace.RuleID];
     switch (rule.RuleType) {
       case "SEQUENCE":
+        // TODO: highlightify
+        // requires change to how we're doing highlighting, since it's currently
+        // span equality; this covers multiple spans
         return (
           <div>
             Sequence ({formatSpan(trace)})
