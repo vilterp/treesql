@@ -1,6 +1,7 @@
 import React, { Component } from 'react';
 import "./App.css";
 import { TraceView } from './TraceView';
+import { GrammarView } from './GrammarView';
 
 const INITIAL_QUERY = `MANY blog_posts {
   id,
@@ -72,7 +73,7 @@ class App extends Component {
         <h1>TreeSQL Test Harness</h1>
         <table>
           <tbody>
-            <tr>
+            <tr style={{ verticalAlign: "top" }}>
               <td>
               <textarea
                 cols={80}
@@ -81,7 +82,7 @@ class App extends Component {
                 onChange={(evt) => this.handleQueryUpdate(evt.target.value)}
               />
               </td>
-              <td>
+              <td style={{ padding: 10 }}>
                 <pre>{this.state.query}</pre>
               </td>
             </tr>
@@ -96,7 +97,9 @@ class App extends Component {
               </td>
               <td>
                 <h3>Grammar</h3>
-                <pre>{JSON.stringify(this.state.grammar, null, 2)}</pre>
+                {this.state.grammar
+                  ? <GrammarView grammar={this.state.grammar} />
+                  : "<no grammar yet>"}
               </td>
             </tr>
           </tbody>
