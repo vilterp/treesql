@@ -6,8 +6,9 @@ import (
 )
 
 type TraceTree struct {
-	RuleID RuleID
-	EndPos Position
+	RuleID   RuleID
+	StartPos Position
+	EndPos   Position
 
 	// If it's a choice node.
 	ChoiceIdx   int

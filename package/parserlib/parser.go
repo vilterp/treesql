@@ -84,9 +84,11 @@ func (sf *ParserStackFrame) Errorf(
 func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 	frame := ps.stack[len(ps.stack)-1]
 	rule := frame.rule
+	startPos := frame.pos
 	minimalTrace := &TraceTree{
-		RuleID: ps.grammar.idForRule[rule],
-		EndPos: frame.pos,
+		RuleID:   ps.grammar.idForRule[rule],
+		StartPos: startPos,
+		EndPos:   frame.pos,
 	}
 	switch tRule := rule.(type) {
 	case *choice:
@@ -96,6 +98,7 @@ func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 				// We found a match!
 				return &TraceTree{
 					RuleID:      ps.grammar.idForRule[rule],
+					StartPos:    startPos,
 					EndPos:      trace.EndPos,
 					ChoiceIdx:   choiceIdx,
 					ChoiceTrace: trace,
@@ -103,12 +106,14 @@ func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 			}
 		}
 		return &TraceTree{
-			RuleID: ps.grammar.idForRule[rule],
-			EndPos: frame.pos,
+			RuleID:   ps.grammar.idForRule[rule],
+			StartPos: startPos,
+			EndPos:   frame.pos,
 		}, frame.Errorf(nil, `no match for rule "%s"`, rule.String())
 	case *sequence:
 		trace := &TraceTree{
 			RuleID:     ps.grammar.idForRule[rule],
+			StartPos:   startPos,
 			ItemTraces: make([]*TraceTree, len(tRule.items)),
 		}
 		for itemIdx, item := range tRule.items {
@@ -133,8 +138,9 @@ func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 		nextNChars := ps.input[frame.pos.Offset : frame.pos.Offset+len(tRule.value)]
 		if nextNChars == tRule.value {
 			return &TraceTree{
-				RuleID: ps.grammar.idForRule[rule],
-				EndPos: frame.pos.MoreOnLine(len(tRule.value)),
+				RuleID:   ps.grammar.idForRule[rule],
+				StartPos: startPos,
+				EndPos:   frame.pos.MoreOnLine(len(tRule.value)),
 			}, nil
 		}
 		return minimalTrace, frame.Errorf(nil, `expected "%s"; got "%s"`, tRule.value, nextNChars)
@@ -149,6 +155,7 @@ func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 		}
 		return &TraceTree{
 			RuleID:   ps.grammar.idForRule[rule],
+			StartPos: startPos,
 			EndPos:   refTrace.EndPos,
 			RefTrace: refTrace,
 		}, nil
@@ -168,6 +175,7 @@ func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 		}
 		return &TraceTree{
 			RuleID:     ps.grammar.idForRule[rule],
+			StartPos:   startPos,
 			EndPos:     endPos,
 			RegexMatch: matchText,
 		}, nil
