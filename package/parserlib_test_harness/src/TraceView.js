@@ -19,11 +19,10 @@ export class TraceView extends React.Component {
     const rule = grammar.RulesByID[trace.RuleID];
     switch (rule.RuleType) {
       case "SEQUENCE":
-        console.log("SEQ", rule, trace);
         return (
           <div>
             Sequence ({renderSpan(trace)})
-            <ol>
+            <ol style={{ marginTop: 0 }}>
               {trace.ItemTraces.map((itemTrace, idx) => (
                 <li key={idx}>
                   <TraceView grammar={grammar} trace={itemTrace} />
