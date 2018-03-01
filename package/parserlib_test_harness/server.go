@@ -1,4 +1,4 @@
-package parserlib_test_harness
+package main
 
 import (
 	"encoding/json"
@@ -38,12 +38,14 @@ func main() {
 		http.ServeFile(w, r, "index.html")
 	})
 	http.HandleFunc("/grammar", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		log.Println("serving grammar")
 		if err := json.NewEncoder(w).Encode(&tsgSerialized); err != nil {
 			log.Println("err encoding json:", err)
 		}
 	})
 	http.HandleFunc("/completions", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Access-Control-Allow-Origin", "*")
 		if r.Method != "POST" {
 			http.Error(w, "expecting GET", 400)
 			return
