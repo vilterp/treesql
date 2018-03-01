@@ -6,6 +6,14 @@
   <body>
     Hello world
     <script>
+      // Fetch grammar.
+      fetch("/grammar").then((resp) => {
+        resp.json().then((grammar) => {
+          console.log("grammar:", grammar)
+        })
+      });
+
+      // Parse query.
       const query = "MANY blog_posts { id, title, comments: MANY comments { id, body } }"
       const completionReq = {
         Input: query,
@@ -15,7 +23,9 @@
         method: "POST",
         body: JSON.stringify(completionReq),
       }).then((resp) => {
-        console.log("completions", resp);
+        resp.json().then((completionResp) => {
+          console.log("completions", completionResp)
+        });
       });
     </script>
   </body>
