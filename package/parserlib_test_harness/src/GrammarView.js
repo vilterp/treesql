@@ -1,5 +1,6 @@
 import React from "react";
 import _ from "lodash";
+import "./GrammarView.css";
 
 export class GrammarView extends React.Component {
 
@@ -7,7 +8,7 @@ export class GrammarView extends React.Component {
     const grammar = this.props.grammar;
 
     return (
-      <table>
+      <table className="grammar-view">
         <thead>
           <tr>
             <th>Name</th>
@@ -17,7 +18,7 @@ export class GrammarView extends React.Component {
         <tbody style={{ fontFamily: "monospace" }}>
           {_.map(grammar.TopLevelRules, (ruleID, name) => (
             <tr key={name}>
-              <td>{name}</td>
+              <td className="rule-ref">{name}</td>
               <td>
                 <RuleView ruleID={ruleID} grammar={grammar} />
               </td>
@@ -45,7 +46,7 @@ class RuleView extends React.Component {
       case "SEQUENCE": {
         return (
           <span>
-            [
+            <span className="rule-symbol">[</span>
             {intersperse(
               rule.SeqItems.map((ruleID, idx) => (
                 <span key={`item-${idx}`}>
@@ -54,7 +55,7 @@ class RuleView extends React.Component {
               )),
               (i) => <span key={i}>, </span>,
             )}
-            ]
+            <span className="rule-symbol">]</span>
           </span>
         );
       }
@@ -67,19 +68,19 @@ class RuleView extends React.Component {
                   <RuleView ruleID={ruleID} grammar={grammar} />
                 </span>
               )),
-              (i) => <span key={i}> | </span>,
+              (i) => <span key={i} className="rule-symbol"> | </span>,
             )}
           </span>
         );
       case "KEYWORD":
-        return `"${rule.Keyword}"`;
+        return <span className="rule-keyword">"{rule.Keyword}"</span>;
       case "REGEX":
-        return `/${rule.Regex}/`;
+        return <span className="rule-regex">/${rule.Regex}/</span>;
       case "SUCCEED":
-        return "<succeed>";
+        return <span className="rule-succeed">&lt;succeed&gt;</span>;
       case "REF":
         // TODO: hover-ify
-        return <span>{rule.Ref}</span>;
+        return <span className="rule-ref">{rule.Ref}</span>;
       default:
         return JSON.stringify(rule);
     }
