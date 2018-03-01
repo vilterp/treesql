@@ -86,13 +86,8 @@ func main() {
 		trace, err := tsg.Parse("select", cr.Input)
 		resp.Trace = trace
 		if err != nil {
-			switch err.(type) {
-			case *parserlib.ParseError:
-				resp.Err = err.Error()
-			default:
-				log.Println("error parsing:", err)
-				http.Error(w, fmt.Sprintf("error parsing: %v", err), 500)
-			}
+			resp.Err = err.Error()
+			log.Println("/completions parse error: ", err.Error())
 		}
 
 		// Respond.
