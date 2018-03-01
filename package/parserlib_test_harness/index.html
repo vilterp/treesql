@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Parser Test Harness</title>
+  </head>
+  <body>
+    Hello world
+    <script>
+      const query = "MANY blog_posts { id, title, comments: MANY comments { id, body } }"
+      const completionReq = {
+        Input: query,
+        CursorPos: 0,
+      };
+      fetch("/completions", {
+        method: "POST",
+        body: JSON.stringify(completionReq),
+      }).then((resp) => {
+        console.log("completions", resp);
+      });
+    </script>
+  </body>
+</html>
