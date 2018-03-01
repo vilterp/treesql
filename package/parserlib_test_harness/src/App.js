@@ -87,6 +87,13 @@ class App extends Component {
   }
 
   render() {
+    const highlightProps = {
+      onHighlightSpan: this.handleHighlightSpan,
+      highlightedSpan: this.state.highlightedSpan,
+      onHighlightRule: this.handleHighlightRule,
+      highlightedRuleID: this.state.highlightedRuleID,
+    };
+
     return (
       <div className="App">
         <h1>TreeSQL Parser Test Harness</h1>
@@ -105,8 +112,7 @@ class App extends Component {
               ? <SourceView
                 trace={this.state.trace.Trace}
                 grammar={this.state.grammar}
-                onHighlightSpan={this.handleHighlightSpan}
-                highlightedSpan={this.state.highlightedSpan}
+                {...highlightProps}
               />
               : <span>&lt;don't have both trace & grammar yet&gt;</span>}
           </div>
@@ -116,10 +122,7 @@ class App extends Component {
               ? <TraceView
                 trace={this.state.trace.Trace}
                 grammar={this.state.grammar}
-                onHighlightRule={this.handleHighlightRule}
-                highlightedRuleID={this.state.highlightedRuleID}
-                onHighlightSpan={this.handleHighlightSpan}
-                highlightedSpan={this.state.highlightedSpan}
+                {...highlightProps}
               />
               : <span>&lt;don't have both trace & grammar yet&gt;</span>}
           </div>
@@ -128,8 +131,7 @@ class App extends Component {
             {this.state.grammar
               ? <GrammarView
                 grammar={this.state.grammar}
-                onHighlightRule={this.handleHighlightRule}
-                highlightedRuleID={this.state.highlightedRuleID}
+                {...highlightProps}
               />
               : <span>&lt;don't have grammar yet&gt;</span>}
           </div>
