@@ -12,6 +12,11 @@
 
 .rule-ref {
   color: blue;
+  cursor: pointer;
+}
+
+.rule-ref.highlighted {
+  font-weight: bold;
 }
 
 .rule-succeed {
