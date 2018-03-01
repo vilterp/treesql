@@ -6,8 +6,6 @@ import (
 	"strings"
 )
 
-// TODO: type RuleID int
-
 type RuleID int
 
 type Grammar struct {
@@ -32,7 +30,6 @@ func NewGrammar(rules map[string]Rule) (*Grammar, error) {
 	for _, rule := range rules {
 		g.assignRuleIDs(rule)
 	}
-	// TODO: assign ids
 	return g, nil
 }
 
@@ -40,10 +37,10 @@ func (g *Grammar) assignRuleIDs(r Rule) {
 	id := g.nextRuleID
 	g.idForRule[r] = id
 	g.ruleForID[id] = r
+	g.nextRuleID++
 	for _, child := range r.Children() {
 		g.assignRuleIDs(child)
 	}
-	g.nextRuleID++
 }
 
 func (g *Grammar) validate() error {
