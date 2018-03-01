@@ -90,56 +90,50 @@ class App extends Component {
     return (
       <div className="App">
         <h1>TreeSQL Parser Test Harness</h1>
-        <table>
-          <tbody>
-            <tr style={{ verticalAlign: "top" }}>
-              <td>
-              <textarea
-                style={{ fontFamily: "monospace" }}
-                cols={80}
-                rows={10}
-                value={this.state.query}
-                onChange={(evt) => this.handleQueryUpdate(evt.target.value)}
+        <div className="app-container">
+          <div className="grid-cell app-editor">
+            <textarea
+              style={{ fontFamily: "monospace" }}
+              cols={80}
+              rows={10}
+              value={this.state.query}
+              onChange={(evt) => this.handleQueryUpdate(evt.target.value)}
+            />
+          </div>
+          <div className="grid-cell app-sourceview">
+            {this.state.trace && this.state.grammar
+              ? <SourceView
+                trace={this.state.trace.Trace}
+                grammar={this.state.grammar}
+                onHighlightSpan={this.handleHighlightSpan}
+                highlightedSpan={this.state.highlightedSpan}
               />
-              </td>
-              <td style={{ padding: 10 }}>
-                {this.state.trace && this.state.grammar
-                  ? <SourceView
-                      trace={this.state.trace.Trace}
-                      grammar={this.state.grammar}
-                      onHighlightSpan={this.handleHighlightSpan}
-                      highlightedSpan={this.state.highlightedSpan}
-                    />
-                  : <span>&lt;don't have both trace & grammar yet&gt;</span>}
-              </td>
-            </tr>
-            <tr style={{ verticalAlign: "top" }}>
-              <td style={{ height: 500, overflow: "hidden" }}>
-                <h3>Trace</h3>
-                {this.state.trace && this.state.grammar
-                  ? <TraceView
-                      trace={this.state.trace.Trace}
-                      grammar={this.state.grammar}
-                      onHighlightRule={this.handleHighlightRule}
-                      highlightedRuleID={this.state.highlightedRuleID}
-                      onHighlightSpan={this.handleHighlightSpan}
-                      highlightedSpan={this.state.highlightedSpan}
-                    />
-                  : <span>&lt;don't have both trace & grammar yet&gt;</span>}
-              </td>
-              <td>
-                <h3>Grammar</h3>
-                {this.state.grammar
-                  ? <GrammarView
-                      grammar={this.state.grammar}
-                      onHighlightRule={this.handleHighlightRule}
-                      highlightedRuleID={this.state.highlightedRuleID}
-                    />
-                  : <span>&lt;don't have grammar yet&gt;</span>}
-              </td>
-            </tr>
-          </tbody>
-        </table>
+              : <span>&lt;don't have both trace & grammar yet&gt;</span>}
+          </div>
+          <div className="grid-cell app-traceview">
+            <h3>Trace</h3>
+            {this.state.trace && this.state.grammar
+              ? <TraceView
+                trace={this.state.trace.Trace}
+                grammar={this.state.grammar}
+                onHighlightRule={this.handleHighlightRule}
+                highlightedRuleID={this.state.highlightedRuleID}
+                onHighlightSpan={this.handleHighlightSpan}
+                highlightedSpan={this.state.highlightedSpan}
+              />
+              : <span>&lt;don't have both trace & grammar yet&gt;</span>}
+          </div>
+          <div className="grid-cell app-grammar">
+            <h3>Grammar</h3>
+            {this.state.grammar
+              ? <GrammarView
+                grammar={this.state.grammar}
+                onHighlightRule={this.handleHighlightRule}
+                highlightedRuleID={this.state.highlightedRuleID}
+              />
+              : <span>&lt;don't have grammar yet&gt;</span>}
+          </div>
+        </div>
       </div>
     );
   }

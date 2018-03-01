@@ -1,3 +1,7 @@
+.source-view {
+  font-family: monospace;
+}
+
 .source-span {
   cursor: pointer;
 }

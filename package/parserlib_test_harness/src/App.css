@@ -1,3 +1,51 @@
 .App {
   padding-left: 10px;
 }
+
+h3 {
+  margin-top: 3px;
+}
+
+.grid-cell {
+  border: 1px solid lightgrey;
+  padding: 5px;
+}
+
+.app-container {
+  position: absolute;
+  height: 90%;
+  width: 99%;
+  display: grid;
+  grid-template-columns: 50% 50%;
+  grid-template-rows: 150px auto;
+}
+
+.app-editor {
+  grid-column-start: 1;
+  grid-column-end: 1;
+  grid-row-start: 1;
+  grid-row-end: 1;
+}
+
+.app-sourceview {
+  grid-column-start: 2;
+  grid-column-end: 2;
+  grid-row-start: 1;
+  grid-row-end: 1;
+  overflow: scroll;
+}
+
+.app-traceview {
+  grid-column-start: 1;
+  grid-column-end: 1;
+  grid-row-start: 2;
+  grid-row-end: 2;
+  overflow: scroll;
+}
+
+.app-grammar {
+  grid-column-start: 2;
+  grid-column-end: 2;
+  grid-row-start: 2;
+  grid-row-end: 2;
+}
