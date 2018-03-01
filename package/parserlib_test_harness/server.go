@@ -7,6 +7,9 @@ import (
 	"log"
 	"net/http"
 
+	"time"
+
+	"github.com/cockroachdb/cockroach/pkg/util/timeutil"
 	"github.com/vilterp/treesql/package/parserlib"
 )
 
@@ -21,6 +24,9 @@ type completionsResponse struct {
 	Trace *parserlib.TraceTree
 	Err   *parserlib.ParseError
 }
+
+// TODO: use some logging middleware
+// which prints statuses, urls, and times
 
 func main() {
 	flag.Parse()
@@ -45,6 +51,7 @@ func main() {
 		}
 	})
 	http.HandleFunc("/completions", func(w http.ResponseWriter, r *http.Request) {
+		start := time.Now()
 		w.Header().Set("Access-Control-Allow-Origin", "*")
 		if r.Method != "POST" {
 			http.Error(w, "expecting GET", 400)
@@ -65,7 +72,6 @@ func main() {
 
 		// Parse it.
 		trace, err := tsg.Parse("select", cr.Input)
-		log.Println("/completions", trace, err)
 		resp.Trace = trace
 		if err != nil {
 			switch tErr := err.(type) {
@@ -81,6 +87,9 @@ func main() {
 			log.Println("err encoding json:", err)
 			http.Error(w, err.Error(), 500)
 		}
+
+		end := timeutil.Now()
+		log.Println("/completions responded in", end.Sub(start))
 	})
 
 	addr := fmt.Sprintf(":%s", *port)
