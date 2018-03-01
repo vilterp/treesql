@@ -25,9 +25,23 @@ type completionsResponse struct {
 func main() {
 	flag.Parse()
 
+	tsg, err := parserlib.TestTreeSQLGrammar()
+	if err != nil {
+		log.Fatal("error loading grammar:", err)
+	}
+	tsgSerialized := tsg.Serialize()
+
+	// TODO: parameterize this server so it can be started up with other grammars
+
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("serving index.html")
 		http.ServeFile(w, r, "index.html")
+	})
+	http.HandleFunc("/grammar", func(w http.ResponseWriter, r *http.Request) {
+		log.Println("serving grammar")
+		if err := json.NewEncoder(w).Encode(&tsgSerialized); err != nil {
+			log.Println("err encoding json:", err)
+		}
 	})
 	http.HandleFunc("/completions", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method != "POST" {
@@ -48,7 +62,7 @@ func main() {
 		var resp completionsResponse
 
 		// Parse it.
-		trace, err := parserlib.TestTreeSQLGrammar.Parse("select", cr.Input)
+		trace, err := tsg.Parse("select", cr.Input)
 		log.Println("/completions", trace, err)
 		resp.Trace = trace
 		if err != nil {
@@ -63,6 +77,7 @@ func main() {
 		// Respond.
 		if err := json.NewEncoder(w).Encode(&resp); err != nil {
 			log.Println("err encoding json:", err)
+			http.Error(w, err.Error(), 500)
 		}
 	})
 
