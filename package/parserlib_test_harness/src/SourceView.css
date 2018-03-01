@@ -1,0 +1,7 @@
+.source-span {
+  cursor: pointer;
+}
+
+.source-span.highlighted {
+  background: #e6e6e6;
+}
