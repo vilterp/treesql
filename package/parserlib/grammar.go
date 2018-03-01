@@ -8,22 +8,45 @@ import (
 
 // TODO: type RuleID int
 
+type RuleID int
+
 type Grammar struct {
 	rules map[string]Rule
-	// TODO: idForRule map[Rule]RuleID
-	// TODO: ruleForID map[RuleID]Rule
+
+	idForRule  map[Rule]RuleID
+	ruleForID  map[RuleID]Rule
+	nextRuleID RuleID
 }
 
 func NewGrammar(rules map[string]Rule) (*Grammar, error) {
-	g := &Grammar{rules: rules}
-	if err := g.Validate(); err != nil {
+	g := &Grammar{
+		rules:     rules,
+		idForRule: make(map[Rule]RuleID),
+		ruleForID: make(map[RuleID]Rule),
+		// prevent zero value from accidentally making things work that shouldn't
+		nextRuleID: 1,
+	}
+	if err := g.validate(); err != nil {
 		return nil, err
+	}
+	for _, rule := range rules {
+		g.assignRuleIDs(rule)
 	}
 	// TODO: assign ids
 	return g, nil
 }
 
-func (g *Grammar) Validate() error {
+func (g *Grammar) assignRuleIDs(r Rule) {
+	id := g.nextRuleID
+	g.idForRule[r] = id
+	g.ruleForID[id] = r
+	for _, child := range r.Children() {
+		g.assignRuleIDs(child)
+	}
+	g.nextRuleID++
+}
+
+func (g *Grammar) validate() error {
 	for ruleName, rule := range g.rules {
 		if err := rule.Validate(g); err != nil {
 			return fmt.Errorf(`in rule "%s": %v`, ruleName, err)
@@ -44,6 +67,8 @@ type Rule interface {
 	String() string
 	Validate(g *Grammar) error
 	Completions(g *Grammar) []string
+	Children() []Rule
+	Serialize(g *Grammar) SerializedRule
 }
 
 // choice
@@ -77,6 +102,10 @@ func (c *choice) Validate(g *Grammar) error {
 	return nil
 }
 
+func (c *choice) Children() []Rule {
+	return c.choices
+}
+
 // sequence
 
 type sequence struct {
@@ -108,6 +137,10 @@ func (s *sequence) Validate(g *Grammar) error {
 	return nil
 }
 
+func (s *sequence) Children() []Rule {
+	return s.items
+}
+
 // keyword
 
 type keyword struct {
@@ -136,6 +169,8 @@ func (k *keyword) Validate(_ *Grammar) error {
 	return nil
 }
 
+func (k *keyword) Children() []Rule { return []Rule{} }
+
 // Rule ref
 
 type ref struct {
@@ -161,6 +196,8 @@ func (r *ref) Validate(g *Grammar) error {
 	return nil
 }
 
+func (r *ref) Children() []Rule { return []Rule{} }
+
 // regex
 
 type regex struct {
@@ -183,6 +220,8 @@ func (r *regex) Validate(g *Grammar) error {
 	return nil
 }
 
+func (r *regex) Children() []Rule { return []Rule{} }
+
 // Succeed
 
 var Succeed = &succeed{}
@@ -198,3 +237,5 @@ func (s *succeed) String() string {
 func (s *succeed) Validate(g *Grammar) error {
 	return nil
 }
+
+func (s *succeed) Children() []Rule { return []Rule{} }

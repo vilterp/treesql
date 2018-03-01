@@ -6,7 +6,7 @@ import (
 )
 
 type TraceTree struct {
-	Rule   Rule
+	RuleID RuleID
 	EndPos Position
 
 	// If it's a choice node.
@@ -21,21 +21,22 @@ type TraceTree struct {
 	RefTrace *TraceTree
 }
 
-func (tt *TraceTree) String() string {
+func (tt *TraceTree) String(g *Grammar) string {
 	if tt == nil {
 		return "<nil>"
 	}
-	return fmt.Sprintf("<%s => %s>", tt.stringInner(), tt.EndPos.CompactString())
+	return fmt.Sprintf("<%s => %s>", tt.stringInner(g), tt.EndPos.CompactString())
 }
 
-func (tt *TraceTree) stringInner() string {
-	switch tRule := tt.Rule.(type) {
+func (tt *TraceTree) stringInner(g *Grammar) string {
+	rule := g.ruleForID[tt.RuleID]
+	switch tRule := rule.(type) {
 	case *choice:
-		return fmt.Sprintf("CHOICE %d %s", tt.ChoiceIdx, tt.ChoiceTrace.String())
+		return fmt.Sprintf("CHOICE %d %s", tt.ChoiceIdx, tt.ChoiceTrace.String(g))
 	case *sequence:
 		seqTraces := make([]string, len(tt.ItemTraces))
 		for idx, itemTrace := range tt.ItemTraces {
-			seqTraces[idx] = itemTrace.String()
+			seqTraces[idx] = itemTrace.String(g)
 		}
 		return fmt.Sprintf("SEQ [%s]", strings.Join(seqTraces, ", "))
 	case *keyword:
@@ -47,6 +48,6 @@ func (tt *TraceTree) stringInner() string {
 	case *succeed:
 		return "<succeed>"
 	default:
-		panic(fmt.Sprintf("unimplemented: %T", tt.Rule))
+		panic(fmt.Sprintf("unimplemented: %T", rule))
 	}
 }
