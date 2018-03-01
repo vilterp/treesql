@@ -2,6 +2,7 @@ import React, { Component } from 'react';
 import "./App.css";
 import { TraceView } from './TraceView';
 import { GrammarView } from './GrammarView';
+import { SourceView } from './SourceView';
 
 const INITIAL_QUERY = `MANY blog_posts {
   id,
@@ -94,7 +95,9 @@ class App extends Component {
               />
               </td>
               <td style={{ padding: 10 }}>
-                <pre>{this.state.query}</pre>
+                {this.state.trace && this.state.grammar
+                  ? <SourceView trace={this.state.trace.Trace} grammar={this.state.grammar} />
+                  : <span>&lt;don't have both trace & grammar yet&gt;</span>}
               </td>
             </tr>
             <tr style={{ verticalAlign: "top" }}>
@@ -107,7 +110,7 @@ class App extends Component {
                       onHighlightRule={this.handleHighlightRule}
                       highlightedRuleID={this.state.highlightedRuleID}
                     />
-                  : "<no trace yet>"}
+                  : <span>&lt;don't have both trace & grammar yet&gt;</span>}
               </td>
               <td>
                 <h3>Grammar</h3>
@@ -117,7 +120,7 @@ class App extends Component {
                       onHighlightRule={this.handleHighlightRule}
                       highlightedRuleID={this.state.highlightedRuleID}
                     />
-                  : "<no grammar yet>"}
+                  : <span>&lt;don't have grammar yet&gt;</span>}
               </td>
             </tr>
           </tbody>
