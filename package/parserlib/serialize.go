@@ -7,7 +7,7 @@ type SerializedRule struct {
 
 	Choices  []RuleID `json:",omitempty"`
 	SeqItems []RuleID `json:",omitempty"`
-	Ref      RuleID   `json:",omitempty"`
+	Ref      string   `json:",omitempty"`
 	Regex    string   `json:",omitempty"`
 	Keyword  string   `json:",omitempty"`
 }
@@ -63,7 +63,7 @@ func (k *keyword) Serialize(g *Grammar) SerializedRule {
 func (r *ref) Serialize(g *Grammar) SerializedRule {
 	return SerializedRule{
 		RuleType: "REF",
-		Ref:      g.idForRule[g.rules[r.name]],
+		Ref:      r.name,
 	}
 }
 
