@@ -69,4 +69,4 @@ var SignedIntLit = &regex{regex: regexp.MustCompile("-?[0-9]+")}
 // Thank you https://stackoverflow.com/a/2039820
 var StringLit = &regex{regex: regexp.MustCompile(`\"(\\.|[^"\\])*\"`)}
 
-var Ident = &regex{regex: regexp.MustCompile("[a-zA-Z][a-zA-Z0-9_]+")}
+var Ident = &regex{regex: regexp.MustCompile("[a-zA-Z][a-zA-Z0-9_]*")}

@@ -15,7 +15,7 @@ var treeSQLGrammarRules = map[string]Rule{
 		OptWhitespace,
 		Ref("selection"),
 	}),
-	"table_name": Regex(regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_-]+")),
+	"table_name": Regex(regexp.MustCompile("[a-zA-Z_][a-zA-Z0-9_-]*")),
 	"where_clause": Sequence([]Rule{
 		Keyword("WHERE"),
 		Whitespace,
