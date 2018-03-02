@@ -5,15 +5,17 @@ import (
 	"errors"
 
 	"github.com/boltdb/bolt"
+	"github.com/gorilla/websocket"
 )
 
 type Database struct {
-	Schema                  *Schema
-	BoltDB                  *bolt.DB
-	QueryValidationRequests chan *QueryValidationRequest
-	NextConnectionID        int
-	Ctx                     context.Context
-	Metrics                 *Metrics
+	Schema           *Schema
+	BoltDB           *bolt.DB
+	Connections      map[int]*Connection
+	NextConnectionID int
+
+	Ctx     context.Context
+	Metrics *Metrics
 }
 
 func NewDatabase(dataFile string) (*Database, error) {
@@ -26,11 +28,11 @@ func NewDatabase(dataFile string) (*Database, error) {
 
 	// TODO: load this from somewhere in data dir
 	database := &Database{
-		Schema:                  EmptySchema(),
-		BoltDB:                  boltDB,
-		QueryValidationRequests: make(chan *QueryValidationRequest),
-		NextConnectionID:        0,
-		Ctx:                     ctx,
+		Schema:           EmptySchema(),
+		BoltDB:           boltDB,
+		Connections:      make(map[int]*Connection),
+		NextConnectionID: 0,
+		Ctx:              ctx,
 	}
 	database.AddBuiltinSchema()
 	database.EnsureBuiltinSchema()
@@ -38,17 +40,20 @@ func NewDatabase(dataFile string) (*Database, error) {
 
 	database.Metrics = NewMetrics(database)
 
-	// serve query validation requests
-	// TODO: a `select` here for schema changes
-	// serializing access to the schema
-	// go func() {
-	// 	for {
-	// 		query := <-database.QueryValidationRequests
-	// 		database.handleValidationRequest(query)
-	// 	}
-	// }()
-
 	return database, nil
+}
+
+// AddConnection connects a websocket to the database, s.t. the database
+// will interact with the connection.
+func (db *Database) AddConnection(wsConn *websocket.Conn) {
+	conn := NewConnection(wsConn, db, db.NextConnectionID)
+	db.NextConnectionID++
+	db.Connections[conn.ID] = conn
+	conn.HandleStatements()
+}
+
+func (db *Database) removeConn(conn *Connection) {
+	delete(db.Connections, conn.ID)
 }
 
 func (db *Database) Close() error {

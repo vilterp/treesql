@@ -54,7 +54,7 @@ func NewServer(dataFile string, port int) *Server {
 			log.Println(err)
 			return
 		}
-		database.NewConnection(conn).HandleStatements()
+		database.AddConnection(conn)
 	})
 
 	httpServer := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: serveMux}

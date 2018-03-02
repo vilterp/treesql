@@ -2,7 +2,6 @@ package treesql
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/gorilla/websocket"
 	clog "github.com/vilterp/treesql/package/log"
@@ -12,27 +11,28 @@ type ConnectionID int
 type StatementID int
 
 type Connection struct {
-	clientConn      *websocket.Conn
-	ID              int
-	Database        *Database
-	NextStatementID int
-	Messages        chan *ChannelMessage
-	Context         context.Context
+	clientConn    *websocket.Conn
+	ID            int
+	Database      *Database
+	Channels      map[int]*Channel // keyed by statement ID (aka channel id)
+	NextChannelID int              // TODO: chose statement ID or channel id
+	Messages      chan *ChannelMessage
+	Context       context.Context
 }
 
-func (db *Database) NewConnection(conn *websocket.Conn) *Connection {
-	ctx := context.WithValue(db.Ctx, clog.ConnIDKey, db.NextConnectionID)
-	dbConn := &Connection{
-		clientConn:      conn,
-		ID:              db.NextConnectionID,
-		Database:        db,
-		NextStatementID: 0,
-		Messages:        make(chan *ChannelMessage),
-		Context:         ctx,
+func NewConnection(wsConn *websocket.Conn, db *Database, ID int) *Connection {
+	ctx := context.WithValue(db.Ctx, clog.ConnIDKey, ID)
+	conn := &Connection{
+		clientConn:    wsConn,
+		ID:            ID,
+		Database:      db,
+		Channels:      make(map[int]*Channel),
+		NextChannelID: 0,
+		Messages:      make(chan *ChannelMessage),
+		Context:       ctx,
 	}
-	db.NextConnectionID++
-	go dbConn.writeMessagesToSocket()
-	return dbConn
+	go conn.writeMessagesToSocket()
+	return conn
 }
 
 func (conn *Connection) Ctx() context.Context {
@@ -53,45 +53,22 @@ func (conn *Connection) HandleStatements() {
 		_, message, readErr := conn.clientConn.ReadMessage()
 		if readErr != nil {
 			clog.Println(conn, "terminated:", readErr)
+			conn.Database.removeConn(conn)
 			return
 		}
 		stringMessage := string(message)
-		channel := conn.NewChannel(stringMessage)
-
-		if err := channel.HandleStatement(); err != nil {
-			clog.Printf(channel, err.Error())
-			channel.WriteErrorMessage(err)
-		}
+		conn.addChannel(stringMessage)
 	}
 }
 
-func (channel *Channel) HandleStatement() error {
-	// parse what was sent to us
-	statement, err := Parse(channel.RawStatement)
-	if err != nil {
-		return &ParseError{error: err}
-	}
+func (conn *Connection) addChannel(statement string) {
+	channel := NewChannel(statement, conn.NextChannelID, conn)
+	conn.NextChannelID++
+	conn.Channels[channel.ID] = channel
 
-	// validate statement
-	queryErr := channel.Connection.Database.ValidateStatement(statement)
-	if queryErr != nil {
-		return &ValidationError{error: queryErr}
-	}
-	return channel.Connection.ExecuteStatement(statement, channel)
+	channel.HandleStatement()
 }
 
-func (conn *Connection) ExecuteStatement(statement *Statement, channel *Channel) error {
-	if statement.Select != nil {
-		return conn.ExecuteTopLevelQuery(statement.Select, channel)
-	}
-	if statement.Insert != nil {
-		return conn.ExecuteInsert(statement.Insert, channel)
-	}
-	if statement.CreateTable != nil {
-		return conn.ExecuteCreateTable(statement.CreateTable, channel)
-	}
-	if statement.Update != nil {
-		return conn.ExecuteUpdate(statement.Update, channel)
-	}
-	panic(fmt.Sprintf("unknown statement type %v", statement))
+func (conn *Connection) removeChannel(channel *Channel) {
+	delete(conn.Channels, channel.ID)
 }

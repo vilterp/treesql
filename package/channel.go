@@ -10,7 +10,7 @@ import (
 type Channel struct {
 	Connection   *Connection
 	RawStatement string
-	StatementID  int
+	ID           int // unique with containing connection
 
 	Context context.Context
 }
@@ -19,20 +19,70 @@ func (channel *Channel) Ctx() context.Context {
 	return channel.Context
 }
 
-func (conn *Connection) NewChannel(rawStatement string) *Channel {
-	stmtID := conn.NextStatementID
-	conn.NextStatementID++
-	ctx := context.WithValue(conn.Ctx(), clog.StmtIDKey, stmtID)
+func NewChannel(rawStatement string, ID int, conn *Connection) *Channel {
+	ctx := context.WithValue(conn.Ctx(), clog.ChannelIDKey, ID)
 	channel := &Channel{
 		Connection:   conn,
 		RawStatement: rawStatement,
-		StatementID:  stmtID,
+		ID:           ID,
 		Context:      ctx,
 	}
 	return channel
 }
 
+func (channel *Channel) HandleStatement() {
+	err, done := channel.validateAndRun()
+	if err != nil {
+		clog.Printf(channel, err.Error())
+		channel.WriteErrorMessage(err)
+	}
+	// Remove this channel if we're done.
+	if done {
+		channel.Connection.removeChannel(channel)
+	}
+}
+
+// validateAndRun returns an error if there was one, and a boolean
+// representing whether this statement is done (i.e. whether a live query
+// is still running on this channel)
+func (channel *Channel) validateAndRun() (error, bool) {
+	// Parse what was sent to us.
+	statement, err := Parse(channel.RawStatement)
+	if err != nil {
+		return &ParseError{error: err}, true
+	}
+
+	// Validate statement.
+	queryErr := channel.Connection.Database.ValidateStatement(statement)
+	if queryErr != nil {
+		return &ValidationError{error: queryErr}, true
+	}
+	return channel.run(statement)
+}
+
+// run runs the statement, returning and error if there was one
+// and a boolean indicating whether the statement is "done"
+// (only false if this is a live query)
+func (channel *Channel) run(statement *Statement) (error, bool) {
+	conn := channel.Connection
+	// TODO: maybe move all these methods onto Channel?
+	if statement.Select != nil {
+		return conn.ExecuteTopLevelQuery(statement.Select, channel), !statement.Select.Live
+	}
+	if statement.Insert != nil {
+		return conn.ExecuteInsert(statement.Insert, channel), true
+	}
+	if statement.CreateTable != nil {
+		return conn.ExecuteCreateTable(statement.CreateTable, channel), true
+	}
+	if statement.Update != nil {
+		return conn.ExecuteUpdate(statement.Update, channel), true
+	}
+	panic(fmt.Sprintf("unknown statement type %v", statement))
+}
+
 type ChannelMessage struct {
+	// TODO: change this to ChannelID, as well as usages in JS
 	StatementID int
 	Message     *MessageToClient
 }
@@ -147,7 +197,7 @@ func (channel *Channel) WriteRecordUpdate(update *TableEvent, queryPath *QueryPa
 
 func (channel *Channel) writeMessage(message *MessageToClient) {
 	channel.Connection.Messages <- &ChannelMessage{
-		StatementID: channel.StatementID,
+		StatementID: channel.ID,
 		Message:     message,
 	}
 }

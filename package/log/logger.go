@@ -8,8 +8,8 @@ import (
 )
 
 const (
-	ConnIDKey = "ConnID"
-	StmtIDKey = "StmtID"
+	ConnIDKey    = "ConnID"
+	ChannelIDKey = "ChanID"
 )
 
 func ctxToString(ctx context.Context) string {
@@ -17,7 +17,7 @@ func ctxToString(ctx context.Context) string {
 	if connID := ctx.Value(ConnIDKey); connID != nil {
 		tags = append(tags, fmt.Sprintf("conn=%d", connID))
 	}
-	if stmtID := ctx.Value(StmtIDKey); stmtID != nil {
+	if stmtID := ctx.Value(ChannelIDKey); stmtID != nil {
 		tags = append(tags, fmt.Sprintf("stmt=%d", stmtID))
 	}
 	return fmt.Sprintf("[%s]", strings.Join(tags, ","))

@@ -111,10 +111,10 @@ func (conn *Connection) executeQuery(
 ) (SelectResult, *time.Duration, error) {
 	startTime := time.Now()
 	tx, _ := conn.Database.BoltDB.Begin(false)
-	ctx := context.WithValue(conn.Context, clog.StmtIDKey, channel.StatementID)
+	ctx := context.WithValue(conn.Context, clog.ChannelIDKey, channel.ID)
 
 	execution := &SelectExecution{
-		ID:          StatementID(channel.StatementID),
+		ID:          StatementID(channel.ID),
 		Channel:     channel,
 		Query:       query,
 		Transaction: tx,
