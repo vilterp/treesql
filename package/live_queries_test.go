@@ -28,7 +28,7 @@ func TestLiveQueries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	lqChan := client.LiveQuery(`
+	_, lqChan, err := client.LiveQuery(`
 		MANY blog_posts {
 			id,
 			comments: MANY comments {
@@ -36,6 +36,9 @@ func TestLiveQueries(t *testing.T) {
 			}
 		} live
 	`)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// TODO: assert against actual message contents.
 
