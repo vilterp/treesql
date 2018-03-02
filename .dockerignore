@@ -1,0 +1,4 @@
+webui/node_modules
+examples/slacker/node_modules
+vendor
+monitoring/data
