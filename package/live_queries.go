@@ -16,14 +16,14 @@ type LiveQueryInfo struct {
 	RecordListeners     map[string]*ListenerList
 }
 
-func (table *TableDescriptor) EmptyLiveQueryInfo() *LiveQueryInfo {
+func (table *TableDescriptor) NewLiveQueryInfo() *LiveQueryInfo {
 	return &LiveQueryInfo{
 		TableEvents:              make(chan *TableEvent),
 		TableSubscriptionEvents:  make(chan *TableSubscriptionEvent),
 		RecordSubscriptionEvents: make(chan *RecordSubscriptionEvent),
-		TableListeners:           map[ColumnName](map[string]*ListenerList){},
+		TableListeners:           make(map[ColumnName]map[string]*ListenerList),
 		WholeTableListeners:      table.NewListenerList(),
-		RecordListeners:          map[string]*ListenerList{},
+		RecordListeners:          make(map[string]*ListenerList),
 	}
 }
 

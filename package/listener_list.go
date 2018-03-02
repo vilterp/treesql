@@ -20,7 +20,7 @@ type Listener struct {
 func (table *TableDescriptor) NewListenerList() *ListenerList {
 	return &ListenerList{
 		Table:     table,
-		Listeners: map[ConnectionID]map[ChannelID]([]*Listener){},
+		Listeners: map[ConnectionID]map[ChannelID][]*Listener{},
 	}
 }
 

@@ -13,6 +13,8 @@ type Schema struct {
 	NextColumnID int
 }
 
+// TODO: better name, or refactor. not just a descriptor, since
+// it also holds live query info.
 type TableDescriptor struct {
 	Name          string
 	Columns       []*ColumnDescriptor
@@ -146,7 +148,7 @@ func (db *Database) AddTable(name string, primaryKey string, columns []*ColumnDe
 		PrimaryKey: primaryKey,
 		Columns:    columns,
 	}
-	table.LiveQueryInfo = table.EmptyLiveQueryInfo() // def something weird about this
+	table.LiveQueryInfo = table.NewLiveQueryInfo() // def something weird about this
 	db.Schema.Tables[name] = table
 	go table.HandleEvents()
 	return table
@@ -162,29 +164,29 @@ func (db *Database) AddBuiltinSchema() {
 	// these never go in the on-disk __tables__ and __columns__ Bolt buckets
 	// doing ids like this is kind of precarious...
 	db.AddTable("__tables__", "name", []*ColumnDescriptor{
-		&ColumnDescriptor{
+		{
 			ID:   0,
 			Name: "name",
 			Type: TypeString,
 		},
-		&ColumnDescriptor{
+		{
 			ID:   1,
 			Name: "primary_key",
 			Type: TypeString,
 		},
 	})
 	db.AddTable("__columns__", "id", []*ColumnDescriptor{
-		&ColumnDescriptor{
+		{
 			ID:   2,
 			Name: "id",
 			Type: TypeString, // TODO: switch to int when they work
 		},
-		&ColumnDescriptor{
+		{
 			ID:   3,
 			Name: "name",
 			Type: TypeString,
 		},
-		&ColumnDescriptor{
+		{
 			ID:   4,
 			Name: "table_name",
 			Type: TypeString,
@@ -192,34 +194,34 @@ func (db *Database) AddBuiltinSchema() {
 				TableName: "__tables__",
 			},
 		},
-		&ColumnDescriptor{
+		{
 			ID:   5,
 			Name: "type",
 			Type: TypeString,
 		},
-		&ColumnDescriptor{
+		{
 			ID:   6,
 			Name: "references", // TODO: this is a keyword. rename to "references_table"
 			Type: TypeString,
 		},
 	})
 	db.AddTable("__record_listeners__", "id", []*ColumnDescriptor{
-		&ColumnDescriptor{
+		{
 			ID:   7,
 			Name: "id",
 			Type: TypeString,
 		},
-		&ColumnDescriptor{
+		{
 			ID:   8,
 			Name: "connection_id",
 			Type: TypeString,
 		},
-		&ColumnDescriptor{
+		{
 			ID:   9,
 			Name: "channel_id",
 			Type: TypeString,
 		},
-		&ColumnDescriptor{
+		{
 			ID:   10,
 			Name: "table_name",
 			Type: TypeString,
@@ -227,12 +229,12 @@ func (db *Database) AddBuiltinSchema() {
 				TableName: "__tables__",
 			},
 		},
-		&ColumnDescriptor{
+		{
 			ID:   11,
 			Name: "pk_value",
 			Type: TypeString,
 		},
-		&ColumnDescriptor{
+		{
 			ID:   12,
 			Name: "query_path",
 			Type: TypeString,
