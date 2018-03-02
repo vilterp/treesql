@@ -8,7 +8,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	treesql "github.com/vilterp/treesql/package"
+	"github.com/vilterp/treesql/package"
 )
 
 func main() {

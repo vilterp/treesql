@@ -9,7 +9,7 @@ import (
 
 	"encoding/json"
 
-	treesql "github.com/vilterp/treesql/package"
+	"github.com/vilterp/treesql/package"
 )
 
 func main() {
