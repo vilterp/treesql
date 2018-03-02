@@ -6,6 +6,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/websocket"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 type Server struct {
@@ -15,7 +16,7 @@ type Server struct {
 
 func NewServer(dataFile string, port int) *Server {
 	// open storage layer
-	database, err := Open(dataFile)
+	database, err := NewDatabase(dataFile)
 	if err != nil {
 		log.Fatalln("failed to open database:", err)
 	}
@@ -23,7 +24,7 @@ func NewServer(dataFile string, port int) *Server {
 
 	serveMux := http.NewServeMux()
 
-	// set up HTTP server for static files
+	// Serve static files for web console.
 	fileServer := http.FileServer(http.Dir("webui/build/static"))
 	serveMux.Handle("/static/", http.StripPrefix("/static/", fileServer))
 	serveMux.HandleFunc("/favicon-96x96.png", func(resp http.ResponseWriter, req *http.Request) {
@@ -35,7 +36,13 @@ func NewServer(dataFile string, port int) *Server {
 		http.ServeFile(resp, req, "webui/build/index.html")
 	})
 
-	// set up web server
+	// Serve metrics.
+	serveMux.Handle(
+		"/metrics",
+		promhttp.HandlerFor(database.Metrics.registry, promhttp.HandlerOpts{}),
+	)
+
+	// Serve WebSocket endpoint for DB traffic.
 	upgrader := websocket.Upgrader{
 		ReadBufferSize:  1024,
 		WriteBufferSize: 1024,

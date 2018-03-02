@@ -13,9 +13,10 @@ type Database struct {
 	QueryValidationRequests chan *QueryValidationRequest
 	NextConnectionID        int
 	Ctx                     context.Context
+	Metrics                 *Metrics
 }
 
-func Open(dataFile string) (*Database, error) {
+func NewDatabase(dataFile string) (*Database, error) {
 	boltDB, openErr := bolt.Open(dataFile, 0600, nil)
 	if openErr != nil {
 		return nil, openErr
@@ -34,6 +35,8 @@ func Open(dataFile string) (*Database, error) {
 	database.AddBuiltinSchema()
 	database.EnsureBuiltinSchema()
 	database.LoadUserSchema()
+
+	database.Metrics = NewMetrics(database)
 
 	// serve query validation requests
 	// TODO: a `select` here for schema changes
