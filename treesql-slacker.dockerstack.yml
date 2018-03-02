@@ -1,4 +1,10 @@
-treesql:
+prometheus:
+  image: 'vilterp/treesql-prometheus:latest'
+  links:
+    - treesql-server
+  ports:
+    - '9090:9090'
+treesql-server:
   autoredeploy: true
   image: 'vilterp/treesql:latest'
   ports:
