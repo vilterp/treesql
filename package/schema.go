@@ -87,14 +87,6 @@ func (table *TableDescriptor) ToRecord(db *Database) *Record {
 	return record
 }
 
-func TableFromRecord(record *Record) *TableDescriptor {
-	return &TableDescriptor{
-		Columns:    make([]*ColumnDescriptor, 0),
-		Name:       record.GetField("name").StringVal,
-		PrimaryKey: record.GetField("primary_key").StringVal,
-	}
-}
-
 func (db *Database) EnsureBuiltinSchema() {
 	db.BoltDB.Update(func(tx *bolt.Tx) error {
 		tx.CreateBucketIfNotExists([]byte("__tables__"))

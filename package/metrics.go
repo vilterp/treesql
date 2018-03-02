@@ -64,10 +64,12 @@ func NewMetrics(db *Database) *Metrics {
 				Help: "number of record listeners across the database",
 			},
 			func() float64 {
-				// TODO: synchronize access to listeners
 				count := 0
 				for _, table := range db.Schema.Tables {
-					for _, listenerList := range table.LiveQueryInfo.RecordListeners {
+					table.LiveQueryInfo.mu.RLock()
+					defer table.LiveQueryInfo.mu.RUnlock()
+
+					for _, listenerList := range table.LiveQueryInfo.mu.RecordListeners {
 						count += listenerList.numListeners
 					}
 				}
@@ -80,10 +82,12 @@ func NewMetrics(db *Database) *Metrics {
 				Help: "number of filtered table listeners across the database",
 			},
 			func() float64 {
-				// TODO: synchronize access to listeners
 				count := 0
 				for _, table := range db.Schema.Tables {
-					for _, listenersForCol := range table.LiveQueryInfo.TableListeners {
+					table.LiveQueryInfo.mu.RLock()
+					defer table.LiveQueryInfo.mu.RUnlock()
+
+					for _, listenersForCol := range table.LiveQueryInfo.mu.TableListeners {
 						for _, listeners := range listenersForCol {
 							count += listeners.NumListeners()
 						}
@@ -98,10 +102,12 @@ func NewMetrics(db *Database) *Metrics {
 				Help: "number of whole table listeners across the database",
 			},
 			func() float64 {
-				// TODO: synchronize access to listeners
 				count := 0
 				for _, table := range db.Schema.Tables {
-					count += table.LiveQueryInfo.WholeTableListeners.NumListeners()
+					table.LiveQueryInfo.mu.RLock()
+					defer table.LiveQueryInfo.mu.RUnlock()
+
+					count += table.LiveQueryInfo.mu.WholeTableListeners.NumListeners()
 				}
 				return float64(count)
 			},
