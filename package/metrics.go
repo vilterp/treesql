@@ -5,11 +5,12 @@ import "github.com/prometheus/client_golang/prometheus"
 type Metrics struct {
 	registry *prometheus.Registry
 
-	nextConnectionID prometheus.CounterFunc
-	openConnections  prometheus.CounterFunc
-	openChannels     prometheus.CounterFunc
-	tableListeners   prometheus.CounterFunc
-	recordListeners  prometheus.CounterFunc
+	nextConnectionID       prometheus.CounterFunc
+	openConnections        prometheus.CounterFunc
+	openChannels           prometheus.CounterFunc
+	filteredTableListeners prometheus.CounterFunc
+	wholeTableListeners    prometheus.CounterFunc
+	recordListeners        prometheus.CounterFunc
 }
 
 func NewMetrics(db *Database) *Metrics {
@@ -48,10 +49,61 @@ func NewMetrics(db *Database) *Metrics {
 				return float64(count)
 			},
 		),
+		recordListeners: prometheus.NewCounterFunc(
+			prometheus.CounterOpts{
+				Name: "record_listeners",
+				Help: "number of record listeners across the database",
+			},
+			func() float64 {
+				// TODO: synchronize access to listeners
+				count := 0
+				for _, table := range db.Schema.Tables {
+					for _, listenerList := range table.LiveQueryInfo.RecordListeners {
+						count += listenerList.numListeners
+					}
+				}
+				return float64(count)
+			},
+		),
+		filteredTableListeners: prometheus.NewCounterFunc(
+			prometheus.CounterOpts{
+				Name: "filtered_table_listeners",
+				Help: "number of filtered table listeners across the database",
+			},
+			func() float64 {
+				// TODO: synchronize access to listeners
+				count := 0
+				for _, table := range db.Schema.Tables {
+					for _, listenersForCol := range table.LiveQueryInfo.TableListeners {
+						for _, listeners := range listenersForCol {
+							count += listeners.NumListeners()
+						}
+					}
+				}
+				return float64(count)
+			},
+		),
+		wholeTableListeners: prometheus.NewCounterFunc(
+			prometheus.CounterOpts{
+				Name: "whole_table_listeners",
+				Help: "number of whole table listeners across the database",
+			},
+			func() float64 {
+				// TODO: synchronize access to listeners
+				count := 0
+				for _, table := range db.Schema.Tables {
+					count += table.LiveQueryInfo.WholeTableListeners.NumListeners()
+				}
+				return float64(count)
+			},
+		),
 	}
 	m.registry = prometheus.NewPedanticRegistry()
 	m.registry.MustRegister(m.nextConnectionID)
 	m.registry.MustRegister(m.openConnections)
 	m.registry.MustRegister(m.openChannels)
+	m.registry.MustRegister(m.recordListeners)
+	m.registry.MustRegister(m.filteredTableListeners)
+	m.registry.MustRegister(m.wholeTableListeners)
 	return m
 }

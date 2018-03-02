@@ -114,7 +114,7 @@ func (conn *Connection) executeQuery(
 	ctx := context.WithValue(conn.Context, clog.ChannelIDKey, channel.ID)
 
 	execution := &SelectExecution{
-		ID:          StatementID(channel.ID),
+		ID:          ChannelID(channel.ID),
 		Channel:     channel,
 		Query:       query,
 		Transaction: tx,
@@ -140,7 +140,7 @@ func (conn *Connection) executeQuery(
 
 // maybe this should be called transaction? idk
 type SelectExecution struct {
-	ID          StatementID
+	ID          ChannelID
 	Channel     *Channel
 	Query       *Select
 	Transaction *bolt.Tx

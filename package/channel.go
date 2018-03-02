@@ -7,6 +7,8 @@ import (
 	clog "github.com/vilterp/treesql/package/log"
 )
 
+type ChannelID int
+
 type Channel struct {
 	Connection   *Connection
 	RawStatement string

@@ -8,14 +8,13 @@ import (
 )
 
 type ConnectionID int
-type StatementID int
 
 type Connection struct {
 	clientConn    *websocket.Conn
 	ID            int
 	Database      *Database
 	Channels      map[int]*Channel // keyed by statement ID (aka channel id)
-	NextChannelID int              // TODO: chose statement ID or channel id
+	NextChannelID int
 	Messages      chan *ChannelMessage
 	Context       context.Context
 }
