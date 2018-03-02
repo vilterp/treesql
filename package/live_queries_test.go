@@ -28,7 +28,7 @@ func TestLiveQueries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	lqChan := client.LiveQuery(`
+	_, lqChan, err := client.LiveQuery(`
 		MANY blog_posts {
 			id,
 			comments: MANY comments {
@@ -36,6 +36,9 @@ func TestLiveQueries(t *testing.T) {
 			}
 		} live
 	`)
+	if err != nil {
+		t.Fatal(err)
+	}
 
 	// TODO: assert against actual message contents.
 
@@ -43,12 +46,6 @@ func TestLiveQueries(t *testing.T) {
 
 	// Verify table listener is hit.
 	go func() {
-		msg1 := <-lqChan.Updates // throw away initial result
-		t.Log("received initial result")
-		if msg1.Type != InitialResultMessage {
-			t.Fatalf("expected %v but got %v", InitialResultMessage, msg1.Type)
-		}
-
 		msg2 := <-lqChan.Updates
 		t.Log("received table listener update")
 		if msg2.Type != TableUpdateMessage {

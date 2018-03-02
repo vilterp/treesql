@@ -14,10 +14,10 @@ webui:
 	cd webui && npm run build
 
 treesql-server:
-	godep go build -o treesql-server server/server.go
+	godep go build -o treesql-server cmd/server/server.go
 
 treesql-shell:
-	godep go build -o treesql-shell shell/shell.go
+	godep go build -o treesql-shell cmd/shell/shell.go
 
 clean:
 	rm -r treesql-server

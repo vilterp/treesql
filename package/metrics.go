@@ -5,12 +5,21 @@ import "github.com/prometheus/client_golang/prometheus"
 type Metrics struct {
 	registry *prometheus.Registry
 
-	nextConnectionID       prometheus.CounterFunc
-	openConnections        prometheus.CounterFunc
-	openChannels           prometheus.CounterFunc
-	filteredTableListeners prometheus.CounterFunc
-	wholeTableListeners    prometheus.CounterFunc
-	recordListeners        prometheus.CounterFunc
+	// Counters
+	nextConnectionID prometheus.CounterFunc
+
+	// Gauges
+	openConnections        prometheus.GaugeFunc
+	openChannels           prometheus.GaugeFunc
+	filteredTableListeners prometheus.GaugeFunc
+	wholeTableListeners    prometheus.GaugeFunc
+	recordListeners        prometheus.GaugeFunc
+
+	// Latency histograms
+	selectLatency        prometheus.Summary
+	insertLatency        prometheus.Summary
+	updateLatency        prometheus.Summary
+	liveQueryPushLatency prometheus.Summary
 }
 
 func NewMetrics(db *Database) *Metrics {
@@ -24,8 +33,8 @@ func NewMetrics(db *Database) *Metrics {
 				return float64(db.NextConnectionID)
 			},
 		),
-		openConnections: prometheus.NewCounterFunc(
-			prometheus.CounterOpts{
+		openConnections: prometheus.NewGaugeFunc(
+			prometheus.GaugeOpts{
 				Name: "open_connections",
 				Help: "number of connections currently open",
 			},
@@ -33,8 +42,8 @@ func NewMetrics(db *Database) *Metrics {
 				return float64(len(db.Connections))
 			},
 		),
-		openChannels: prometheus.NewCounterFunc(
-			prometheus.CounterOpts{
+		openChannels: prometheus.NewGaugeFunc(
+			prometheus.GaugeOpts{
 				Name: "open_channels",
 				Help: "number of channels currently open across all connections",
 			},
@@ -49,8 +58,8 @@ func NewMetrics(db *Database) *Metrics {
 				return float64(count)
 			},
 		),
-		recordListeners: prometheus.NewCounterFunc(
-			prometheus.CounterOpts{
+		recordListeners: prometheus.NewGaugeFunc(
+			prometheus.GaugeOpts{
 				Name: "record_listeners",
 				Help: "number of record listeners across the database",
 			},
@@ -65,8 +74,8 @@ func NewMetrics(db *Database) *Metrics {
 				return float64(count)
 			},
 		),
-		filteredTableListeners: prometheus.NewCounterFunc(
-			prometheus.CounterOpts{
+		filteredTableListeners: prometheus.NewGaugeFunc(
+			prometheus.GaugeOpts{
 				Name: "filtered_table_listeners",
 				Help: "number of filtered table listeners across the database",
 			},
@@ -83,8 +92,8 @@ func NewMetrics(db *Database) *Metrics {
 				return float64(count)
 			},
 		),
-		wholeTableListeners: prometheus.NewCounterFunc(
-			prometheus.CounterOpts{
+		wholeTableListeners: prometheus.NewGaugeFunc(
+			prometheus.GaugeOpts{
 				Name: "whole_table_listeners",
 				Help: "number of whole table listeners across the database",
 			},
@@ -97,6 +106,30 @@ func NewMetrics(db *Database) *Metrics {
 				return float64(count)
 			},
 		),
+		selectLatency: prometheus.NewSummary(
+			prometheus.SummaryOpts{
+				Name: "select_latency_ns",
+				Help: "latency to return initial results of SELECT statements",
+			},
+		),
+		insertLatency: prometheus.NewSummary(
+			prometheus.SummaryOpts{
+				Name: "insert_latency_ns",
+				Help: "latency to execute an INSERT statement",
+			},
+		),
+		updateLatency: prometheus.NewSummary(
+			prometheus.SummaryOpts{
+				Name: "update_latency_ns",
+				Help: "latency to execute an UPDATE statement",
+			},
+		),
+		liveQueryPushLatency: prometheus.NewSummary(
+			prometheus.SummaryOpts{
+				Name: "live_query_push_latency_ns",
+				Help: "latency to push updates to live queries on an insert, update, or delete",
+			},
+		),
 	}
 	m.registry = prometheus.NewPedanticRegistry()
 	m.registry.MustRegister(m.nextConnectionID)
@@ -105,5 +138,9 @@ func NewMetrics(db *Database) *Metrics {
 	m.registry.MustRegister(m.recordListeners)
 	m.registry.MustRegister(m.filteredTableListeners)
 	m.registry.MustRegister(m.wholeTableListeners)
+	m.registry.MustRegister(m.selectLatency)
+	m.registry.MustRegister(m.insertLatency)
+	m.registry.MustRegister(m.updateLatency)
+	m.registry.MustRegister(m.liveQueryPushLatency)
 	return m
 }

@@ -9,7 +9,7 @@ import (
 	"testing"
 )
 
-func NewTestServer() (*Server, *ClientConn, error) {
+func NewTestServer() (*Server, *Client, error) {
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
 		return nil, nil, err
@@ -27,7 +27,7 @@ func NewTestServer() (*Server, *ClientConn, error) {
 	}()
 
 	url := fmt.Sprintf("ws://localhost:%d/ws", port)
-	client, err := NewClientConn(url)
+	client, err := NewClient(url)
 	if err != nil {
 		return nil, nil, err
 	}

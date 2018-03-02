@@ -12,13 +12,14 @@ import (
 	"github.com/vilterp/treesql/package"
 )
 
+var url = flag.String("url", "ws://localhost:9000/ws", "URL of TreeSQL server to connect to")
+
 func main() {
 	// get cmdline flags
-	var url = flag.String("url", "ws://localhost:9000/ws", "URL of TreeSQL server to connect to")
 	flag.Parse()
 
 	// connect to server
-	client, connErr := treesql.NewClientConn(*url)
+	client, connErr := treesql.NewClient(*url)
 	if connErr != nil {
 		fmt.Println("couldn't connect:", connErr)
 		os.Exit(1)
@@ -73,12 +74,25 @@ func main() {
 			continue
 		}
 
-		runStatement(client, line)
+		if strings.HasSuffix(line, "live") {
+			runLiveQuery(client, line)
+		} else {
+			runStatement(client, line)
+		}
 	}
 }
 
-func runStatement(client *treesql.ClientConn, stmt string) {
-	channel := client.LiveQuery(stmt)
+func runLiveQuery(client *treesql.Client, query string) {
+	initialResult, channel, err := client.LiveQuery(query)
+	if err != nil {
+		fmt.Println("error:", err)
+	}
+	printJSON("init", initialResult.Data)
+	go handleMessages(channel)
+}
+
+func runStatement(client *treesql.Client, stmt string) {
+	channel := client.Statement(stmt)
 	firstUpdate := <-channel.Updates
 	printMessage(channel, firstUpdate)
 	go handleMessages(channel)
@@ -94,11 +108,11 @@ func handleMessages(channel *treesql.ClientChannel) {
 func printMessage(channel *treesql.ClientChannel, msg *treesql.MessageToClient) {
 	fmt.Printf("chan %d: ", channel.StatementID)
 	if msg.AckMessage != nil {
-		fmt.Println("ack:", *msg.AckMessage)
+		fmt.Println("ack", *msg.AckMessage)
 		return
 	}
 	if msg.ErrorMessage != nil {
-		fmt.Println("error:", *msg.ErrorMessage)
+		fmt.Println("error", *msg.ErrorMessage)
 		return
 	}
 	if msg.InitialResultMessage != nil {

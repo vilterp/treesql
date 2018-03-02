@@ -84,10 +84,10 @@ func (conn *Connection) ExecuteTopLevelQuery(query *Select, channel *Channel) er
 }
 
 func (conn *Connection) ExecuteQueryForTableListener(query *Select, statementID int, channel *Channel) (SelectResult, error) {
-	result, duration, selectErr := conn.executeQuery(query, channel)
-	clog.Println(
-		channel, "executed table listener query for statement", statementID, "in", duration,
-	)
+	result, _, selectErr := conn.executeQuery(query, channel)
+	//clog.Println(
+	//	channel, "executed table listener query for statement", statementID, "in", duration,
+	//)
 	return result, selectErr
 }
 
@@ -132,7 +132,8 @@ func (conn *Connection) executeQuery(
 
 	endTime := time.Now()
 	duration := endTime.Sub(startTime)
-	clog.Println(execution, "executed in:", duration, "live:", query.Live)
+	conn.Database.Metrics.selectLatency.Observe(float64(duration))
+	//clog.Println(execution, "executed select in:", duration, "live:", query.Live)
 	// TODO: structured logging XD
 
 	return result, &duration, nil

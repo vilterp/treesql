@@ -1,15 +1,15 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
 
-	"encoding/json"
-
-	treesql "github.com/vilterp/treesql/package"
+	"github.com/vilterp/treesql/package"
 )
 
 func main() {
@@ -24,7 +24,7 @@ func main() {
 	}
 
 	// connect to server
-	clientConn, connErr := treesql.NewClientConn(*mothershipUrl)
+	clientConn, connErr := treesql.NewClient(*mothershipUrl)
 	if connErr != nil {
 		fmt.Println("failed to connect:", connErr)
 		return
@@ -39,7 +39,11 @@ func main() {
 	}()
 
 	// open files LQ
-	channel := clientConn.LiveQuery(getFilesQuery(*appID))
+	res, channel, err := clientConn.LiveQuery(getFilesQuery(*appID))
+	log.Println("initial files:", res.Data)
+	if err != nil {
+		log.Fatal(err)
+	}
 	for {
 		update := <-channel.Updates
 		parsed, _ := json.MarshalIndent(update, "", "  ")

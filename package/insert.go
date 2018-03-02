@@ -1,9 +1,10 @@
 package treesql
 
 import (
+	"time"
+
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
-	clog "github.com/vilterp/treesql/package/log"
 )
 
 func (db *Database) validateInsert(insert *Insert) error {
@@ -26,13 +27,17 @@ func (db *Database) validateInsert(insert *Insert) error {
 }
 
 func (conn *Connection) ExecuteInsert(insert *Insert, channel *Channel) error {
+	startTime := time.Now()
 	table := conn.Database.Schema.Tables[insert.Table]
+
+	// Create record.
 	record := table.NewRecord()
 	for idx, value := range insert.Values {
 		record.SetString(table.Columns[idx].Name, value)
 	}
 	key := record.GetField(table.PrimaryKey).StringVal
-	// write to table
+
+	// Write to table.
 	err := conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
 		bucket := tx.Bucket([]byte(insert.Table))
 		if current := bucket.Get([]byte(key)); current != nil {
@@ -43,9 +48,16 @@ func (conn *Connection) ExecuteInsert(insert *Insert, channel *Channel) error {
 	if err != nil {
 		return errors.Wrap(err, "executing insert")
 	}
-	// push to live query listeners
+
+	// Push to live query listeners.
 	conn.Database.PushTableEvent(channel, insert.Table, nil, record)
-	clog.Println(channel, "handled insert")
+	// Return ack.
 	channel.WriteAckMessage("INSERT 1")
+
+	// Record latency.
+	endTime := time.Now()
+	duration := endTime.Sub(startTime)
+	conn.Database.Metrics.insertLatency.Observe(float64(duration.Nanoseconds()))
+	// clog.Println(channel, "handled insert in", duration)
 	return nil
 }

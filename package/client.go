@@ -11,7 +11,7 @@ import (
 	"github.com/gorilla/websocket"
 )
 
-type ClientConn struct {
+type Client struct {
 	WebSocketConn    *websocket.Conn
 	URL              string
 	NextStatementID  int
@@ -25,12 +25,12 @@ type StatementRequest struct {
 	ResultChan chan *ClientChannel
 }
 
-func NewClientConn(url string) (*ClientConn, error) {
+func NewClient(url string) (*Client, error) {
 	conn, _, err := websocket.DefaultDialer.Dial(url, nil)
 	if err != nil {
 		return nil, err
 	}
-	clientConn := &ClientConn{
+	clientConn := &Client{
 		NextStatementID:  0,
 		WebSocketConn:    conn,
 		URL:              url,
@@ -43,12 +43,12 @@ func NewClientConn(url string) (*ClientConn, error) {
 	return clientConn, nil
 }
 
-func (conn *ClientConn) Close() error {
+func (conn *Client) Close() error {
 	return conn.WebSocketConn.Close()
 	// idk if it should also do something to the channels
 }
 
-func (conn *ClientConn) handleStatements() {
+func (conn *Client) handleStatements() {
 	for {
 		select {
 		case request := <-conn.StatementsToSend:
@@ -70,7 +70,7 @@ func (conn *ClientConn) handleStatements() {
 	}
 }
 
-func (conn *ClientConn) handleIncoming() {
+func (conn *Client) handleIncoming() {
 	defer conn.WebSocketConn.Close()
 	for {
 		parsedMessage := &ChannelMessage{}
@@ -86,13 +86,13 @@ func (conn *ClientConn) handleIncoming() {
 }
 
 type ClientChannel struct {
-	Conn        *ClientConn
+	Conn        *Client
 	StatementID int
 	Statement   string
 	Updates     chan *MessageToClient
 }
 
-func (conn *ClientConn) sendStatement(statement string) *ClientChannel {
+func (conn *Client) Statement(statement string) *ClientChannel {
 	resultChan := make(chan *ClientChannel)
 	conn.StatementsToSend <- &StatementRequest{
 		ResultChan: resultChan,
@@ -101,28 +101,35 @@ func (conn *ClientConn) sendStatement(statement string) *ClientChannel {
 	return <-resultChan
 }
 
-func (conn *ClientConn) LiveQuery(query string) *ClientChannel {
-	return conn.sendStatement(query)
+func (conn *Client) LiveQuery(query string) (*InitialResult, *ClientChannel, error) {
+	channel := conn.Statement(query)
+	update := <-channel.Updates
+	if update.ErrorMessage != nil {
+		return nil, nil, errors.New(*update.ErrorMessage)
+	} else if update.InitialResultMessage != nil {
+		return update.InitialResultMessage, channel, nil
+	}
+	return nil, nil, errors.New("Query result neither error or initial result.")
 }
 
-func (conn *ClientConn) Query(query string) (*InitialResult, error) {
-	resultChan := conn.sendStatement(query)
+func (conn *Client) Query(query string) (*InitialResult, error) {
+	resultChan := conn.Statement(query)
 	update := <-resultChan.Updates
 	if update.ErrorMessage != nil {
 		return nil, errors.New(*update.ErrorMessage)
 	} else if update.InitialResultMessage != nil {
 		return update.InitialResultMessage, nil
 	}
-	panic("Query result neither error or initial result")
+	return nil, errors.New("Query result neither error or initial result.")
 }
 
-func (conn *ClientConn) Exec(statement string) (string, error) {
-	resultChan := conn.sendStatement(statement)
+func (conn *Client) Exec(statement string) (string, error) {
+	resultChan := conn.Statement(statement)
 	update := <-resultChan.Updates
 	if update.ErrorMessage != nil {
 		return "", errors.New(*update.ErrorMessage)
 	} else if update.AckMessage != nil {
 		return *update.AckMessage, nil
 	}
-	panic("Exec result neither error nor ack")
+	return "", errors.New("Exec result neither error nor ack.")
 }
