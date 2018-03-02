@@ -1,13 +1,13 @@
 package main
 
 import (
+	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"encoding/json"
 
 	"github.com/vilterp/treesql/package"
 )
@@ -39,7 +39,11 @@ func main() {
 	}()
 
 	// open files LQ
-	channel := clientConn.LiveQuery(getFilesQuery(*appID))
+	res, channel, err := clientConn.LiveQuery(getFilesQuery(*appID))
+	log.Println("initial files:", res.Data)
+	if err != nil {
+		log.Fatal(err)
+	}
 	for {
 		update := <-channel.Updates
 		parsed, _ := json.MarshalIndent(update, "", "  ")

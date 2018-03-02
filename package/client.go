@@ -92,7 +92,7 @@ type ClientChannel struct {
 	Updates     chan *MessageToClient
 }
 
-func (conn *Client) sendStatement(statement string) *ClientChannel {
+func (conn *Client) Statement(statement string) *ClientChannel {
 	resultChan := make(chan *ClientChannel)
 	conn.StatementsToSend <- &StatementRequest{
 		ResultChan: resultChan,
@@ -102,7 +102,7 @@ func (conn *Client) sendStatement(statement string) *ClientChannel {
 }
 
 func (conn *Client) LiveQuery(query string) (*InitialResult, *ClientChannel, error) {
-	channel := conn.sendStatement(query)
+	channel := conn.Statement(query)
 	update := <-channel.Updates
 	if update.ErrorMessage != nil {
 		return nil, nil, errors.New(*update.ErrorMessage)
@@ -113,7 +113,7 @@ func (conn *Client) LiveQuery(query string) (*InitialResult, *ClientChannel, err
 }
 
 func (conn *Client) Query(query string) (*InitialResult, error) {
-	resultChan := conn.sendStatement(query)
+	resultChan := conn.Statement(query)
 	update := <-resultChan.Updates
 	if update.ErrorMessage != nil {
 		return nil, errors.New(*update.ErrorMessage)
@@ -124,7 +124,7 @@ func (conn *Client) Query(query string) (*InitialResult, error) {
 }
 
 func (conn *Client) Exec(statement string) (string, error) {
-	resultChan := conn.sendStatement(statement)
+	resultChan := conn.Statement(statement)
 	update := <-resultChan.Updates
 	if update.ErrorMessage != nil {
 		return "", errors.New(*update.ErrorMessage)

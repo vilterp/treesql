@@ -43,12 +43,6 @@ func TestLiveQueries(t *testing.T) {
 
 	// Verify table listener is hit.
 	go func() {
-		msg1 := <-lqChan.Updates // throw away initial result
-		t.Log("received initial result")
-		if msg1.Type != InitialResultMessage {
-			t.Fatalf("expected %v but got %v", InitialResultMessage, msg1.Type)
-		}
-
 		msg2 := <-lqChan.Updates
 		t.Log("received table listener update")
 		if msg2.Type != TableUpdateMessage {
