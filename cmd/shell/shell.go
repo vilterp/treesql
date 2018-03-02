@@ -18,7 +18,7 @@ func main() {
 	flag.Parse()
 
 	// connect to server
-	client, connErr := treesql.NewClientConn(*url)
+	client, connErr := treesql.NewClient(*url)
 	if connErr != nil {
 		fmt.Println("couldn't connect:", connErr)
 		os.Exit(1)
@@ -77,7 +77,7 @@ func main() {
 	}
 }
 
-func runStatement(client *treesql.ClientConn, stmt string) {
+func runStatement(client *treesql.Client, stmt string) {
 	channel := client.LiveQuery(stmt)
 	firstUpdate := <-channel.Updates
 	printMessage(channel, firstUpdate)

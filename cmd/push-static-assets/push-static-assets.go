@@ -21,7 +21,7 @@ func main() {
 	flag.Parse()
 
 	// connect to mothership
-	clientConn, connErr := treesql.NewClientConn(*mothershipUrl)
+	clientConn, connErr := treesql.NewClient(*mothershipUrl)
 	if connErr != nil {
 		fmt.Println("failed to connect:", connErr)
 		return

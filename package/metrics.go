@@ -16,10 +16,10 @@ type Metrics struct {
 	recordListeners        prometheus.GaugeFunc
 
 	// Latency histograms
-	selectLatency        prometheus.Histogram
-	insertLatency        prometheus.Histogram
-	updateLatency        prometheus.Histogram
-	liveQueryPushLatency prometheus.Histogram
+	selectLatency        prometheus.Summary
+	insertLatency        prometheus.Summary
+	updateLatency        prometheus.Summary
+	liveQueryPushLatency prometheus.Summary
 }
 
 func NewMetrics(db *Database) *Metrics {
@@ -106,26 +106,26 @@ func NewMetrics(db *Database) *Metrics {
 				return float64(count)
 			},
 		),
-		selectLatency: prometheus.NewHistogram(
-			prometheus.HistogramOpts{
+		selectLatency: prometheus.NewSummary(
+			prometheus.SummaryOpts{
 				Name: "select_latency_ns",
 				Help: "latency to return initial results of SELECT statements",
 			},
 		),
-		insertLatency: prometheus.NewHistogram(
-			prometheus.HistogramOpts{
+		insertLatency: prometheus.NewSummary(
+			prometheus.SummaryOpts{
 				Name: "insert_latency_ns",
 				Help: "latency to execute an INSERT statement",
 			},
 		),
-		updateLatency: prometheus.NewHistogram(
-			prometheus.HistogramOpts{
+		updateLatency: prometheus.NewSummary(
+			prometheus.SummaryOpts{
 				Name: "update_latency_ns",
 				Help: "latency to execute an UPDATE statement",
 			},
 		),
-		liveQueryPushLatency: prometheus.NewHistogram(
-			prometheus.HistogramOpts{
+		liveQueryPushLatency: prometheus.NewSummary(
+			prometheus.SummaryOpts{
 				Name: "live_query_push_latency_ns",
 				Help: "latency to push updates to live queries on an insert, update, or delete",
 			},

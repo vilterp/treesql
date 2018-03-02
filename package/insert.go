@@ -5,7 +5,6 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
-	clog "github.com/vilterp/treesql/package/log"
 )
 
 func (db *Database) validateInsert(insert *Insert) error {
@@ -59,6 +58,6 @@ func (conn *Connection) ExecuteInsert(insert *Insert, channel *Channel) error {
 	endTime := time.Now()
 	duration := endTime.Sub(startTime)
 	conn.Database.Metrics.insertLatency.Observe(float64(duration.Nanoseconds()))
-	clog.Println(channel, "handled insert in", duration)
+	// clog.Println(channel, "handled insert in", duration)
 	return nil
 }

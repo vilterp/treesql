@@ -24,7 +24,7 @@ func main() {
 	}
 
 	// connect to server
-	clientConn, connErr := treesql.NewClientConn(*mothershipUrl)
+	clientConn, connErr := treesql.NewClient(*mothershipUrl)
 	if connErr != nil {
 		fmt.Println("failed to connect:", connErr)
 		return

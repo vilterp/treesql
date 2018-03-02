@@ -121,7 +121,7 @@ func (table *TableDescriptor) handleTableEvent(evt *TableEvent) {
 	startTime := time.Now()
 	liveInfo := table.LiveQueryInfo
 	if evt.NewRecord != nil && evt.OldRecord == nil {
-		clog.Println(evt.channel, "pushing insert event to table listeners")
+		// clog.Println(evt.channel, "pushing insert event to table listeners")
 		// whole table listeners
 		liveInfo.WholeTableListeners.SendEvent(evt)
 		// filtered table listeners
