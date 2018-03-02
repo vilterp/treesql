@@ -1,6 +1,8 @@
 package treesql
 
 import (
+	"time"
+
 	clog "github.com/vilterp/treesql/package/log"
 )
 
@@ -65,66 +67,85 @@ func (table *TableDescriptor) HandleEvents() {
 	for {
 		select {
 		case tableSubEvent := <-liveInfo.TableSubscriptionEvents:
-			// fmt.Println("table sub event", table.Name, "/", tableSubEvent.ColumnName, tableSubEvent.QueryPath.ToString())
-			if tableSubEvent.ColumnName == nil {
-				// whole table listener
-				liveInfo.WholeTableListeners.AddQueryListener(
-					tableSubEvent.QueryExecution, tableSubEvent.SubQuery, tableSubEvent.QueryPath,
-				)
-			} else {
-				// filtered listener
-				columnName := ColumnName(*tableSubEvent.ColumnName)
-				// initialize listeners for this column (could be done at table create/load)
-				// but that would leave us open when new columns are added
-				listenersForColumn := liveInfo.TableListeners[columnName]
-				if listenersForColumn == nil {
-					listenersForColumn = map[string]*ListenerList{}
-					liveInfo.TableListeners[columnName] = listenersForColumn
-				}
-				// initialize listeners for this value in this column
-				listenersForValue := listenersForColumn[tableSubEvent.Value.StringVal]
-				if listenersForValue == nil {
-					listenersForValue = table.NewListenerList()
-					listenersForColumn[tableSubEvent.Value.StringVal] = listenersForValue
-				}
-				listenersForValue.AddQueryListener(
-					tableSubEvent.QueryExecution, tableSubEvent.SubQuery, tableSubEvent.QueryPath,
-				)
-			}
+			table.handleTableSub(tableSubEvent)
 
 		case recordSubEvent := <-liveInfo.RecordSubscriptionEvents:
-			// fmt.Println("record sub event", table.Name, recordSubEvent.Value.StringVal, recordSubEvent.QueryPath.ToString())
-			listenersForValue := liveInfo.RecordListeners[recordSubEvent.Value.StringVal]
-			if listenersForValue == nil {
-				listenersForValue = table.NewListenerList()
-				liveInfo.RecordListeners[recordSubEvent.Value.StringVal] = listenersForValue
-			}
-			listenersForValue.AddRecordListener(recordSubEvent.QueryExecution, recordSubEvent.QueryPath)
+			table.handleRecordSub(recordSubEvent)
 
 		case tableEvent := <-liveInfo.TableEvents:
-			if tableEvent.NewRecord != nil && tableEvent.OldRecord == nil {
-				clog.Println(tableEvent.channel, "pushing insert event to table listeners")
-				// whole table listeners
-				liveInfo.WholeTableListeners.SendEvent(tableEvent)
-				// filtered table listeners
-				for columnName, listenersForColumn := range liveInfo.TableListeners {
-					valueForColumn := tableEvent.NewRecord.GetField(string(columnName)).StringVal
-					listenersForValue := listenersForColumn[valueForColumn]
-					if listenersForValue != nil {
-						listenersForValue.SendEvent(tableEvent)
-					}
-				}
-			} else if tableEvent.OldRecord != nil && tableEvent.NewRecord != nil {
-				clog.Println(tableEvent.channel, "pushing update event to table listeners")
-				// record listeners
-				primaryKeyValue := tableEvent.NewRecord.GetField(table.PrimaryKey).StringVal
-				recordListeners := liveInfo.RecordListeners[primaryKeyValue]
-				if recordListeners != nil {
-					recordListeners.SendEvent(tableEvent)
-				}
-			} else if tableEvent.OldRecord != nil && tableEvent.NewRecord == nil {
-				clog.Println(tableEvent.channel, "TODO: handle delete events")
-			}
+			table.handleTableEvent(tableEvent)
 		}
 	}
+}
+
+func (table *TableDescriptor) handleTableSub(evt *TableSubscriptionEvent) {
+	liveInfo := table.LiveQueryInfo
+	if evt.ColumnName == nil {
+		// whole table listener
+		liveInfo.WholeTableListeners.AddQueryListener(
+			evt.QueryExecution, evt.SubQuery, evt.QueryPath,
+		)
+	} else {
+		// filtered listener
+		columnName := ColumnName(*evt.ColumnName)
+		// initialize listeners for this column (could be done at table create/load)
+		// but that would leave us open when new columns are added
+		listenersForColumn := liveInfo.TableListeners[columnName]
+		if listenersForColumn == nil {
+			listenersForColumn = map[string]*ListenerList{}
+			liveInfo.TableListeners[columnName] = listenersForColumn
+		}
+		// initialize listeners for this value in this column
+		listenersForValue := listenersForColumn[evt.Value.StringVal]
+		if listenersForValue == nil {
+			listenersForValue = table.NewListenerList()
+			listenersForColumn[evt.Value.StringVal] = listenersForValue
+		}
+		listenersForValue.AddQueryListener(
+			evt.QueryExecution, evt.SubQuery, evt.QueryPath,
+		)
+	}
+}
+
+func (table *TableDescriptor) handleRecordSub(evt *RecordSubscriptionEvent) {
+	liveInfo := table.LiveQueryInfo
+	listenersForValue := liveInfo.RecordListeners[evt.Value.StringVal]
+	if listenersForValue == nil {
+		listenersForValue = table.NewListenerList()
+		liveInfo.RecordListeners[evt.Value.StringVal] = listenersForValue
+	}
+	listenersForValue.AddRecordListener(evt.QueryExecution, evt.QueryPath)
+}
+
+func (table *TableDescriptor) handleTableEvent(evt *TableEvent) {
+	startTime := time.Now()
+	liveInfo := table.LiveQueryInfo
+	if evt.NewRecord != nil && evt.OldRecord == nil {
+		clog.Println(evt.channel, "pushing insert event to table listeners")
+		// whole table listeners
+		liveInfo.WholeTableListeners.SendEvent(evt)
+		// filtered table listeners
+		for columnName, listenersForColumn := range liveInfo.TableListeners {
+			valueForColumn := evt.NewRecord.GetField(string(columnName)).StringVal
+			listenersForValue := listenersForColumn[valueForColumn]
+			if listenersForValue != nil {
+				listenersForValue.SendEvent(evt)
+			}
+		}
+	} else if evt.OldRecord != nil && evt.NewRecord != nil {
+		clog.Println(evt.channel, "pushing update event to table listeners")
+		// record listeners
+		primaryKeyValue := evt.NewRecord.GetField(table.PrimaryKey).StringVal
+		recordListeners := liveInfo.RecordListeners[primaryKeyValue]
+		if recordListeners != nil {
+			recordListeners.SendEvent(evt)
+		}
+	} else if evt.OldRecord != nil && evt.NewRecord == nil {
+		clog.Println(evt.channel, "TODO: handle delete events")
+	}
+	endTime := time.Now()
+	duration := endTime.Sub(startTime)
+	// TODO: get metrics more directly (i.e. not through the event)
+	metrics := evt.channel.Connection.Database.Metrics
+	metrics.liveQueryPushLatency.Observe(float64(duration.Nanoseconds()))
 }

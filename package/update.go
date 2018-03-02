@@ -54,6 +54,8 @@ func (db *Database) validateUpdate(update *Update) error {
 
 func (conn *Connection) ExecuteUpdate(update *Update, channel *Channel) error {
 	startTime := time.Now()
+
+	// Write to table.
 	table := conn.Database.Schema.Tables[update.Table]
 	rowsUpdated := 0
 	updateErr := conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
@@ -68,7 +70,7 @@ func (conn *Connection) ExecuteUpdate(update *Update, channel *Channel) error {
 				if rowUpdateErr != nil {
 					return rowUpdateErr
 				}
-				// send live query updates
+				// Send live query updates.
 				conn.Database.PushTableEvent(channel, update.Table, clonedOldRecord, clonedNewRecord)
 				rowsUpdated++
 			}
@@ -79,8 +81,14 @@ func (conn *Connection) ExecuteUpdate(update *Update, channel *Channel) error {
 	if updateErr != nil {
 		return errors.Wrap(updateErr, "executing update")
 	}
+
+	// Return ack message.
 	channel.WriteAckMessage(fmt.Sprintf("UPDATE %d", rowsUpdated))
+
+	// Record latency.
 	endTime := time.Now()
-	clog.Println(channel, "handled update in", endTime.Sub(startTime))
+	duration := endTime.Sub(startTime)
+	conn.Database.Metrics.updateLatency.Observe(float64(duration.Nanoseconds()))
+	clog.Println(channel, "handled update in", duration)
 	return nil
 }

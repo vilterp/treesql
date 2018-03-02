@@ -132,7 +132,8 @@ func (conn *Connection) executeQuery(
 
 	endTime := time.Now()
 	duration := endTime.Sub(startTime)
-	clog.Println(execution, "executed in:", duration, "live:", query.Live)
+	conn.Database.Metrics.selectLatency.Observe(float64(duration))
+	clog.Println(execution, "executed select in:", duration, "live:", query.Live)
 	// TODO: structured logging XD
 
 	return result, &duration, nil
