@@ -5,6 +5,8 @@ import (
 	"log"
 	"net/http"
 
+	"net/http/pprof"
+
 	"github.com/gorilla/websocket"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
@@ -22,25 +24,31 @@ func NewServer(dataFile string, port int) *Server {
 	}
 	log.Printf("opened data file: %s\n", dataFile)
 
-	serveMux := http.NewServeMux()
+	mux := http.NewServeMux()
 
 	// Serve static files for web console.
 	fileServer := http.FileServer(http.Dir("webui/build/static"))
-	serveMux.Handle("/static/", http.StripPrefix("/static/", fileServer))
-	serveMux.HandleFunc("/favicon-96x96.png", func(resp http.ResponseWriter, req *http.Request) {
+	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
+	mux.HandleFunc("/favicon-96x96.png", func(resp http.ResponseWriter, req *http.Request) {
 		log.Println("serving favicon.-96x96.png")
 		http.ServeFile(resp, req, "webui/build/favicon-96x96.png")
 	})
-	serveMux.HandleFunc("/", func(resp http.ResponseWriter, req *http.Request) {
+	mux.HandleFunc("/", func(resp http.ResponseWriter, req *http.Request) {
 		log.Println("serving index.html")
 		http.ServeFile(resp, req, "webui/build/index.html")
 	})
 
 	// Serve metrics.
-	serveMux.Handle(
+	mux.Handle(
 		"/metrics",
 		promhttp.HandlerFor(database.Metrics.registry, promhttp.HandlerOpts{}),
 	)
+
+	mux.HandleFunc("/debug/pprof/", pprof.Index)
+	mux.HandleFunc("/debug/pprof/cmdline", pprof.Cmdline)
+	mux.HandleFunc("/debug/pprof/profile", pprof.Profile)
+	mux.HandleFunc("/debug/pprof/symbol", pprof.Symbol)
+	mux.HandleFunc("/debug/pprof/trace", pprof.Trace)
 
 	// Serve WebSocket endpoint for DB traffic.
 	upgrader := websocket.Upgrader{
@@ -48,7 +56,7 @@ func NewServer(dataFile string, port int) *Server {
 		WriteBufferSize: 1024,
 		CheckOrigin:     func(_ *http.Request) bool { return true }, // TODO: security... only do this in dev mode (...)
 	}
-	serveMux.HandleFunc("/ws", func(resp http.ResponseWriter, req *http.Request) {
+	mux.HandleFunc("/ws", func(resp http.ResponseWriter, req *http.Request) {
 		conn, err := upgrader.Upgrade(resp, req, nil)
 		if err != nil {
 			log.Println(err)
@@ -57,7 +65,7 @@ func NewServer(dataFile string, port int) *Server {
 		database.AddConnection(conn)
 	})
 
-	httpServer := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: serveMux}
+	httpServer := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: mux}
 
 	return &Server{
 		db:         database,
