@@ -1,6 +1,7 @@
 package treesql
 
 import (
+	"sync"
 	"time"
 
 	clog "github.com/vilterp/treesql/package/log"
@@ -13,20 +14,26 @@ type LiveQueryInfo struct {
 	RecordSubscriptionEvents chan *RecordSubscriptionEvent
 	TableSubscriptionEvents  chan *TableSubscriptionEvent
 	// subscribers
-	TableListeners      map[ColumnName]map[string]*ListenerList // column name => value => listener
-	WholeTableListeners *ListenerList
-	RecordListeners     map[string]*ListenerList
+
+	mu struct {
+		sync.RWMutex
+
+		TableListeners      map[ColumnName]map[string]*ListenerList // column name => value => listener
+		WholeTableListeners *ListenerList
+		RecordListeners     map[string]*ListenerList
+	}
 }
 
 func (table *TableDescriptor) NewLiveQueryInfo() *LiveQueryInfo {
-	return &LiveQueryInfo{
+	lqi := &LiveQueryInfo{
 		TableEvents:              make(chan *TableEvent),
 		TableSubscriptionEvents:  make(chan *TableSubscriptionEvent),
 		RecordSubscriptionEvents: make(chan *RecordSubscriptionEvent),
-		TableListeners:           make(map[ColumnName]map[string]*ListenerList),
-		WholeTableListeners:      table.NewListenerList(),
-		RecordListeners:          make(map[string]*ListenerList),
 	}
+	lqi.mu.TableListeners = make(map[ColumnName]map[string]*ListenerList)
+	lqi.mu.WholeTableListeners = table.NewListenerList()
+	lqi.mu.RecordListeners = make(map[string]*ListenerList)
+	return lqi
 }
 
 type TableEvent struct {
@@ -58,15 +65,18 @@ type RecordSubscriptionEvent struct {
 
 func (table *TableDescriptor) removeListenersForConn(id ConnectionID) {
 	liveInfo := table.LiveQueryInfo
-	liveInfo.WholeTableListeners.removeListenersForConn(id)
-	for _, listenersForCol := range liveInfo.TableListeners {
+	liveInfo.mu.Lock()
+	defer liveInfo.mu.Unlock()
+
+	liveInfo.mu.WholeTableListeners.removeListenersForConn(id)
+	for _, listenersForCol := range liveInfo.mu.TableListeners {
 		for _, listenersForVal := range listenersForCol {
 			listenersForVal.removeListenersForConn(id)
 		}
 	}
 	// TODO: this is O(num vals being listened on)
 	// Index it by conn.
-	for _, list := range liveInfo.RecordListeners {
+	for _, list := range liveInfo.mu.RecordListeners {
 		list.removeListenersForConn(id)
 	}
 }
@@ -95,9 +105,12 @@ func (table *TableDescriptor) HandleEvents() {
 
 func (table *TableDescriptor) handleTableSub(evt *TableSubscriptionEvent) {
 	liveInfo := table.LiveQueryInfo
+	liveInfo.mu.Lock()
+	defer liveInfo.mu.Unlock()
+
 	if evt.ColumnName == nil {
 		// whole table listener
-		liveInfo.WholeTableListeners.AddQueryListener(
+		liveInfo.mu.WholeTableListeners.AddQueryListener(
 			evt.QueryExecution, evt.SubQuery, evt.QueryPath,
 		)
 	} else {
@@ -105,10 +118,10 @@ func (table *TableDescriptor) handleTableSub(evt *TableSubscriptionEvent) {
 		columnName := ColumnName(*evt.ColumnName)
 		// initialize listeners for this column (could be done at table create/load)
 		// but that would leave us open when new columns are added
-		listenersForColumn := liveInfo.TableListeners[columnName]
+		listenersForColumn := liveInfo.mu.TableListeners[columnName]
 		if listenersForColumn == nil {
 			listenersForColumn = map[string]*ListenerList{}
-			liveInfo.TableListeners[columnName] = listenersForColumn
+			liveInfo.mu.TableListeners[columnName] = listenersForColumn
 		}
 		// initialize listeners for this value in this column
 		listenersForValue := listenersForColumn[evt.Value.StringVal]
@@ -124,10 +137,13 @@ func (table *TableDescriptor) handleTableSub(evt *TableSubscriptionEvent) {
 
 func (table *TableDescriptor) handleRecordSub(evt *RecordSubscriptionEvent) {
 	liveInfo := table.LiveQueryInfo
-	listenersForValue := liveInfo.RecordListeners[evt.Value.StringVal]
+	liveInfo.mu.Lock()
+	defer liveInfo.mu.Unlock()
+
+	listenersForValue := liveInfo.mu.RecordListeners[evt.Value.StringVal]
 	if listenersForValue == nil {
 		listenersForValue = table.NewListenerList()
-		liveInfo.RecordListeners[evt.Value.StringVal] = listenersForValue
+		liveInfo.mu.RecordListeners[evt.Value.StringVal] = listenersForValue
 	}
 	listenersForValue.AddRecordListener(evt.QueryExecution, evt.QueryPath)
 }
@@ -135,12 +151,15 @@ func (table *TableDescriptor) handleRecordSub(evt *RecordSubscriptionEvent) {
 func (table *TableDescriptor) handleTableEvent(evt *TableEvent) {
 	startTime := time.Now()
 	liveInfo := table.LiveQueryInfo
+	liveInfo.mu.Lock()
+	defer liveInfo.mu.Unlock()
+
 	if evt.NewRecord != nil && evt.OldRecord == nil {
 		// clog.Println(evt.channel, "pushing insert event to table listeners")
 		// whole table listeners
-		liveInfo.WholeTableListeners.SendEvent(evt)
+		liveInfo.mu.WholeTableListeners.SendEvent(evt)
 		// filtered table listeners
-		for columnName, listenersForColumn := range liveInfo.TableListeners {
+		for columnName, listenersForColumn := range liveInfo.mu.TableListeners {
 			valueForColumn := evt.NewRecord.GetField(string(columnName)).StringVal
 			listenersForValue := listenersForColumn[valueForColumn]
 			if listenersForValue != nil {
@@ -151,7 +170,7 @@ func (table *TableDescriptor) handleTableEvent(evt *TableEvent) {
 		clog.Println(evt.channel, "pushing update event to table listeners")
 		// record listeners
 		primaryKeyValue := evt.NewRecord.GetField(table.PrimaryKey).StringVal
-		recordListeners := liveInfo.RecordListeners[primaryKeyValue]
+		recordListeners := liveInfo.mu.RecordListeners[primaryKeyValue]
 		if recordListeners != nil {
 			recordListeners.SendEvent(evt)
 		}

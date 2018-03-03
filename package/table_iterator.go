@@ -169,7 +169,10 @@ func newRecordListenersIterator(db *Database) (*RecordListenersIterator, error) 
 	listeners := make([]*Record, 0)
 	i := 0
 	for _, table := range db.Schema.Tables {
-		for pkVal, listenerList := range table.LiveQueryInfo.RecordListeners {
+		table.LiveQueryInfo.mu.RLock()
+		defer table.LiveQueryInfo.mu.RUnlock()
+
+		for pkVal, listenerList := range table.LiveQueryInfo.mu.RecordListeners {
 			for connID, listenersForConn := range listenerList.Listeners {
 				for statementID, listenersForStatement := range listenersForConn {
 					for _, listener := range listenersForStatement {
