@@ -120,38 +120,87 @@ func (db *Database) LoadUserSchema() {
 	tablesTable := db.Schema.Tables["__tables__"]
 	columnsTable := db.Schema.Tables["__columns__"]
 	db.BoltDB.View(func(tx *bolt.Tx) error {
-		tables := map[string]*TableDescriptor{}
-		tx.Bucket([]byte("__tables__")).ForEach(func(_ []byte, tableBytes []byte) error {
+		tablesDescs := map[string]*TableDescriptor{}
+		// Load all table descriptors.
+		if err := tx.Bucket([]byte("__tables__")).ForEach(func(_ []byte, tableBytes []byte) error {
 			tableRecord := tablesTable.RecordFromBytes(tableBytes)
-			tableSpec := db.AddTable(
-				tableRecord.GetField("name").StringVal,
-				tableRecord.GetField("primary_key").StringVal,
-				make([]*ColumnDescriptor, 0),
-			)
-			tables[tableSpec.Name] = tableSpec
+			tableDesc := &TableDescriptor{
+				Name:       tableRecord.GetField("name").StringVal,
+				PrimaryKey: tableRecord.GetField("primary_key").StringVal,
+				Columns:    make([]*ColumnDescriptor, 0),
+			}
+			tablesDescs[tableDesc.Name] = tableDesc
 			return nil
-		})
-		tx.Bucket([]byte("__columns__")).ForEach(func(key []byte, columnBytes []byte) error {
+		}); err != nil {
+			return err
+		}
+		// Load all column descriptors; stick them on table descriptors.
+		if err := tx.Bucket([]byte("__columns__")).ForEach(func(key []byte, columnBytes []byte) error {
 			columnRecord := columnsTable.RecordFromBytes(columnBytes)
 			columnSpec := ColumnFromRecord(columnRecord)
-			tableSpec := tables[columnRecord.GetField("table_name").StringVal]
-			tableSpec.Columns = append(tableSpec.Columns, columnSpec)
+			tableDesc := tablesDescs[columnRecord.GetField("table_name").StringVal]
+			tableDesc.Columns = append(tableDesc.Columns, columnSpec)
 			return nil
-		})
+		}); err != nil {
+			return err
+		}
+		// Add them to the in-memory schema.
+		for _, tableDesc := range tablesDescs {
+			db.addTableDescriptor(tableDesc)
+		}
 		return nil
 	})
 }
 
-func (db *Database) AddTable(name string, primaryKey string, columns []*ColumnDescriptor) *TableDescriptor {
-	table := &TableDescriptor{
-		Name:       name,
-		PrimaryKey: primaryKey,
-		Columns:    columns,
+// TODO: move to schema? idk
+// buildTableDescriptor converts a CREATE TABLE AST node into a TableDescriptor.
+// It also assigns column ids.
+func (db *Database) buildTableDescriptor(create *CreateTable) *TableDescriptor {
+	// find primary key
+	var primaryKey string
+	for _, column := range create.Columns {
+		if column.PrimaryKey {
+			primaryKey = column.Name
+			break
+		}
 	}
+	// Create table descriptor
+	tableDesc := &TableDescriptor{
+		Name:       create.Name,
+		PrimaryKey: primaryKey,
+		Columns:    make([]*ColumnDescriptor, len(create.Columns)),
+	}
+	// Create column descriptors
+	for idx, parsedColumn := range create.Columns {
+		// extract reference
+		var reference *ColumnReference
+		if parsedColumn.References != nil {
+			reference = &ColumnReference{
+				TableName: *parsedColumn.References,
+			}
+		}
+		// build column spec
+		columnSpec := &ColumnDescriptor{
+			ID:               db.Schema.NextColumnID,
+			Name:             parsedColumn.Name,
+			ReferencesColumn: reference,
+			Type:             NameToType[parsedColumn.TypeName],
+		}
+		// TODO: synchronize access to this
+		db.Schema.NextColumnID++
+		tableDesc.Columns[idx] = columnSpec
+	}
+
+	return tableDesc
+}
+
+// addTableDescriptor initializes the table's LiveQueryInfo
+// and adds it to the schema.
+func (db *Database) addTableDescriptor(table *TableDescriptor) {
 	table.LiveQueryInfo = table.NewLiveQueryInfo() // def something weird about this
-	db.Schema.Tables[name] = table
 	go table.HandleEvents()
-	return table
+	// TODO: synchronize access to this
+	db.Schema.Tables[table.Name] = table
 }
 
 func EmptySchema() *Schema {
@@ -163,81 +212,96 @@ func EmptySchema() *Schema {
 func (db *Database) AddBuiltinSchema() {
 	// these never go in the on-disk __tables__ and __columns__ Bolt buckets
 	// doing ids like this is kind of precarious...
-	db.AddTable("__tables__", "name", []*ColumnDescriptor{
-		{
-			ID:   0,
-			Name: "name",
-			Type: TypeString,
-		},
-		{
-			ID:   1,
-			Name: "primary_key",
-			Type: TypeString,
-		},
-	})
-	db.AddTable("__columns__", "id", []*ColumnDescriptor{
-		{
-			ID:   2,
-			Name: "id",
-			Type: TypeString, // TODO: switch to int when they work
-		},
-		{
-			ID:   3,
-			Name: "name",
-			Type: TypeString,
-		},
-		{
-			ID:   4,
-			Name: "table_name",
-			Type: TypeString,
-			ReferencesColumn: &ColumnReference{
-				TableName: "__tables__",
+
+	// TODO: could use string CREATE TABLEs here
+	// parse 'em; call buildTableDescriptor to assign ids
+	db.addTableDescriptor(&TableDescriptor{
+		Name:       "__tables__",
+		PrimaryKey: "name",
+		Columns: []*ColumnDescriptor{
+			{
+				ID:   0,
+				Name: "name",
+				Type: TypeString,
+			},
+			{
+				ID:   1,
+				Name: "primary_key",
+				Type: TypeString,
 			},
 		},
-		{
-			ID:   5,
-			Name: "type",
-			Type: TypeString,
-		},
-		{
-			ID:   6,
-			Name: "references", // TODO: this is a keyword. rename to "references_table"
-			Type: TypeString,
-		},
 	})
-	db.AddTable("__record_listeners__", "id", []*ColumnDescriptor{
-		{
-			ID:   7,
-			Name: "id",
-			Type: TypeString,
-		},
-		{
-			ID:   8,
-			Name: "connection_id",
-			Type: TypeString,
-		},
-		{
-			ID:   9,
-			Name: "channel_id",
-			Type: TypeString,
-		},
-		{
-			ID:   10,
-			Name: "table_name",
-			Type: TypeString,
-			ReferencesColumn: &ColumnReference{
-				TableName: "__tables__",
+	db.addTableDescriptor(&TableDescriptor{
+		Name:       "__columns__",
+		PrimaryKey: "id",
+		Columns: []*ColumnDescriptor{
+			{
+				ID:   2,
+				Name: "id",
+				Type: TypeString, // TODO: switch to int when they work
+			},
+			{
+				ID:   3,
+				Name: "name",
+				Type: TypeString,
+			},
+			{
+				ID:   4,
+				Name: "table_name",
+				Type: TypeString,
+				ReferencesColumn: &ColumnReference{
+					TableName: "__tables__",
+				},
+			},
+			{
+				ID:   5,
+				Name: "type",
+				Type: TypeString,
+			},
+			{
+				ID:   6,
+				Name: "references", // TODO: this is a keyword. rename to "references_table"
+				Type: TypeString,
 			},
 		},
-		{
-			ID:   11,
-			Name: "pk_value",
-			Type: TypeString,
-		},
-		{
-			ID:   12,
-			Name: "query_path",
-			Type: TypeString,
+	})
+	db.addTableDescriptor(&TableDescriptor{
+		Name:       "__record_listeners__",
+		PrimaryKey: "id",
+		Columns: []*ColumnDescriptor{
+			{
+				ID:   7,
+				Name: "id",
+				Type: TypeString,
+			},
+			{
+				ID:   8,
+				Name: "connection_id",
+				Type: TypeString,
+			},
+			{
+				ID:   9,
+				Name: "channel_id",
+				Type: TypeString,
+			},
+			{
+				ID:   10,
+				Name: "table_name",
+				Type: TypeString,
+				ReferencesColumn: &ColumnReference{
+					TableName: "__tables__",
+				},
+			},
+			{
+				ID:   11,
+				Name: "pk_value",
+				Type: TypeString,
+			},
+			{
+				ID:   12,
+				Name: "query_path",
+				Type: TypeString,
+			},
 		},
 	})
 	db.Schema.NextColumnID = 13 // ugh magic numbers.
