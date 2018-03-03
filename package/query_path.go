@@ -1,7 +1,7 @@
 package treesql
 
 import (
-	"encoding/json"
+	"fmt"
 )
 
 // QueryPath is a linked list type deal
@@ -12,14 +12,8 @@ type QueryPath struct {
 	PreviousSegment *QueryPath // up the tree
 }
 
-func (qp *QueryPath) MarshalJSON() ([]byte, error) {
-	return json.Marshal(qp.Flatten())
-}
-
-// idk is there an interface for this
-func (qp *QueryPath) ToString() string {
-	jsonRepr, _ := qp.MarshalJSON()
-	return string(jsonRepr)
+func (qp *QueryPath) String() string {
+	return fmt.Sprintf("%v", qp.Flatten())
 }
 
 func (qp *QueryPath) Length() int {
@@ -32,7 +26,9 @@ func (qp *QueryPath) Length() int {
 	return length
 }
 
-func (qp *QueryPath) Flatten() []map[string]string {
+type FlattenedQueryPath = []map[string]string
+
+func (qp *QueryPath) Flatten() FlattenedQueryPath {
 	length := qp.Length()
 	array := make([]map[string]string, length)
 	currentSegment := qp

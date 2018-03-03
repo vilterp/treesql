@@ -179,7 +179,7 @@ func newRecordListenersIterator(db *Database) (*RecordListenersIterator, error) 
 						record.SetString("channel_id", fmt.Sprintf("%d", statementID))
 						record.SetString("table_name", table.Name)
 						record.SetString("pk_value", pkVal)
-						record.SetString("query_path", listener.QueryPath.ToString())
+						record.SetString("query_path", listener.QueryPath.String())
 						listeners = append(listeners, record)
 						i++
 					}

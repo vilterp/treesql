@@ -150,12 +150,12 @@ type InitialResult struct {
 
 type TableUpdate struct {
 	Selection SelectResult
-	QueryPath *QueryPath
+	QueryPath FlattenedQueryPath
 }
 
 type RecordUpdate struct {
 	TableEvent *TableEvent
-	QueryPath  *QueryPath
+	QueryPath  FlattenedQueryPath
 }
 
 func (channel *Channel) WriteErrorMessage(err error) {
@@ -191,7 +191,7 @@ func (channel *Channel) WriteRecordUpdate(update *TableEvent, queryPath *QueryPa
 	channel.writeMessage(&MessageToClient{
 		Type: RecordUpdateMessage,
 		RecordUpdateMessage: &RecordUpdate{
-			QueryPath:  queryPath,
+			QueryPath:  queryPath.Flatten(),
 			TableEvent: update,
 		},
 	})

@@ -88,7 +88,7 @@ func (list *ListenerList) SendEvent(event *TableEvent) {
 							log.Println("failed to execute query for table listener statement id", listener.QueryExecution.ID)
 						}
 						listener.QueryExecution.Channel.WriteTableUpdate(&TableUpdate{
-							QueryPath: listener.QueryPath,
+							QueryPath: listener.QueryPath.Flatten(),
 							Selection: result,
 						})
 					}()
