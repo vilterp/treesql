@@ -239,6 +239,8 @@ func (ex *SelectExecution) lookupRecord(
 	scope *Scope,
 	table *TableDescriptor,
 ) (SelectResult, error) {
+	start := time.Now()
+
 	// TODO: DRY
 	// get schema fields into a map (maybe it should be this in the schema? idk)
 	columnsMap := map[string]*ColumnDescriptor{}
@@ -262,6 +264,12 @@ func (ex *SelectExecution) lookupRecord(
 	if subSelectErr != nil {
 		return nil, subSelectErr
 	}
+
+	// Record duration.
+	end := time.Now()
+	duration := end.Sub(start)
+	ex.Channel.Connection.Database.Metrics.lookupLatency.Observe(float64(duration.Nanoseconds()))
+
 	return []map[string]interface{}{
 		recordResults,
 	}, nil
@@ -273,6 +281,7 @@ func (ex *SelectExecution) scanTable(
 	scope *Scope,
 	table *TableDescriptor,
 ) (SelectResult, error) {
+	start := time.Now()
 	result := make([]map[string]interface{}, 0)
 
 	// get schema fields into a map (maybe it should be this in the schema? idk)
@@ -322,6 +331,10 @@ func (ex *SelectExecution) scanTable(
 		return nil, errors.New("error: requested one row, but none found")
 		// TODO: this could be in the middle of a result set, lol
 	}
+	// Record duration.
+	end := time.Now()
+	duration := end.Sub(start)
+	ex.Channel.Connection.Database.Metrics.scanLatency.Observe(float64(duration.Nanoseconds()))
 	return result, nil
 }
 

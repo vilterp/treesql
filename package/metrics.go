@@ -1,6 +1,10 @@
 package treesql
 
-import "github.com/prometheus/client_golang/prometheus"
+import (
+	"os"
+
+	"github.com/prometheus/client_golang/prometheus"
+)
 
 type Metrics struct {
 	registry *prometheus.Registry
@@ -20,6 +24,9 @@ type Metrics struct {
 	insertLatency        prometheus.Summary
 	updateLatency        prometheus.Summary
 	liveQueryPushLatency prometheus.Summary
+
+	scanLatency   prometheus.Summary
+	lookupLatency prometheus.Summary
 }
 
 func NewMetrics(db *Database) *Metrics {
@@ -139,17 +146,36 @@ func NewMetrics(db *Database) *Metrics {
 				Help: "latency to push updates to live queries on an insert, update, or delete",
 			},
 		),
+		scanLatency: prometheus.NewSummary(
+			prometheus.SummaryOpts{
+				Name: "scan_latency_ns",
+				Help: "latency to scan a table",
+			},
+		),
+		lookupLatency: prometheus.NewSummary(
+			prometheus.SummaryOpts{
+				Name: "lookup_latency_ns",
+				Help: "latency to look up a single record in a table",
+			},
+		),
 	}
 	m.registry = prometheus.NewPedanticRegistry()
-	m.registry.MustRegister(m.nextConnectionID)
-	m.registry.MustRegister(m.openConnections)
-	m.registry.MustRegister(m.openChannels)
-	m.registry.MustRegister(m.recordListeners)
-	m.registry.MustRegister(m.filteredTableListeners)
-	m.registry.MustRegister(m.wholeTableListeners)
-	m.registry.MustRegister(m.selectLatency)
-	m.registry.MustRegister(m.insertLatency)
-	m.registry.MustRegister(m.updateLatency)
-	m.registry.MustRegister(m.liveQueryPushLatency)
+	reg := m.registry
+
+	reg.MustRegister(prometheus.NewProcessCollector(os.Getpid(), ""))
+	reg.MustRegister(prometheus.NewGoCollector())
+
+	reg.MustRegister(m.nextConnectionID)
+	reg.MustRegister(m.openConnections)
+	reg.MustRegister(m.openChannels)
+	reg.MustRegister(m.recordListeners)
+	reg.MustRegister(m.filteredTableListeners)
+	reg.MustRegister(m.wholeTableListeners)
+	reg.MustRegister(m.selectLatency)
+	reg.MustRegister(m.insertLatency)
+	reg.MustRegister(m.updateLatency)
+	reg.MustRegister(m.liveQueryPushLatency)
+	reg.MustRegister(m.scanLatency)
+	reg.MustRegister(m.lookupLatency)
 	return m
 }
