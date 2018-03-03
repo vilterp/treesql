@@ -1,3 +1,9 @@
+grafana:
+  image: 'grafana/grafana:latest'
+  links:
+    - prometheus
+  ports:
+    - '3000:3000'
 prometheus:
   image: 'vilterp/treesql-prometheus:latest'
   links:
@@ -9,6 +15,7 @@ treesql-server:
   image: 'vilterp/treesql:latest'
   ports:
     - '9000:9000'
+  restart: always
   volumes:
     - '/var/data/slacker:/data'
 treesql-slacker:
