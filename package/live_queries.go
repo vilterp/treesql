@@ -13,7 +13,7 @@ type LiveQueryInfo struct {
 	RecordSubscriptionEvents chan *RecordSubscriptionEvent
 	TableSubscriptionEvents  chan *TableSubscriptionEvent
 	// subscribers
-	TableListeners      map[ColumnName](map[string]*ListenerList) // column name => value => listener
+	TableListeners      map[ColumnName]map[string]*ListenerList // column name => value => listener
 	WholeTableListeners *ListenerList
 	RecordListeners     map[string]*ListenerList
 }
@@ -54,6 +54,21 @@ type RecordSubscriptionEvent struct {
 	QueryPath      *QueryPath
 
 	channel *Channel
+}
+
+func (table *TableDescriptor) removeListenersForConn(id ConnectionID) {
+	liveInfo := table.LiveQueryInfo
+	liveInfo.WholeTableListeners.removeListenersForConn(id)
+	for _, listenersForCol := range liveInfo.TableListeners {
+		for _, listenersForVal := range listenersForCol {
+			listenersForVal.removeListenersForConn(id)
+		}
+	}
+	// TODO: this is O(num vals being listened on)
+	// Index it by conn.
+	for _, list := range liveInfo.RecordListeners {
+		list.removeListenersForConn(id)
+	}
 }
 
 func (table *TableDescriptor) HandleEvents() {

@@ -11,7 +11,7 @@ import (
 type Database struct {
 	Schema           *Schema
 	BoltDB           *bolt.DB
-	Connections      map[int]*Connection
+	Connections      map[ConnectionID]*Connection
 	NextConnectionID int
 
 	Ctx     context.Context
@@ -30,7 +30,7 @@ func NewDatabase(dataFile string) (*Database, error) {
 	database := &Database{
 		Schema:           EmptySchema(),
 		BoltDB:           boltDB,
-		Connections:      make(map[int]*Connection),
+		Connections:      make(map[ConnectionID]*Connection),
 		NextConnectionID: 0,
 		Ctx:              ctx,
 	}
@@ -54,6 +54,9 @@ func (db *Database) AddConnection(wsConn *websocket.Conn) {
 
 func (db *Database) removeConn(conn *Connection) {
 	delete(db.Connections, conn.ID)
+	for _, table := range db.Schema.Tables {
+		table.removeListenersForConn(conn.ID)
+	}
 }
 
 func (db *Database) Close() error {

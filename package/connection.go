@@ -11,7 +11,7 @@ type ConnectionID int
 
 type Connection struct {
 	clientConn    *websocket.Conn
-	ID            int
+	ID            ConnectionID
 	Database      *Database
 	Channels      map[int]*Channel // keyed by statement ID (aka channel id)
 	NextChannelID int
@@ -23,7 +23,7 @@ func NewConnection(wsConn *websocket.Conn, db *Database, ID int) *Connection {
 	ctx := context.WithValue(db.Ctx, clog.ConnIDKey, ID)
 	conn := &Connection{
 		clientConn:    wsConn,
-		ID:            ID,
+		ID:            ConnectionID(ID),
 		Database:      db,
 		Channels:      make(map[int]*Channel),
 		NextChannelID: 0,

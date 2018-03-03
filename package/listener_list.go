@@ -6,7 +6,7 @@ import (
 
 type ListenerList struct {
 	Table        *TableDescriptor
-	Listeners    map[ConnectionID]map[ChannelID]([]*Listener)
+	Listeners    map[ConnectionID]map[ChannelID][]*Listener
 	numListeners int
 }
 
@@ -39,6 +39,17 @@ func (list *ListenerList) addListener(listener *Listener) {
 	listenersForStatement = append(listenersForStatement, listener)
 	listenersForConn[stmtID] = listenersForStatement
 	list.numListeners++
+}
+
+func (list *ListenerList) removeListenersForConn(id ConnectionID) {
+	count := 0
+	for _, listenersForConn := range list.Listeners {
+		for _, listenersForChan := range listenersForConn {
+			count += len(listenersForChan)
+		}
+	}
+	delete(list.Listeners, id)
+	list.numListeners -= count
 }
 
 func (list *ListenerList) NumListeners() int {
