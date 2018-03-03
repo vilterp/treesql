@@ -168,13 +168,12 @@ type FilterCondition struct {
 type SelectResult []map[string]interface{}
 
 func (ex *SelectExecution) executeSelect(query *Select, scope *Scope) (SelectResult, error) {
-	result := make([]map[string]interface{}, 0)
 	database := ex.Channel.Connection.Database
-	tableSchema := database.Schema.Tables[query.Table]
+	table := database.Schema.Tables[query.Table]
 	// if we're an inner loop, figure out a condition for our loop
 	var filterCondition *FilterCondition
 	if scope != nil {
-		filterCondition = getFilterCondition(query, tableSchema, scope)
+		filterCondition = getFilterCondition(query, table, scope)
 	}
 	if ex.Query.Live {
 		// add table subscription
@@ -210,11 +209,78 @@ func (ex *SelectExecution) executeSelect(query *Select, scope *Scope) (SelectRes
 			QueryPath:      queryPath,
 		}
 	}
+	//clog.Println(ex, "==================")
+	if query.Where != nil {
+		if query.Where.ColumnName == table.PrimaryKey {
+			//clog.Println(ex, "WHERE ON PK", table.Name, query.Where.ColumnName)
+			return ex.lookupRecord(query, query.Where.Value, scope, table)
+		} else {
+			//clog.Println(ex, "WHERE ON NOT PK", table.Name, query.Where.ColumnName)
+			return ex.scanTable(query, filterCondition, scope, table)
+		}
+	}
+	if filterCondition != nil {
+		if filterCondition.InnerColumnName == table.PrimaryKey {
+			//clog.Println(ex, "FILTER ON PK", table.Name, filterCondition.InnerColumnName, filterCondition.OuterColumnName)
+			pkVal := scope.document.GetField(filterCondition.OuterColumnName).StringVal
+			return ex.lookupRecord(query, pkVal, scope, table)
+		} else {
+			//clog.Println(ex, "FILTER ON NOT PK", table.Name, filterCondition.InnerColumnName, filterCondition.OuterColumnName)
+			return ex.scanTable(query, filterCondition, scope, table)
+		}
+	}
+
+	return ex.scanTable(query, filterCondition, scope, table)
+}
+
+func (ex *SelectExecution) lookupRecord(
+	query *Select,
+	pk string,
+	scope *Scope,
+	table *TableDescriptor,
+) (SelectResult, error) {
+	// TODO: DRY
 	// get schema fields into a map (maybe it should be this in the schema? idk)
 	columnsMap := map[string]*ColumnDescriptor{}
-	for _, column := range tableSchema.Columns {
+	for _, column := range table.Columns {
 		columnsMap[column.Name] = column
 	}
+
+	iterator, _ := ex.getTableIterator(table.Name)
+	record, err := iterator.Get(pk)
+	if err != nil {
+		return nil, err
+	}
+
+	// This query is in the result set; subscribe to it.
+	if ex.Query.Live {
+		ex.subscribeToRecord(scope, record, table)
+	}
+
+	// Extract needed columns.
+	recordResults, subSelectErr := getRecordResults(query, scope, table, record, ex, columnsMap)
+	if subSelectErr != nil {
+		return nil, subSelectErr
+	}
+	return []map[string]interface{}{
+		recordResults,
+	}, nil
+}
+
+func (ex *SelectExecution) scanTable(
+	query *Select,
+	filterCondition *FilterCondition,
+	scope *Scope,
+	table *TableDescriptor,
+) (SelectResult, error) {
+	result := make([]map[string]interface{}, 0)
+
+	// get schema fields into a map (maybe it should be this in the schema? idk)
+	columnsMap := map[string]*ColumnDescriptor{}
+	for _, column := range table.Columns {
+		columnsMap[column.Name] = column
+	}
+
 	// start iterating
 	iterator, _ := ex.getTableIterator(query.Table)
 	rowsRead := 0
@@ -241,23 +307,10 @@ func (ex *SelectExecution) executeSelect(query *Select, scope *Scope) (SelectRes
 		}
 		// this record is in the result set... let's subscribe to it
 		if ex.Query.Live {
-			var previousQueryPath *QueryPath
-			if scope != nil {
-				previousQueryPath = scope.pathSoFar
-			}
-			queryPathWithPkVal := &QueryPath{
-				ID:              &record.GetField(tableSchema.PrimaryKey).StringVal,
-				PreviousSegment: previousQueryPath,
-			}
-			tableEventsChannel := tableSchema.LiveQueryInfo.RecordSubscriptionEvents
-			tableEventsChannel <- &RecordSubscriptionEvent{
-				Value:          record.GetField(tableSchema.PrimaryKey),
-				QueryExecution: ex,
-				QueryPath:      queryPathWithPkVal,
-			}
+			ex.subscribeToRecord(scope, record, table)
 		}
 		// get all fields for selection
-		recordResults, subSelectErr := getRecordResults(query, scope, tableSchema, record, ex, columnsMap)
+		recordResults, subSelectErr := getRecordResults(query, scope, table, record, ex, columnsMap)
 		if subSelectErr != nil {
 			return nil, subSelectErr
 		}
@@ -365,4 +418,21 @@ func getFilterCondition(query *Select, tableSchema *TableDescriptor, scope *Scop
 		}
 	}
 	return filterCondition
+}
+
+func (ex *SelectExecution) subscribeToRecord(scope *Scope, record *Record, table *TableDescriptor) {
+	var previousQueryPath *QueryPath
+	if scope != nil {
+		previousQueryPath = scope.pathSoFar
+	}
+	queryPathWithPkVal := &QueryPath{
+		ID:              &record.GetField(table.PrimaryKey).StringVal,
+		PreviousSegment: previousQueryPath,
+	}
+	tableEventsChannel := table.LiveQueryInfo.RecordSubscriptionEvents
+	tableEventsChannel <- &RecordSubscriptionEvent{
+		Value:          record.GetField(table.PrimaryKey),
+		QueryExecution: ex,
+		QueryPath:      queryPathWithPkVal,
+	}
 }

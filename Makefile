@@ -26,4 +26,4 @@ clean:
 .PHONY: webui treesql-server-linux treesql-server treesql-shell test
 
 test:
-	go test ./...
+	go test ./... -timeout 5s
