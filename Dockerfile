@@ -1,4 +1,4 @@
-FROM golang:1.8
+FROM golang:1.9
 
 RUN go get github.com/tools/godep
 
@@ -14,4 +14,3 @@ EXPOSE 9000
 VOLUME ["/data"]
 
 CMD /go/src/github.com/vilterp/treesql/treesql-server --data-file /data/treesql.boltdb
-
