@@ -16,6 +16,8 @@ func TestPlanFormat(t *testing.T) {
 		PrimaryKey: "id",
 	}
 
+	// TODO: these are hilariously verbose and repetitive
+	// but I like the fact that you can see exactly what they'll do
 	cases := []struct {
 		node PlanNode
 		exp  string
@@ -27,14 +29,14 @@ func TestPlanFormat(t *testing.T) {
 					selectColumns: []string{"id", "title"},
 				},
 			},
-			`results0 = []
-for row0 in blog_posts.indexes.id:
-  result = {
-    id: row0.id,
-    title: row0.title,
+			`blog_posts_results = []
+for row in blog_posts.indexes.id:
+  blog_posts_result = {
+    id: row.id,
+    title: row.title,
   }
-  results0.append(result)
-return results0
+  blog_posts_results.append(blog_posts_result)
+return blog_posts_results
 `,
 		},
 		{
@@ -56,22 +58,23 @@ return results0
 					},
 				},
 			},
-			`results0 = []
-for row0 in blog_posts.indexes.id:
-  result = {
-    id: row0.id,
-    title: row0.title,
+			`blog_posts_results = []
+for row in blog_posts.indexes.id:
+  blog_posts_result = {
+    id: row.id,
+    title: row.title,
   }
-  results1 = []
-  for row1 in comments.indexes.post_id[row0.id]:
-    result = {
-      id: row1.id,
-      body: row1.body,
+  # comments
+  comments_results = []
+  for row in comments.indexes.post_id[row.id]:
+    comments_result = {
+      id: row.id,
+      body: row.body,
     }
-    results1.append(result)
-  result.comments = results1
-  results0.append(result)
-return results0
+    comments_results.append(comments_result)
+  blog_posts_result.comments = comments_results
+  blog_posts_results.append(blog_posts_result)
+return blog_posts_results
 `,
 		},
 		{
@@ -103,29 +106,31 @@ return results0
 					},
 				},
 			},
-			`results0 = []
-for row0 in blog_posts.indexes.id:
-  result = {
-    id: row0.id,
-    title: row0.title,
+			`blog_posts_results = []
+for row in blog_posts.indexes.id:
+  blog_posts_result = {
+    id: row.id,
+    title: row.title,
   }
-  results1 = []
-  for row1 in authors.indexes.id[row0.author_id]:
-    result = {
-      name: row1.name,
+  # author
+  authors_results = []
+  for row in authors.indexes.id[row.author_id]:
+    authors_result = {
+      name: row.name,
     }
-    results1.append(result)
-  result.author = results1
-  results2 = []
-  for row1 in comments.indexes.post_id[row0.id]:
-    result = {
-      id: row1.id,
-      body: row1.body,
+    authors_results.append(authors_result)
+  blog_posts_result.author = authors_results
+  # comments
+  comments_results = []
+  for row in comments.indexes.post_id[row.id]:
+    comments_result = {
+      id: row.id,
+      body: row.body,
     }
-    results2.append(result)
-  result.comments = results1
-  results0.append(result)
-return results0
+    comments_results.append(comments_result)
+  blog_posts_result.comments = comments_results
+  blog_posts_results.append(blog_posts_result)
+return blog_posts_results
 `,
 		},
 	}
