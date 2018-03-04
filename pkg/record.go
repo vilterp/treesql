@@ -20,6 +20,17 @@ type Value struct {
 	IntVal    int32
 }
 
+func (v *Value) Format() string {
+	switch v.Type {
+	case TypeInt:
+		return fmt.Sprintf("%d", v.IntVal)
+	case TypeString:
+		return fmt.Sprintf("%#v", v.StringVal)
+	default:
+		return ""
+	}
+}
+
 func (table *TableDescriptor) NewRecord() *Record {
 	return &Record{
 		Table:  table,
