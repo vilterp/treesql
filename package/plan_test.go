@@ -29,14 +29,14 @@ func TestPlanFormat(t *testing.T) {
 					selectColumns: []string{"id", "title"},
 				},
 			},
-			`blog_posts_results = []
-for row in blog_posts.indexes.id:
-  blog_posts_result = {
-    id: row.id,
-    title: row.title,
+			`[
+  for row in blog_posts.by_id {
+    yield {
+      id: row.id,
+      title: row.title,
+    }
   }
-  blog_posts_results.append(blog_posts_result)
-return blog_posts_results
+]
 `,
 		},
 		{
@@ -58,23 +58,22 @@ return blog_posts_results
 					},
 				},
 			},
-			`blog_posts_results = []
-for row in blog_posts.indexes.id:
-  blog_posts_result = {
-    id: row.id,
-    title: row.title,
-  }
-  # comments
-  comments_results = []
-  for row in comments.indexes.post_id[row.id]:
-    comments_result = {
+			`[
+  for row in blog_posts.by_id {
+    yield {
       id: row.id,
-      body: row.body,
+      title: row.title,
+      comments: [
+        for row in comments.by_post_id[row.id] {
+          yield {
+            id: row.id,
+            body: row.body,
+          }
+        }
+      ],
     }
-    comments_results.append(comments_result)
-  blog_posts_result.comments = comments_results
-  blog_posts_results.append(blog_posts_result)
-return blog_posts_results
+  }
+]
 `,
 		},
 		{
@@ -106,34 +105,34 @@ return blog_posts_results
 					},
 				},
 			},
-			`blog_posts_results = []
-for row in blog_posts.indexes.id:
-  blog_posts_result = {
-    id: row.id,
-    title: row.title,
-  }
-  # author
-  authors_results = []
-  for row in authors.indexes.id[row.author_id]:
-    authors_result = {
-      name: row.name,
-    }
-    authors_results.append(authors_result)
-  blog_posts_result.author = authors_results
-  # comments
-  comments_results = []
-  for row in comments.indexes.post_id[row.id]:
-    comments_result = {
+			`[
+  for row in blog_posts.by_id {
+    yield {
       id: row.id,
-      body: row.body,
+      title: row.title,
+      author: [
+        for row in authors.by_id[row.author_id] {
+          yield {
+            name: row.name,
+          }
+        }
+      ],
+      comments: [
+        for row in comments.by_post_id[row.id] {
+          yield {
+            id: row.id,
+            body: row.body,
+          }
+        }
+      ],
     }
-    comments_results.append(comments_result)
-  blog_posts_result.comments = comments_results
-  blog_posts_results.append(blog_posts_result)
-return blog_posts_results
+  }
+]
 `,
 		},
 	}
+
+	// TODO: case with some WHEREs
 
 	for idx, testCase := range cases {
 		actual := FormatPlan(testCase.node)
