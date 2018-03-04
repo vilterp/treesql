@@ -1,15 +1,19 @@
 package treesql
 
 import (
-	"bytes"
 	"fmt"
-	"strings"
+
+	"github.com/vilterp/treesql/package/util"
 )
 
 func FormatPlan(p PlanNode) string {
-	buf := bytes.NewBufferString("")
-	p.Format(buf, 0, 0, 0)
-	buf.WriteString("return results0\n")
+	buf := util.NewIndentBuffer("  ")
+	varNums := VarNums{
+		nextResultsVar: 0,
+		nextRowVar:     0,
+	}
+	p.Format(buf, varNums)
+	buf.Printlnf("return results0")
 	return buf.String()
 }
 
@@ -29,61 +33,60 @@ func (e *Expr) Format() string {
 type PlanNode interface {
 	GetResults() map[string]interface{}
 
-	Format(buf *bytes.Buffer, depth int, nextRowVar int, nextResultsVar int)
+	Format(buf *util.IndentBuffer, nums VarNums) VarNums
+}
+
+type selections struct {
+	selectColumns []string
+	childNodes    map[string]PlanNode
+}
+
+type VarNums struct {
+	nextRowVar     int
+	nextResultsVar int
+}
+
+func (s *selections) Format(buf *util.IndentBuffer, nums VarNums) VarNums {
+	givenResultVar := nums.nextResultsVar
+	buf.Printlnf("result = {")
+	buf.Indent()
+	for _, colName := range s.selectColumns {
+		buf.Printlnf("%s: row%d.%s,", colName, nums.nextRowVar, colName)
+	}
+	buf.Dedent()
+	buf.Printlnf("}")
+	nums.nextRowVar++
+	for name, childNode := range s.childNodes {
+		buf.Printlnf("# %s", name)
+		nums.nextResultsVar++
+		nextResultVar := nums.nextResultsVar
+		nums = childNode.Format(buf, nums)
+		buf.Printlnf("result.%s = results%d", name, nextResultVar)
+	}
+	buf.Printlnf("results%d.append(result)", givenResultVar)
+	return nums
 }
 
 type FullScanNode struct {
 	table  *TableDescriptor
 	filter *Filter
 
-	// Really these should all be expressions...
-	selectColumns []string
-	childNodes    map[string]PlanNode
+	selections
 }
 
 var _ PlanNode = &FullScanNode{}
 
-func (s *FullScanNode) Format(
-	buf *bytes.Buffer, depth int, nextRowVar int, nextResultsVar int,
-) {
-	buf.WriteString(fmt.Sprintf(
-		"%sresults%d = []\n",
-		strings.Repeat("  ", depth), nextResultsVar,
-	))
-	buf.WriteString(fmt.Sprintf(
-		"%sfor row%d in %s.indexes.%s:\n",
-		strings.Repeat("  ", depth), nextRowVar, s.table.Name, s.table.PrimaryKey),
-	)
+func (s *FullScanNode) Format(buf *util.IndentBuffer, nums VarNums) VarNums {
+	buf.Printlnf("results%d = []", nums.nextResultsVar)
+	buf.Printlnf("for row%d in %s.indexes.%s:", nums.nextRowVar, s.table.Name, s.table.PrimaryKey)
 	if s.filter != nil {
-		depth++
-		buf.WriteString(fmt.Sprintf(
-			"%sif %s:\n",
-			strings.Repeat("  ", depth), s.filter.Format(),
-		))
+		buf.Indent()
+		buf.Printlnf("if %s:", s.filter.Format())
 	}
-	depth++
-	buf.WriteString(fmt.Sprintf(
-		"%sresult = {}\n", strings.Repeat("  ", depth),
-	))
-	for _, colName := range s.selectColumns {
-		buf.WriteString(fmt.Sprintf(
-			"%sresult.%s = row%d.%s\n",
-			strings.Repeat("  ", depth), colName, nextRowVar, colName,
-		))
-	}
-	for name, childNode := range s.childNodes {
-		givenResultsVar := nextResultsVar + 1
-		childNode.Format(buf, depth, nextRowVar+1, givenResultsVar)
-		buf.WriteString(fmt.Sprintf(
-			"%sresult.%s = results%d\n",
-			strings.Repeat("  ", depth), name, givenResultsVar,
-		))
-	}
-	// TODO: fill in selection
-	buf.WriteString(fmt.Sprintf(
-		"%sresults%d.append(result)\n",
-		strings.Repeat("  ", depth), nextResultsVar,
-	))
+	buf.Indent()
+	s.selections.Format(buf, nums)
+	buf.Dedent()
+	return nums
 }
 
 func (s *FullScanNode) GetResults() map[string]interface{} {
@@ -99,46 +102,21 @@ type IndexScanNode struct {
 	// table.Indexes[colID][
 	matchExpr Expr
 
-	selectColumns []string
-	childNodes    map[string]PlanNode
+	selections
 }
 
 var _ PlanNode = &IndexScanNode{}
 
-func (s *IndexScanNode) Format(buf *bytes.Buffer, depth int, nextRowVar int, nextResultsVar int) {
-	// TODO: probably can't just subtract one
-	buf.WriteString(fmt.Sprintf(
-		"%sresults%d = []\n",
-		strings.Repeat("  ", depth), nextResultsVar,
-	))
-	buf.WriteString(fmt.Sprintf(
-		"%sfor row%d in %s.indexes.%s[row%d.%s]:\n",
-		strings.Repeat("  ", depth), nextRowVar, s.table.Name, s.colName, nextResultsVar-1, s.matchExpr.Format()),
+func (s *IndexScanNode) Format(buf *util.IndentBuffer, nums VarNums) VarNums {
+	buf.Printlnf("results%d = []", nums.nextResultsVar)
+	buf.Printlnf(
+		"for row%d in %s.indexes.%s[row%d.%s]:",
+		nums.nextRowVar, s.table.Name, s.colName, nums.nextRowVar-1, s.matchExpr.Format(),
 	)
-	depth++
-	// TODO: this is pretty much entirely the same as FullScanNode's format
-	buf.WriteString(fmt.Sprintf(
-		"%sresult = {}\n", strings.Repeat("  ", depth),
-	))
-	for _, colName := range s.selectColumns {
-		buf.WriteString(fmt.Sprintf(
-			"%sresult.%s = row%d.%s\n",
-			strings.Repeat("  ", depth), colName, nextRowVar, colName,
-		))
-	}
-	for name, childNode := range s.childNodes {
-		givenResultsVar := nextResultsVar + 1
-		childNode.Format(buf, depth, nextRowVar+1, givenResultsVar)
-		buf.WriteString(fmt.Sprintf(
-			"%sresult.%s = results%d\n",
-			strings.Repeat("  ", depth), name, givenResultsVar,
-		))
-	}
-	// TODO: fill in selection
-	buf.WriteString(fmt.Sprintf(
-		"%sresults%d.append(result)\n",
-		strings.Repeat("  ", depth), nextResultsVar,
-	))
+	buf.Indent()
+	s.selections.Format(buf, nums)
+	buf.Dedent()
+	return nums
 }
 
 func (s *IndexScanNode) GetResults() map[string]interface{} {

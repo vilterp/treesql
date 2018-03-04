@@ -22,43 +22,52 @@ func TestPlanFormat(t *testing.T) {
 	}{
 		{
 			&FullScanNode{
-				table:         blogPostsDesc,
-				selectColumns: []string{"id", "title"},
+				table: blogPostsDesc,
+				selections: selections{
+					selectColumns: []string{"id", "title"},
+				},
 			},
 			`results0 = []
 for row0 in blog_posts.indexes.id:
-  result = {}
-  result.id = row0.id
-  result.title = row0.title
+  result = {
+    id: row0.id,
+    title: row0.title,
+  }
   results0.append(result)
 return results0
 `,
 		},
 		{
 			&FullScanNode{
-				table:         blogPostsDesc,
-				selectColumns: []string{"id", "title"},
-				childNodes: map[string]PlanNode{
-					"comments": &IndexScanNode{
-						table:         commentsDesc,
-						colName:       "post_id",
-						selectColumns: []string{"id", "body"},
-						matchExpr: Expr{
-							Var: "id",
+				table: blogPostsDesc,
+				selections: selections{
+					selectColumns: []string{"id", "title"},
+					childNodes: map[string]PlanNode{
+						"comments": &IndexScanNode{
+							table:   commentsDesc,
+							colName: "post_id",
+							selections: selections{
+								selectColumns: []string{"id", "body"},
+							},
+							matchExpr: Expr{
+								Var: "id",
+							},
 						},
 					},
 				},
 			},
 			`results0 = []
 for row0 in blog_posts.indexes.id:
-  result = {}
-  result.id = row0.id
-  result.title = row0.title
+  result = {
+    id: row0.id,
+    title: row0.title,
+  }
   results1 = []
   for row1 in comments.indexes.post_id[row0.id]:
-    result = {}
-    result.id = row1.id
-    result.body = row1.body
+    result = {
+      id: row1.id,
+      body: row1.body,
+    }
     results1.append(result)
   result.comments = results1
   results0.append(result)
@@ -67,44 +76,53 @@ return results0
 		},
 		{
 			&FullScanNode{
-				table:         blogPostsDesc,
-				selectColumns: []string{"id", "title"},
-				childNodes: map[string]PlanNode{
-					"author": &IndexScanNode{
-						table:         authorsDesc,
-						colName:       "id",
-						selectColumns: []string{"name"},
-						matchExpr: Expr{
-							Var: "author_id",
+				table: blogPostsDesc,
+				selections: selections{
+					selectColumns: []string{"id", "title"},
+					childNodes: map[string]PlanNode{
+						"author": &IndexScanNode{
+							table:   authorsDesc,
+							colName: "id",
+							selections: selections{
+								selectColumns: []string{"name"},
+							},
+							matchExpr: Expr{
+								Var: "author_id",
+							},
 						},
-					},
-					"comments": &IndexScanNode{
-						table:         commentsDesc,
-						colName:       "post_id",
-						selectColumns: []string{"id", "body"},
-						matchExpr: Expr{
-							Var: "id",
+						"comments": &IndexScanNode{
+							table:   commentsDesc,
+							colName: "post_id",
+							selections: selections{
+								selectColumns: []string{"id", "body"},
+							},
+							matchExpr: Expr{
+								Var: "id",
+							},
 						},
 					},
 				},
 			},
 			`results0 = []
 for row0 in blog_posts.indexes.id:
-  result = {}
-  result.id = row0.id
-  result.title = row0.title
+  result = {
+    id: row0.id,
+    title: row0.title,
+  }
   results1 = []
   for row1 in authors.indexes.id[row0.author_id]:
-    result = {}
-    result.name = row1.name
+    result = {
+      name: row1.name,
+    }
     results1.append(result)
   result.author = results1
-  results1 = []
+  results2 = []
   for row1 in comments.indexes.post_id[row0.id]:
-    result = {}
-    result.id = row1.id
-    result.body = row1.body
-    results1.append(result)
+    result = {
+      id: row1.id,
+      body: row1.body,
+    }
+    results2.append(result)
   result.comments = results1
   results0.append(result)
 return results0
@@ -115,7 +133,7 @@ return results0
 	for idx, testCase := range cases {
 		actual := FormatPlan(testCase.node)
 		if actual != testCase.exp {
-			t.Errorf("case %d:\nEXPECTED:\n\n%s\n\nGOT:\n\n%s\n", idx, testCase.exp, actual)
+			t.Errorf("case %d:\nEXPECTED:\n\n%s\nGOT:\n\n%s\n", idx, testCase.exp, actual)
 		}
 	}
 }
