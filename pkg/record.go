@@ -17,7 +17,7 @@ type Value struct {
 	// tagged union plz?
 	Type      ColumnType
 	StringVal string
-	IntVal    int
+	IntVal    int32
 }
 
 func (table *TableDescriptor) NewRecord() *Record {
@@ -78,7 +78,7 @@ func (record *Record) SetString(name string, value string) {
 	record.Values[idx].StringVal = value
 }
 
-func (record *Record) SetInt(name string, value int) {
+func (record *Record) SetInt(name string, value int32) {
 	idx := record.fieldIndex(name)
 	if idx == -1 {
 		log.Fatalln("field not found for table", record.Table.Name, ":", name)
@@ -107,7 +107,7 @@ func (record *Record) ToBytes() []byte {
 		case TypeInt:
 			WriteInteger(buf, value.IntVal)
 		case TypeString:
-			WriteInteger(buf, len(value.StringVal))
+			WriteInteger(buf, int32(len(value.StringVal)))
 			buf.WriteString(value.StringVal)
 		}
 	}
@@ -131,15 +131,20 @@ func (record *Record) Clone() *Record {
 }
 
 // these are only uints
-func readInteger(buffer *bytes.Buffer) (int, error) {
+func readInteger(buffer *bytes.Buffer) (int32, error) {
 	bytes := make([]byte, 4)
 	buffer.Read(bytes)
 	result := binary.BigEndian.Uint32(bytes)
-	return int(result), nil
+	return int32(result), nil
 }
 
-func WriteInteger(buf *bytes.Buffer, val int) {
+func WriteInteger(buf *bytes.Buffer, val int32) {
+	buf.Write(encodeInteger(val))
+}
+
+// Encodes an integer in 4 bytes.
+func encodeInteger(val int32) []byte {
 	intBytes := make([]byte, 4)
 	binary.BigEndian.PutUint32(intBytes, uint32(val))
-	buf.Write(intBytes)
+	return intBytes
 }
