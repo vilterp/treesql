@@ -32,6 +32,12 @@ func (ib *IndentBuffer) Dedent() {
 	ib.depth--
 }
 
+//
+//func (ib *IndentBuffer) Printf(format string, params ...interface{}) {
+//	ib.buf.WriteString(strings.Repeat(ib.indent, ib.depth))
+//	ib.buf.WriteString(fmt.Sprintf(format, params...))
+//}
+
 func (ib *IndentBuffer) Printlnf(format string, params ...interface{}) {
 	ib.buf.WriteString(strings.Repeat(ib.indent, ib.depth))
 	ib.buf.WriteString(fmt.Sprintf(format, params...))
