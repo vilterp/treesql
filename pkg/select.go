@@ -209,23 +209,18 @@ func (ex *SelectExecution) executeSelect(query *Select, scope *Scope) (SelectRes
 			QueryPath:      queryPath,
 		}
 	}
-	//clog.Println(ex, "==================")
 	if query.Where != nil {
 		if query.Where.ColumnName == table.PrimaryKey {
-			//clog.Println(ex, "WHERE ON PK", table.Name, query.Where.ColumnName)
 			return ex.lookupRecord(query, query.Where.Value, scope, table)
 		} else {
-			//clog.Println(ex, "WHERE ON NOT PK", table.Name, query.Where.ColumnName)
 			return ex.scanTable(query, filterCondition, scope, table)
 		}
 	}
 	if filterCondition != nil {
 		if filterCondition.InnerColumnName == table.PrimaryKey {
-			//clog.Println(ex, "FILTER ON PK", table.Name, filterCondition.InnerColumnName, filterCondition.OuterColumnName)
 			pkVal := scope.document.GetField(filterCondition.OuterColumnName).StringVal
 			return ex.lookupRecord(query, pkVal, scope, table)
 		} else {
-			//clog.Println(ex, "FILTER ON NOT PK", table.Name, filterCondition.InnerColumnName, filterCondition.OuterColumnName)
 			return ex.scanTable(query, filterCondition, scope, table)
 		}
 	}

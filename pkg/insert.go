@@ -3,6 +3,8 @@ package treesql
 import (
 	"time"
 
+	"encoding/binary"
+
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
 )
@@ -37,13 +39,28 @@ func (conn *Connection) ExecuteInsert(insert *Insert, channel *Channel) error {
 	}
 	key := record.GetField(table.PrimaryKey).StringVal
 
+	// Find id of PK column.
+	var pkID int
+	for _, col := range table.Columns {
+		if col.Name == table.PrimaryKey {
+			pkID = col.ID
+			break
+		}
+	}
+
 	// Write to table.
 	err := conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(insert.Table))
-		if current := bucket.Get([]byte(key)); current != nil {
+		tableBucket := tx.Bucket([]byte(insert.Table))
+
+		// TODO: factor this out to an encoding file
+		pkIDBytes := make([]byte, 4)
+		binary.BigEndian.PutUint32(pkIDBytes, uint32(pkID))
+
+		primaryIndexBucket := tableBucket.Bucket(pkIDBytes)
+		if current := primaryIndexBucket.Get([]byte(key)); current != nil {
 			return &RecordAlreadyExists{ColName: table.PrimaryKey, Val: key}
 		}
-		return bucket.Put([]byte(key), record.ToBytes())
+		return primaryIndexBucket.Put([]byte(key), record.ToBytes())
 	})
 	if err != nil {
 		return errors.Wrap(err, "executing insert")
