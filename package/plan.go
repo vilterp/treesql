@@ -8,12 +8,8 @@ import (
 
 func FormatPlan(p PlanNode) string {
 	buf := util.NewIndentBuffer("  ")
-	varNums := VarNums{
-		nextResultsVar: 0,
-		nextRowVar:     0,
-	}
-	p.Format(buf, varNums)
-	buf.Printlnf("return results0")
+	varName := p.Format(buf)
+	buf.Printlnf("return %s", varName)
 	return buf.String()
 }
 
@@ -33,7 +29,7 @@ func (e *Expr) Format() string {
 type PlanNode interface {
 	GetResults() map[string]interface{}
 
-	Format(buf *util.IndentBuffer, nums VarNums) VarNums
+	Format(buf *util.IndentBuffer) string
 }
 
 type selections struct {
@@ -41,30 +37,20 @@ type selections struct {
 	childNodes    map[string]PlanNode
 }
 
-type VarNums struct {
-	nextRowVar     int
-	nextResultsVar int
-}
-
-func (s *selections) Format(buf *util.IndentBuffer, nums VarNums) VarNums {
-	givenResultVar := nums.nextResultsVar
-	buf.Printlnf("result = {")
+func (s *selections) Format(tableName string, buf *util.IndentBuffer) {
+	buf.Printlnf("%s_result = {", tableName)
 	buf.Indent()
 	for _, colName := range s.selectColumns {
-		buf.Printlnf("%s: row%d.%s,", colName, nums.nextRowVar, colName)
+		buf.Printlnf("%s: row.%s,", colName, colName)
 	}
 	buf.Dedent()
 	buf.Printlnf("}")
-	nums.nextRowVar++
-	for name, childNode := range s.childNodes {
-		buf.Printlnf("# %s", name)
-		nums.nextResultsVar++
-		nextResultVar := nums.nextResultsVar
-		nums = childNode.Format(buf, nums)
-		buf.Printlnf("result.%s = results%d", name, nextResultVar)
+	for selectionName, childNode := range s.childNodes {
+		buf.Printlnf("# %s", selectionName)
+		varName := childNode.Format(buf)
+		buf.Printlnf("%s_result.%s = %s", tableName, selectionName, varName)
 	}
-	buf.Printlnf("results%d.append(result)", givenResultVar)
-	return nums
+	buf.Printlnf("%s_results.append(%s_result)", tableName, tableName)
 }
 
 type FullScanNode struct {
@@ -76,17 +62,17 @@ type FullScanNode struct {
 
 var _ PlanNode = &FullScanNode{}
 
-func (s *FullScanNode) Format(buf *util.IndentBuffer, nums VarNums) VarNums {
-	buf.Printlnf("results%d = []", nums.nextResultsVar)
-	buf.Printlnf("for row%d in %s.indexes.%s:", nums.nextRowVar, s.table.Name, s.table.PrimaryKey)
+func (s *FullScanNode) Format(buf *util.IndentBuffer) string {
+	buf.Printlnf("%s_results = []", s.table.Name)
+	buf.Printlnf("for row in %s.indexes.%s:", s.table.Name, s.table.PrimaryKey)
 	if s.filter != nil {
 		buf.Indent()
 		buf.Printlnf("if %s:", s.filter.Format())
 	}
 	buf.Indent()
-	s.selections.Format(buf, nums)
+	s.selections.Format(s.table.Name, buf)
 	buf.Dedent()
-	return nums
+	return fmt.Sprintf("%s_results", s.table.Name)
 }
 
 func (s *FullScanNode) GetResults() map[string]interface{} {
@@ -107,16 +93,16 @@ type IndexScanNode struct {
 
 var _ PlanNode = &IndexScanNode{}
 
-func (s *IndexScanNode) Format(buf *util.IndentBuffer, nums VarNums) VarNums {
-	buf.Printlnf("results%d = []", nums.nextResultsVar)
+func (s *IndexScanNode) Format(buf *util.IndentBuffer) string {
+	buf.Printlnf("%s_results = []", s.table.Name)
 	buf.Printlnf(
-		"for row%d in %s.indexes.%s[row%d.%s]:",
-		nums.nextRowVar, s.table.Name, s.colName, nums.nextRowVar-1, s.matchExpr.Format(),
+		"for row in %s.indexes.%s[row.%s]:",
+		s.table.Name, s.colName, s.matchExpr.Format(),
 	)
 	buf.Indent()
-	s.selections.Format(buf, nums)
+	s.selections.Format(s.table.Name, buf)
 	buf.Dedent()
-	return nums
+	return fmt.Sprintf("%s_results", s.table.Name)
 }
 
 func (s *IndexScanNode) GetResults() map[string]interface{} {
