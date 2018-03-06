@@ -1,10 +1,10 @@
 package lang
 
-var builtinsScope *Scope
+var BuiltinsScope *Scope
 
 func init() {
-	builtinsScope = NewScope(nil)
-	builtinsScope.add("plus", &VBuiltin{
+	BuiltinsScope = NewScope(nil)
+	BuiltinsScope.Add("plus", &VBuiltin{
 		Name:    "plus",
 		RetType: TInt,
 		Params:  []Param{{"a", TInt}, {"b", TInt}},

@@ -89,6 +89,12 @@ type VObject struct {
 
 var _ Value = &VObject{}
 
+func NewVObject(vals map[string]Value) *VObject {
+	return &VObject{
+		vals: vals,
+	}
+}
+
 func (v *VObject) GetType() Type {
 	types := map[string]Type{}
 	for name, val := range v.vals {
