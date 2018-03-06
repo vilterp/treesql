@@ -45,7 +45,8 @@ func (ai *ArrayIterator) Close() error {
 }
 
 // TODO: mapIterator, filterIterator
-// also aggregation iterators
+// TODO: limitIterator, orderByIterator, offsetIterator
+// TODO: aggregation iterators
 
 // TODO: table scan iterator
 // TODO: index iterator

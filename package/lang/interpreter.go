@@ -31,7 +31,7 @@ func (i *interpreter) pushFrame(frame *stackFrame) {
 
 func (i *interpreter) popFrame() *stackFrame {
 	if i.stackTop == nil {
-		panic("can't pop frame; at bottom")
+		panic("can'out pop frame; at bottom")
 	}
 	top := i.stackTop
 	i.stackTop = top.parentFrame
