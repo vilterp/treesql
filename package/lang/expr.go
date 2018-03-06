@@ -8,9 +8,7 @@ import (
 
 type Expr interface {
 	Evaluate(*interpreter) (Value, error)
-
 	GetType(*Scope) (Type, error)
-
 	Format() pp.Doc
 }
 
@@ -18,13 +16,16 @@ type Expr interface {
 
 type EIntLit int
 
-var eZero = EIntLit(9)
-var _ Expr = &eZero
+var _ Expr = NewIntLit(0)
+
+func NewIntLit(i int) *EIntLit {
+	val := EIntLit(i)
+	return &val
+}
 
 // TODO: can we avoid an allocation here?
 func (e *EIntLit) Evaluate(_ *interpreter) (Value, error) {
-	theInt := VInt(*e)
-	return &theInt, nil
+	return NewVInt(int(*e)), nil
 }
 
 func (e *EIntLit) Format() pp.Doc {
@@ -42,9 +43,13 @@ type EStringLit string
 var eEmptyStr = EStringLit("")
 var _ Expr = &eEmptyStr
 
+func NewStringLit(s string) *EStringLit {
+	val := EStringLit(s)
+	return &val
+}
+
 func (e *EStringLit) Evaluate(_ *interpreter) (Value, error) {
-	theStr := VString(*e)
-	return &theStr, nil
+	return NewVString(string(*e)), nil
 }
 
 func (e *EStringLit) Format() pp.Doc {
@@ -216,7 +221,7 @@ func (fc *EFuncCall) Evaluate(interp *interpreter) (Value, error) {
 	switch tFuncVal := funcVal.(type) {
 	case *vLambda:
 		return interp.call(tFuncVal, argVals)
-	case *vBuiltin:
+	case *VBuiltin:
 		return interp.call(tFuncVal, argVals)
 	default:
 		return nil, fmt.Errorf("not a function: %s", fc.funcName)
@@ -244,6 +249,31 @@ func (fc *EFuncCall) GetType(scope *Scope) (Type, error) {
 	}
 	switch tFuncVal := funcVal.(type) {
 	case vFunction:
+		// Check # args matches.
+		if len(fc.args) != len(tFuncVal.GetParamList()) {
+			return nil, fmt.Errorf(
+				"%s: expected %d args; given %d",
+				fc.funcName, len(tFuncVal.GetParamList()), len(fc.args),
+			)
+		}
+		// Check arg types match.
+		params := tFuncVal.GetParamList()
+		for idx, argExpr := range fc.args {
+			param := params[idx]
+			argType, err := argExpr.GetType(scope)
+			if err != nil {
+				return nil, err
+			}
+			if param.Typ != argType {
+				return nil, fmt.Errorf(
+					"call to %s, param %d: have %s; want %s",
+					fc.funcName, idx, argType.Format().Render(), param.Typ.Format().Render(),
+				)
+			}
+		}
+		// Check that body matches declared type.
+		// this should really be a TypeScope, not a scope.
+		// will need to construct a new scope here.
 		return tFuncVal.GetRetType(), nil
 	default:
 		return nil, fmt.Errorf("not a function: %s", fc.funcName)
