@@ -281,3 +281,5 @@ func (fc *EFuncCall) GetType(scope *Scope) (Type, error) {
 }
 
 // TODO: Let binding
+// TODO: if
+// TODO: case (ayyyy)
