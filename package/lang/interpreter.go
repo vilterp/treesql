@@ -39,12 +39,24 @@ func (i *interpreter) popFrame() *stackFrame {
 }
 
 func (i *interpreter) call(vFunc vFunction, argVals []Value) (Value, error) {
+	// Make new scope.
 	newScope := NewScope(i.stackTop.scope)
+	params := vFunc.GetParamList()
+	if len(params) != len(argVals) {
+		// Checked when we get the type.
+		panic("wrong number of args")
+	}
+	for idx, argVal := range argVals {
+		param := params[idx]
+		newScope.add(param.Name, argVal)
+	}
+	// Make and push new stack frame.
 	newFrame := &stackFrame{
 		scope: newScope,
 		vFunc: vFunc,
 	}
 	i.pushFrame(newFrame)
+	// Call the lambda or builtin.
 	var val Value
 	var err error
 	switch tVFunc := vFunc.(type) {
@@ -52,9 +64,10 @@ func (i *interpreter) call(vFunc vFunction, argVals []Value) (Value, error) {
 		newFrame.expr = tVFunc.def.body
 		val, err = i.interpret()
 		return val, err
-	case *vBuiltin:
+	case *VBuiltin:
 		val, err = tVFunc.Impl(i, argVals)
 	}
+	// Pop and return.
 	i.popFrame()
 	return val, err
 }
@@ -90,6 +103,10 @@ func (s *Scope) find(name string) (Value, error) {
 		}
 	}
 	return val, nil
+}
+
+func (s *Scope) add(name string, value Value) {
+	s.vals[name] = value
 }
 
 type stackFrame struct {

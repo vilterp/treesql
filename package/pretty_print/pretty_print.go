@@ -26,7 +26,7 @@ func Text(s string) *text {
 }
 
 func Textf(format string, args ...interface{}) *text {
-	return Text(fmt.Sprintf(format, args))
+	return Text(fmt.Sprintf(format, args...))
 }
 
 func (s *text) Render() string {

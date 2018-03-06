@@ -10,18 +10,22 @@ import (
 
 type Value interface {
 	Format() pp.Doc
-
 	GetType() Type
-
 	WriteAsJSON(w *bufio.Writer) error
 }
+
+// TODO: bool
 
 // Int
 
 type VInt int
 
-var vZero = VInt(0)
-var _ Value = &vZero
+var _ Value = NewVInt(0)
+
+func NewVInt(v int) *VInt {
+	val := VInt(v)
+	return &val
+}
 
 func (v *VInt) Format() pp.Doc {
 	return pp.Textf("%d", *v)
@@ -36,12 +40,24 @@ func (v *VInt) WriteAsJSON(w *bufio.Writer) error {
 	return err
 }
 
+func MustBeVInt(v Value) int {
+	i, ok := v.(*VInt)
+	if !ok {
+		panic(fmt.Sprintf("not an int: %s", v.Format().Render()))
+	}
+	return int(*i)
+}
+
 // String
 
 type VString string
 
-var vEmptyStr = VString("")
-var _ Value = &vEmptyStr
+var _ Value = NewVString("")
+
+func NewVString(s string) *VString {
+	val := VString(s)
+	return &val
+}
 
 func (v *VString) Format() pp.Doc {
 	// TODO: test escaping
@@ -55,6 +71,14 @@ func (v *VString) GetType() Type {
 func (v *VString) WriteAsJSON(w *bufio.Writer) error {
 	_, err := w.WriteString(v.Format().Render())
 	return err
+}
+
+func MustBeVString(v Value) string {
+	s, ok := v.(*VString)
+	if !ok {
+		panic(fmt.Sprintf("not a string: %s", v.Format().Render()))
+	}
+	return string(*s)
 }
 
 // Object
@@ -219,7 +243,7 @@ func (vl *vLambda) GetRetType() Type {
 
 // Builtin
 
-type vBuiltin struct {
+type VBuiltin struct {
 	Name    string
 	Params  ParamList
 	RetType Type
@@ -228,31 +252,31 @@ type vBuiltin struct {
 	Impl func(interp *interpreter, args []Value) (Value, error)
 }
 
-var _ Value = &vBuiltin{}
-var _ vFunction = &vBuiltin{}
+var _ Value = &VBuiltin{}
+var _ vFunction = &VBuiltin{}
 
-func (vb *vBuiltin) GetType() Type {
+func (vb *VBuiltin) GetType() Type {
 	return &tFunction{
 		params:  vb.Params,
 		retType: vb.RetType,
 	}
 }
 
-func (vb *vBuiltin) Format() pp.Doc {
+func (vb *VBuiltin) Format() pp.Doc {
 	return pp.Text(fmt.Sprintf(
 		`<builtin %s(%s): %s>`,
 		vb.Name, vb.Params.Format().Render(), vb.RetType.Format().Render(),
 	))
 }
 
-func (vb *vBuiltin) WriteAsJSON(w *bufio.Writer) error {
-	return fmt.Errorf("can't write a lambda to JSON")
+func (vb *VBuiltin) WriteAsJSON(w *bufio.Writer) error {
+	return fmt.Errorf("can't write a builtin to JSON")
 }
 
-func (vb *vBuiltin) GetParamList() ParamList {
+func (vb *VBuiltin) GetParamList() ParamList {
 	return vb.Params
 }
 
-func (vb *vBuiltin) GetRetType() Type {
+func (vb *VBuiltin) GetRetType() Type {
 	return vb.RetType
 }
