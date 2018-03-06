@@ -3,11 +3,11 @@ package lang
 import "testing"
 
 func TestInterpreter(t *testing.T) {
-	userRootScope := NewScope(builtinsScope)
-	userRootScope.add("a", NewVInt(2))
-	userRootScope.add("b", NewVInt(3))
-	userRootScope.add("hello", NewVString("world"))
-	userRootScope.add("plus5", &vLambda{
+	userRootScope := NewScope(BuiltinsScope)
+	userRootScope.Add("a", NewVInt(2))
+	userRootScope.Add("b", NewVInt(3))
+	userRootScope.Add("hello", NewVString("world"))
+	userRootScope.Add("plus5", &vLambda{
 		definedInScope: userRootScope,
 		def: &ELambda{
 			retType: TInt,

@@ -5,7 +5,7 @@ import (
 )
 
 func TestCreateTable(t *testing.T) {
-	runSimpleTestScript(t, []simpleTestStmt{
+	tsr := runSimpleTestScript(t, []simpleTestStmt{
 		// validate that there's a primary key
 		{
 			stmt:  "CREATETABLE foo (id int)",
@@ -37,4 +37,5 @@ func TestCreateTable(t *testing.T) {
 			ack: "CREATE TABLE",
 		},
 	})
+	tsr.Close()
 }
