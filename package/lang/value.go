@@ -2,8 +2,8 @@ package lang
 
 import (
 	"bufio"
-
 	"fmt"
+	"sort"
 
 	pp "github.com/vilterp/treesql/package/pretty_print"
 )
@@ -107,6 +107,7 @@ func (v *VObject) Format() pp.Doc {
 		keys[idx] = k
 		idx++
 	}
+	sort.Strings(keys)
 
 	kvDocs := make([]pp.Doc, len(v.vals))
 	for idx, key := range keys {
@@ -119,8 +120,9 @@ func (v *VObject) Format() pp.Doc {
 
 	return pp.Concat([]pp.Doc{
 		pp.Text("("), pp.Newline,
-		pp.Nest(pp.Concat(kvDocs), 2),
-		pp.Text("}"), pp.Newline,
+		pp.Nest(2, pp.Join(kvDocs, pp.CommaNewline)),
+		pp.Newline,
+		pp.Text("}"),
 	})
 }
 
@@ -244,7 +246,7 @@ func (vl *vLambda) Format() pp.Doc {
 }
 
 func (vl *vLambda) WriteAsJSON(w *bufio.Writer) error {
-	return fmt.Errorf("can't write a lambda to JSON")
+	return fmt.Errorf("can'out write a lambda to JSON")
 }
 
 func (vl *vLambda) GetParamList() ParamList {
@@ -284,7 +286,7 @@ func (vb *VBuiltin) Format() pp.Doc {
 }
 
 func (vb *VBuiltin) WriteAsJSON(w *bufio.Writer) error {
-	return fmt.Errorf("can't write a builtin to JSON")
+	return fmt.Errorf("can'out write a builtin to JSON")
 }
 
 func (vb *VBuiltin) GetParamList() ParamList {
