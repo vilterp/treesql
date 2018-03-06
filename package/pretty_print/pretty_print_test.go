@@ -12,9 +12,23 @@ func TestPrettyPrint(t *testing.T) {
 			`foo bar`,
 		},
 		{
-			Concat([]Doc{Text("foo"), Text("["), Newline, Nest(Text("bar"), 2), Newline, Text("]")}),
+			Concat([]Doc{Text("foo"), Text("["), Newline, Nest(2, Text("bar")), Newline, Text("]")}),
 			`foo[
   bar
+]`,
+		},
+		{
+			Concat([]Doc{
+				Text("["), Newline,
+				Nest(2, Join([]Doc{
+					Text("foo: bar,"),
+					Text("baz: bin,"),
+				}, Newline)),
+				Newline, Text("]"),
+			}),
+			`[
+  foo: bar,
+  baz: bin,
 ]`,
 		},
 	}
