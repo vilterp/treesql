@@ -2,6 +2,7 @@ package lang
 
 import (
 	"fmt"
+	"sort"
 
 	pp "github.com/vilterp/treesql/package/pretty_print"
 )
@@ -117,6 +118,7 @@ func (ol *EObjectLit) Format() pp.Doc {
 		keys[idx] = k
 		idx++
 	}
+	sort.Strings(keys)
 
 	kvDocs := make([]pp.Doc, len(ol.exprs))
 	for idx, key := range keys {
@@ -129,8 +131,9 @@ func (ol *EObjectLit) Format() pp.Doc {
 
 	return pp.Concat([]pp.Doc{
 		pp.Text("("), pp.Newline,
-		pp.Nest(pp.Concat(kvDocs), 2),
-		pp.Text("}"), pp.Newline,
+		pp.Nest(2, pp.Join(kvDocs, pp.CommaNewline)),
+		pp.Newline,
+		pp.Text("}"),
 	})
 }
 
@@ -168,7 +171,7 @@ var _ Expr = &ELambda{}
 func (l *ELambda) Evaluate(interp *interpreter) (Value, error) {
 	return &vLambda{
 		def: l,
-		// TODO: don't close over the scope if we don't need anything from there
+		// TODO: don'out close over the scope if we don'out need anything from there
 		definedInScope: interp.stackTop.scope,
 	}, nil
 }

@@ -1,6 +1,8 @@
 package lang
 
 import (
+	"sort"
+
 	pp "github.com/vilterp/treesql/package/pretty_print"
 )
 
@@ -51,6 +53,7 @@ func (to TObject) Format() pp.Doc {
 		keys[idx] = k
 		idx++
 	}
+	sort.Strings(keys)
 
 	kvDocs := make([]pp.Doc, len(to.Types))
 	for idx, key := range keys {
@@ -62,9 +65,10 @@ func (to TObject) Format() pp.Doc {
 	}
 
 	return pp.Concat([]pp.Doc{
-		pp.Text("("), pp.Newline,
-		pp.Nest(pp.Concat(kvDocs), 2),
-		pp.Text("}"), pp.Newline,
+		pp.Text("{"), pp.Newline,
+		pp.Nest(2, pp.Join(kvDocs, pp.CommaNewline)),
+		pp.Newline,
+		pp.Text("}"),
 	})
 }
 

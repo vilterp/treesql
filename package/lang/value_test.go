@@ -50,12 +50,12 @@ func TestWriteAsJSON(t *testing.T) {
 		{
 			&VBuiltin{},
 			"",
-			"can't write a builtin to JSON",
+			"can'out write a builtin to JSON",
 		},
 		{
 			&vLambda{},
 			"",
-			"can't write a lambda to JSON",
+			"can'out write a lambda to JSON",
 		},
 	}
 
@@ -94,8 +94,33 @@ func TestWriteAsJSON(t *testing.T) {
 	}
 }
 
-func TestGetType(t *testing.T) {
-	// TODO
+func TestValueGetType(t *testing.T) {
+	testCases := []struct {
+		in  Value
+		out string
+	}{
+		{NewVInt(2), "Int"},
+		{NewVString("foo"), "String"},
+		{
+			&VObject{
+				vals: map[string]Value{
+					"foo": NewVInt(2),
+					"bar": NewVString("bla"),
+				},
+			},
+			`{
+  bar: String,
+  foo: Int
+}`,
+		},
+	}
+
+	for idx, testCase := range testCases {
+		actual := testCase.in.GetType()
+		if actual.Format().Render() != testCase.out {
+			t.Errorf("case %d: expected type %s; got %s", idx, testCase.out, actual.Format().Render())
+		}
+	}
 }
 
 // From https://gist.github.com/turtlemonvh/e4f7404e28387fadb8ad275a99596f67
@@ -106,11 +131,11 @@ func AreEqualJSON(s1, s2 string) (bool, error) {
 	var err error
 	err = json.Unmarshal([]byte(s1), &o1)
 	if err != nil {
-		return false, fmt.Errorf("Error mashalling string 1 :: %s", err.Error())
+		return false, fmt.Errorf("error mashalling string 1: %s", err.Error())
 	}
 	err = json.Unmarshal([]byte(s2), &o2)
 	if err != nil {
-		return false, fmt.Errorf("Error mashalling string 2 :: %s", err.Error())
+		return false, fmt.Errorf("error mashalling string 2: %s", err.Error())
 	}
 
 	return reflect.DeepEqual(o1, o2), nil
