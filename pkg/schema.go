@@ -22,6 +22,15 @@ type TableDescriptor struct {
 	LiveQueryInfo *LiveQueryInfo
 }
 
+func (table *TableDescriptor) colIDForName(name string) (int, error) {
+	for _, col := range table.Columns {
+		if col.Name == name {
+			return col.ID, nil
+		}
+	}
+	return 0, fmt.Errorf("col not found: %s", name)
+}
+
 type ColumnName string
 type ColumnDescriptor struct {
 	ID               int

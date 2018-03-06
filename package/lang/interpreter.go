@@ -48,7 +48,7 @@ func (i *interpreter) call(vFunc vFunction, argVals []Value) (Value, error) {
 	}
 	for idx, argVal := range argVals {
 		param := params[idx]
-		newScope.add(param.Name, argVal)
+		newScope.Add(param.Name, argVal)
 	}
 	// Make and push new stack frame.
 	newFrame := &stackFrame{
@@ -105,7 +105,7 @@ func (s *Scope) find(name string) (Value, error) {
 	return val, nil
 }
 
-func (s *Scope) add(name string, value Value) {
+func (s *Scope) Add(name string, value Value) {
 	s.vals[name] = value
 }
 

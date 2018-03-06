@@ -7,7 +7,7 @@ import (
 )
 
 func TestSelect(t *testing.T) {
-	runSimpleTestScript(t, []simpleTestStmt{
+	tsr := runSimpleTestScript(t, []simpleTestStmt{
 		// Create blog post schema.
 		{
 			stmt: `
@@ -98,6 +98,7 @@ func TestSelect(t *testing.T) {
 ]`,
 		},
 	})
+	tsr.Close()
 }
 
 func BenchmarkSelect(t *testing.B) {

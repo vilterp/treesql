@@ -57,10 +57,20 @@ type simpleTestStmt struct {
 	initialResult string
 }
 
+type testServerRef struct {
+	server *testServer
+	client *Client
+}
+
+func (tsr *testServerRef) Close() {
+	tsr.server.close()
+	tsr.client.Close()
+}
+
 // runSimpleTestScript spins up a test server and runs statements on it,
 // checking each result. It doesn't support live queries; only initial results
 // are checked.
-func runSimpleTestScript(t *testing.T, cases []simpleTestStmt) {
+func runSimpleTestScript(t *testing.T, cases []simpleTestStmt) *testServerRef {
 	server, client, err := NewTestServer()
 	if err != nil {
 		t.Fatal(err)
@@ -87,6 +97,11 @@ func runSimpleTestScript(t *testing.T, cases []simpleTestStmt) {
 				t.Fatalf("expected:\n%sgot:\n%s", testCase.initialResult, indented)
 			}
 		}
+	}
+
+	return &testServerRef{
+		server: server,
+		client: client,
 	}
 }
 
