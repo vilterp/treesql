@@ -8,6 +8,9 @@ type interpreter struct {
 	stackTop *stackFrame
 }
 
+// TODO: callLookuper interface
+// to pass in places?
+
 func newInterpreter(rootScope *Scope, expr Expr) *interpreter {
 	return &interpreter{
 		stackTop: &stackFrame{
@@ -18,14 +21,54 @@ func newInterpreter(rootScope *Scope, expr Expr) *interpreter {
 }
 
 func (i *interpreter) interpret() (Value, error) {
-	panic("unimplemented")
+	return i.stackTop.expr.Evaluate(i)
 }
 
-// TODO: push/pop frame, etc
+func (i *interpreter) pushFrame(frame *stackFrame) {
+	frame.parentFrame = i.stackTop
+	i.stackTop = frame
+}
+
+func (i *interpreter) popFrame() *stackFrame {
+	if i.stackTop == nil {
+		panic("can't pop frame; at bottom")
+	}
+	top := i.stackTop
+	i.stackTop = top.parentFrame
+	return top
+}
+
+func (i *interpreter) call(vFunc vFunction, argVals []Value) (Value, error) {
+	newScope := NewScope(i.stackTop.scope)
+	newFrame := &stackFrame{
+		scope: newScope,
+		vFunc: vFunc,
+	}
+	i.pushFrame(newFrame)
+	var val Value
+	var err error
+	switch tVFunc := vFunc.(type) {
+	case *vLambda:
+		newFrame.expr = tVFunc.def.body
+		val, err = i.interpret()
+		return val, err
+	case *vBuiltin:
+		val, err = tVFunc.Impl(i, argVals)
+	}
+	i.popFrame()
+	return val, err
+}
 
 type Scope struct {
 	parent *Scope
 	vals   map[string]Value
+}
+
+func NewScope(parent *Scope) *Scope {
+	return &Scope{
+		vals:   map[string]Value{},
+		parent: parent,
+	}
 }
 
 type notInScopeError struct {
@@ -36,19 +79,15 @@ func (e *notInScopeError) Error() string {
 	return fmt.Sprintf("not in scope: %s", e.name)
 }
 
-func NewScope(vals map[string]Value) *Scope {
-	return &Scope{
-		vals: vals,
-	}
-}
-
 func (s *Scope) find(name string) (Value, error) {
 	val, ok := s.vals[name]
 	if !ok {
 		if s.parent != nil {
 			return s.parent.find(name)
 		}
-		return nil, fmt.Errorf("no such var in scope: ")
+		return nil, &notInScopeError{
+			name: name,
+		}
 	}
 	return val, nil
 }
@@ -59,10 +98,12 @@ type stackFrame struct {
 	expr        Expr
 	scope       *Scope
 
-	// TODO: choice of:
-	// - funcName
-	// - objName
-	// - array ind
+	// if it's a function stack frame
+	vFunc vFunction
+	// if it's a object key stack frame
+	objKey string
+	// if it's a record stack frame
+	primaryKey Value
 }
 
 // TODO: stack frame and stuff

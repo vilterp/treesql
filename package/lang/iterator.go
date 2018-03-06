@@ -46,3 +46,7 @@ func (ai *ArrayIterator) Close() error {
 
 // TODO: mapIterator, filterIterator
 // also aggregation iterators
+
+// TODO: table scan iterator
+// TODO: index iterator
+// these should both push stack frames so record listeners can be installed
