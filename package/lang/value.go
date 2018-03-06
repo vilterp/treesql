@@ -61,7 +61,7 @@ func NewVString(s string) *VString {
 
 func (v *VString) Format() pp.Doc {
 	// TODO: test escaping
-	return pp.Textf(`%#v`, v)
+	return pp.Textf(`%#v`, string(*v))
 }
 
 func (v *VString) GetType() Type {
@@ -164,13 +164,27 @@ func (v *VIteratorRef) WriteAsJSON(w *bufio.Writer) error {
 	idx := 0
 	for {
 		nextVal, err := v.iterator.Next()
+		// Check for end of iteration or other error.
+		var isEOE bool
 		if err != nil {
 			switch err.(type) {
 			case *endOfIteration:
-				break
+				isEOE = true
 			default:
 				return err
 			}
+		}
+		if isEOE {
+			break
+		}
+		// Check type.
+		// TODO: not sure this actually checks value equality, since
+		// these are both pointers.
+		if nextVal.GetType() != v.ofType {
+			return fmt.Errorf(
+				"iterator of type %s got next value %s",
+				v.ofType.Format().Render(), nextVal.Format().Render(),
+			)
 		}
 		if idx > 0 {
 			w.WriteString(",")
@@ -280,3 +294,5 @@ func (vb *VBuiltin) GetParamList() ParamList {
 func (vb *VBuiltin) GetRetType() Type {
 	return vb.RetType
 }
+
+// TODO: ADT val
