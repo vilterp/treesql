@@ -106,3 +106,5 @@ func (tFunction) typ() {}
 
 // TODO: type vars
 // .isConcrete or something
+
+// TODO: ADTs
