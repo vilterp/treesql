@@ -157,3 +157,102 @@ func (v *VIteratorRef) WriteAsJSON(w *bufio.Writer) error {
 	w.WriteString("]")
 	return nil
 }
+
+// Function
+
+type vFunction interface {
+	Value
+
+	GetParamList() ParamList
+	GetRetType() Type
+}
+
+type ParamList []Param
+
+func (pl ParamList) Format() pp.Doc {
+	paramDocs := make([]pp.Doc, len(pl))
+	for idx, param := range pl {
+		paramDocs[idx] = pp.Concat([]pp.Doc{
+			pp.Text(param.Name),
+			pp.Text(" "),
+			param.Typ.Format(),
+		})
+	}
+	return pp.Join(paramDocs, pp.Text(", "))
+}
+
+// Lambda
+
+// aka user-defined function
+type vLambda struct {
+	def            *ELambda
+	definedInScope *Scope
+}
+
+var _ Value = &vLambda{}
+var _ vFunction = &vLambda{}
+
+func (vl *vLambda) GetType() Type {
+	// TODO: this is a bit awkward
+	t, err := vl.def.GetType(nil)
+	if err != nil {
+		panic("panic in lambda get type")
+	}
+	return t
+}
+
+func (vl *vLambda) Format() pp.Doc {
+	return vl.def.Format()
+}
+
+func (vl *vLambda) WriteAsJSON(w *bufio.Writer) error {
+	return fmt.Errorf("can't write a lambda to JSON")
+}
+
+func (vl *vLambda) GetParamList() ParamList {
+	return vl.def.params
+}
+
+func (vl *vLambda) GetRetType() Type {
+	return vl.def.retType
+}
+
+// Builtin
+
+type vBuiltin struct {
+	Name    string
+	Params  ParamList
+	RetType Type
+
+	// TODO: maybe give it a more restricted interface
+	Impl func(interp *interpreter, args []Value) (Value, error)
+}
+
+var _ Value = &vBuiltin{}
+var _ vFunction = &vBuiltin{}
+
+func (vb *vBuiltin) GetType() Type {
+	return &tFunction{
+		params:  vb.Params,
+		retType: vb.RetType,
+	}
+}
+
+func (vb *vBuiltin) Format() pp.Doc {
+	return pp.Text(fmt.Sprintf(
+		`<builtin %s(%s): %s>`,
+		vb.Name, vb.Params.Format().Render(), vb.RetType.Format().Render(),
+	))
+}
+
+func (vb *vBuiltin) WriteAsJSON(w *bufio.Writer) error {
+	return fmt.Errorf("can't write a lambda to JSON")
+}
+
+func (vb *vBuiltin) GetParamList() ParamList {
+	return vb.Params
+}
+
+func (vb *vBuiltin) GetRetType() Type {
+	return vb.RetType
+}
