@@ -6,7 +6,6 @@ import (
 
 type Type interface {
 	Format() pp.Doc
-
 	typ()
 }
 
