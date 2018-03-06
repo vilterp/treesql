@@ -2,6 +2,7 @@ package pretty_print
 
 import (
 	"bytes"
+	"fmt"
 	"strings"
 )
 
@@ -18,10 +19,14 @@ type text struct {
 	str string
 }
 
-func Text(s string) Doc {
+func Text(s string) *text {
 	return &text{
 		str: s,
 	}
+}
+
+func Textf(format string, args ...interface{}) *text {
+	return Text(fmt.Sprintf(format, args))
 }
 
 func (s *text) Render() string {
@@ -66,7 +71,7 @@ type concat struct {
 	docs []Doc
 }
 
-func Concat(docs []Doc) Doc {
+func Concat(docs []Doc) *concat {
 	return &concat{
 		docs: docs,
 	}
