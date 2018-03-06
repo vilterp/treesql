@@ -84,3 +84,26 @@ func (ti tIterator) Format() pp.Doc {
 }
 
 func (tIterator) typ() {}
+
+// Function
+
+type tFunction struct {
+	params  ParamList
+	retType Type
+}
+
+var _ Type = &tFunction{}
+
+func (tf *tFunction) Format() pp.Doc {
+	return pp.Concat([]pp.Doc{
+		pp.Text("("),
+		tf.params.Format(),
+		pp.Text(") => "),
+		tf.retType.Format(),
+	})
+}
+
+func (tFunction) typ() {}
+
+// TODO: type vars
+// .isConcrete or something

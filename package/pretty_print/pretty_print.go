@@ -92,3 +92,18 @@ var Newline = &newline{}
 func (newline) Render() string {
 	return "\n"
 }
+
+// Combinators
+
+// TODO: make this split over line breaks if there's
+// not enough width
+func Join(docs []Doc, sep Doc) Doc {
+	var out []Doc
+	for idx, doc := range docs {
+		if idx > 0 {
+			out = append(out, sep)
+		}
+		out = append(out, doc)
+	}
+	return Concat(out)
+}
