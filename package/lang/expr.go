@@ -69,6 +69,10 @@ type EVar struct {
 
 var _ Expr = &EVar{}
 
+func NewVar(name string) *EVar {
+	return &EVar{name: name}
+}
+
 func (e *EVar) Evaluate(interp *interpreter) (Value, error) {
 	return interp.stackTop.scope.find(e.name)
 }
@@ -280,6 +284,63 @@ func (fc *EFuncCall) GetType(scope *Scope) (Type, error) {
 		return tFuncVal.GetRetType(), nil
 	default:
 		return nil, fmt.Errorf("not a function: %s", fc.funcName)
+	}
+}
+
+// Member Access
+
+type EMemberAccess struct {
+	record Expr
+	member string
+}
+
+var _ Expr = &EMemberAccess{}
+
+// TODO: idk how I feel about all these constructors
+// other packages wouldn't need to construct AST nodes if there
+// was a parser for this language.
+func NewMemberAccess(record Expr, member string) *EMemberAccess {
+	return &EMemberAccess{
+		record: record,
+		member: member,
+	}
+}
+
+func (ma *EMemberAccess) Evaluate(interp *interpreter) (Value, error) {
+	objVal, err := ma.record.Evaluate(interp)
+	if err != nil {
+		return nil, err
+	}
+	switch tRecordVal := objVal.(type) {
+	case *VObject:
+		val, ok := tRecordVal.vals[ma.member]
+		if !ok {
+			return nil, fmt.Errorf("nonexistent member: %s", ma.member)
+		}
+		return val, nil
+	default:
+		return nil, fmt.Errorf("member access on a non-object: %s", ma.Format().Render())
+	}
+}
+
+func (ma *EMemberAccess) Format() pp.Doc {
+	return pp.Concat([]pp.Doc{ma.record.Format(), pp.Text("."), pp.Text(ma.member)})
+}
+
+func (ma *EMemberAccess) GetType(scope *Scope) (Type, error) {
+	objTyp, err := ma.record.GetType(scope)
+	if err != nil {
+		return nil, err
+	}
+	switch tTyp := objTyp.(type) {
+	case *TObject:
+		typ, ok := tTyp.Types[ma.member]
+		if !ok {
+			return nil, fmt.Errorf("nonexistent member: %s", ma.member)
+		}
+		return typ, nil
+	default:
+		return nil, fmt.Errorf("member access on a non-object: %s", ma.Format().Render())
 	}
 }
 
