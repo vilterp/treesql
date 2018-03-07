@@ -149,12 +149,21 @@ func (v *VObject) WriteAsJSON(w *bufio.Writer) error {
 
 // Iterator
 
+// VIteratorRef is a wrapper around an iterator, which
+// knows its type.
 type VIteratorRef struct {
 	iterator Iterator
 	ofType   Type
 }
 
 var _ Value = &VIteratorRef{}
+
+func NewVIteratorRef(iterator Iterator, ofType Type) *VIteratorRef {
+	return &VIteratorRef{
+		iterator: iterator,
+		ofType:   ofType,
+	}
+}
 
 func (v *VIteratorRef) GetType() Type {
 	return &tIterator{

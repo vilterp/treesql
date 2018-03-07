@@ -83,7 +83,11 @@ type tIterator struct {
 var _ Type = &tIterator{}
 
 func (ti tIterator) Format() pp.Doc {
-	return pp.Textf("Iterator<%s>", ti.innerType.Format().Render())
+	return pp.Concat([]pp.Doc{
+		pp.Text("Iterator<"),
+		ti.innerType.Format(),
+		pp.Text(">"),
+	})
 }
 
 func (tIterator) typ() {}
