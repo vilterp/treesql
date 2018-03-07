@@ -1,6 +1,13 @@
 package treesql
 
-import "testing"
+import (
+	"bufio"
+	"bytes"
+	"testing"
+
+	"github.com/vilterp/treesql/package/lang"
+	"github.com/vilterp/treesql/package/util"
+)
 
 func TestLangExec(t *testing.T) {
 	tsr := runSimpleTestScript(t, []simpleTestStmt{
@@ -50,7 +57,56 @@ func TestLangExec(t *testing.T) {
 
 	db := tsr.server.db
 
-	userRootScope := db.Schema.toScope()
+	testCases := []struct {
+		in      lang.Expr
+		outJSON string
+	}{
+		{
+			lang.NewMemberAccess(lang.NewMemberAccess(lang.NewVar("blog_posts"), "id"), "scan"),
+			`[
+					{"id": 0, "body":"hello world"},
+					{"id": 1, "body": "hello_again_world"}
+			]`,
+		},
+	}
 
-	// TODO: get a table iterator
+	for idx, testCase := range testCases {
+		// Construct transaction.
+		boltTxn, err := db.BoltDB.Begin(false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		txn := &Txn{
+			boltTxn: boltTxn,
+			db:      db,
+		}
+
+		// Construct scope.
+		userRootScope := db.Schema.toScope(txn)
+
+		// Interpret the test expression.
+		val, err := lang.Interpret(testCase.in, userRootScope)
+		if err != nil {
+			// TODO: test for error
+			t.Errorf("case %d: %v", idx, err)
+			continue
+		}
+
+		// Get the output as a string of JSON.
+		buf := bytes.NewBufferString("")
+		bufWriter := bufio.NewWriter(buf)
+		val.WriteAsJSON(bufWriter)
+		bufWriter.Flush()
+		json := buf.String()
+
+		// Compare expected and actual JSON.
+		eq, err := util.AreEqualJSON(json, testCase.outJSON)
+		if err != nil {
+			t.Errorf(`case %d: %v`, idx, err)
+			continue
+		}
+		if !eq {
+			t.Errorf("case %d: EXPECTED\n\n%s\n\nGOT:\n\n%s\n", idx, testCase.outJSON, json)
+		}
+	}
 }

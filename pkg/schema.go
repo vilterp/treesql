@@ -20,6 +20,7 @@ type TableDescriptor struct {
 	Columns       []*ColumnDescriptor
 	PrimaryKey    string
 	LiveQueryInfo *LiveQueryInfo
+	IsBuiltin     bool
 }
 
 func (table *TableDescriptor) colIDForName(name string) (int, error) {
@@ -239,6 +240,7 @@ func (db *Database) AddBuiltinSchema() {
 				Type: TypeString,
 			},
 		},
+		IsBuiltin: true,
 	})
 	db.addTableDescriptor(&TableDescriptor{
 		Name:       "__columns__",
@@ -273,6 +275,7 @@ func (db *Database) AddBuiltinSchema() {
 				Type: TypeString,
 			},
 		},
+		IsBuiltin: true,
 	})
 	db.addTableDescriptor(&TableDescriptor{
 		Name:       "__record_listeners__",
@@ -312,6 +315,7 @@ func (db *Database) AddBuiltinSchema() {
 				Type: TypeString,
 			},
 		},
+		IsBuiltin: true,
 	})
 	db.Schema.NextColumnID = 13 // ugh magic numbers.
 }
