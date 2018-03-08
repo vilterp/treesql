@@ -15,8 +15,8 @@ func TestLangExec(t *testing.T) {
 		{
 			stmt: `
 				CREATETABLE blog_posts (
-					id String PRIMARYKEY,
-					title String
+					id string PRIMARYKEY,
+					title string
 				)
 			`,
 			ack: "CREATE TABLE",
@@ -24,9 +24,9 @@ func TestLangExec(t *testing.T) {
 		{
 			stmt: `
 				CREATETABLE comments (
-					id String PRIMARYKEY,
-					blog_post_id String REFERENCESTABLE blog_posts,
-					body String
+					id string PRIMARYKEY,
+					blog_post_id string REFERENCESTABLE blog_posts,
+					body string
 				)
 			`,
 			ack: "CREATE TABLE",
@@ -65,8 +65,8 @@ func TestLangExec(t *testing.T) {
 		{
 			lang.NewMemberAccess(lang.NewMemberAccess(lang.NewVar("blog_posts"), "id"), "scan"),
 			`Iterator<{
-  id: String,
-  title: String
+  id: string,
+  title: string
 }>`,
 			`[
 					{"id": "0", "title": "hello world"},

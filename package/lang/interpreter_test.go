@@ -61,7 +61,7 @@ func TestInterpreter(t *testing.T) {
 					NewStringLit("bla"),
 				},
 			},
-			typErr: "call to plus, param 0: have String; want Int",
+			typErr: "call to plus, param 0: have string; want int",
 		},
 		// Nonexistent func
 		{
