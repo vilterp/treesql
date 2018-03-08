@@ -1,18 +1,46 @@
 package lang
 
+import "fmt"
+
 type Iterator interface {
 	// Next returns the next value, or an error if we have reached the
 	// end of the sequence.
-	Next() (Value, error)
+	Next(caller Caller) (Value, error)
 	Close() error
 }
 
-type ArrayIterator struct {
+// Map iterator
+
+type mapIterator struct {
+	innerIterator Iterator
+	f             vFunction
+}
+
+var _ Iterator = &mapIterator{}
+
+func (mi *mapIterator) Next(c Caller) (Value, error) {
+	next, err := mi.innerIterator.Next(c)
+	if err != nil {
+		// TODO: close inner iterator? idk
+		return nil, err
+	}
+	val, err := c.Call(mi.f, []Value{next})
+	fmt.Println("next of map iterator", val.Format().Render(), err)
+	return val, err
+}
+
+func (mi *mapIterator) Close() error {
+	return mi.innerIterator.Close()
+}
+
+// Array iterator
+
+type arrayIterator struct {
 	pos  int
 	vals []Value
 }
 
-var _ Iterator = &ArrayIterator{}
+var _ Iterator = &arrayIterator{}
 
 type endOfIteration struct{}
 
@@ -22,16 +50,14 @@ func (endOfIteration) Error() string {
 	return "reached end of iterator"
 }
 
-// Array Iterator
-
-func NewArrayIterator(vals []Value) *ArrayIterator {
-	return &ArrayIterator{
+func NewArrayIterator(vals []Value) *arrayIterator {
+	return &arrayIterator{
 		pos:  0,
 		vals: vals,
 	}
 }
 
-func (ai *ArrayIterator) Next() (Value, error) {
+func (ai *arrayIterator) Next(_ Caller) (Value, error) {
 	if ai.pos == len(ai.vals) {
 		return nil, EndOfIteration
 	}
@@ -40,7 +66,7 @@ func (ai *ArrayIterator) Next() (Value, error) {
 	return val, nil
 }
 
-func (ai *ArrayIterator) Close() error {
+func (ai *arrayIterator) Close() error {
 	return nil
 }
 
@@ -48,6 +74,5 @@ func (ai *ArrayIterator) Close() error {
 // TODO: limitIterator, orderByIterator, offsetIterator
 // TODO: aggregation iterators
 
-// TODO: table scan iterator
 // TODO: index iterator
 // these should both push stack frames so record listeners can be installed

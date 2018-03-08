@@ -61,7 +61,7 @@ func TestWriteAsJSON(t *testing.T) {
 	for idx, testCase := range cases {
 		buf := bytes.NewBufferString("")
 		w := bufio.NewWriter(buf)
-		err := testCase.val.WriteAsJSON(w)
+		err := testCase.val.WriteAsJSON(w, nil)
 		// TODO: really need to factor this error checking thing out
 		if testCase.err == "" {
 			if err != nil {

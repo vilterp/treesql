@@ -198,16 +198,29 @@ func (l *ELambda) GetType(_ *Scope) (Type, error) {
 	}, nil
 }
 
-// Func call
+func NewELambda(params ParamList, body Expr, retType Type) *ELambda {
+	return &ELambda{
+		params:  params,
+		body:    body,
+		retType: retType,
+	}
+}
+
+// Func Call
 
 type EFuncCall struct {
 	funcName string
 	args     []Expr
 }
 
-// TODO: may need to pass interpreter in here
-// so this can push a stack frame
-// and interpret the inner expr
+// TODO: remove all these constructors once a parser exists
+func NewFuncCall(name string, args []Expr) *EFuncCall {
+	return &EFuncCall{
+		funcName: name,
+		args:     args,
+	}
+}
+
 func (fc *EFuncCall) Evaluate(interp *interpreter) (Value, error) {
 	// Get function value.
 	funcVal, err := interp.stackTop.scope.find(fc.funcName)
@@ -227,9 +240,9 @@ func (fc *EFuncCall) Evaluate(interp *interpreter) (Value, error) {
 
 	switch tFuncVal := funcVal.(type) {
 	case *vLambda:
-		return interp.call(tFuncVal, argVals)
+		return interp.Call(tFuncVal, argVals)
 	case *VBuiltin:
-		return interp.call(tFuncVal, argVals)
+		return interp.Call(tFuncVal, argVals)
 	default:
 		return nil, fmt.Errorf("not a function: %s", fc.funcName)
 	}
@@ -265,23 +278,27 @@ func (fc *EFuncCall) GetType(scope *Scope) (Type, error) {
 		}
 		// Check arg types match.
 		params := tFuncVal.GetParamList()
+		bindings := make(TypeVarBindings)
 		for idx, argExpr := range fc.args {
 			param := params[idx]
 			argType, err := argExpr.GetType(scope)
 			if err != nil {
 				return nil, err
 			}
-			if param.Typ != argType {
+			matches, argBindings := param.Typ.Matches(argType)
+			if !matches {
+				// TODO: add this check back in
 				return nil, fmt.Errorf(
 					"call to %s, param %d: have %s; want %s",
 					fc.funcName, idx, argType.Format().Render(), param.Typ.Format().Render(),
 				)
 			}
+			bindings.extend(argBindings)
 		}
 		// Check that body matches declared type.
 		// this should really be a TypeScope, not a scope.
 		// will need to construct a new scope here.
-		return tFuncVal.GetRetType(), nil
+		return tFuncVal.GetRetType().substitute(bindings), nil
 	default:
 		return nil, fmt.Errorf("not a function: %s", fc.funcName)
 	}
