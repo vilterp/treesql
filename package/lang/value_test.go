@@ -116,8 +116,8 @@ func TestValueGetType(t *testing.T) {
 
 	for idx, testCase := range testCases {
 		actual := testCase.in.GetType()
-		if actual.Format().Render() != testCase.out {
-			t.Errorf("case %d: expected type %s; got %s", idx, testCase.out, actual.Format().Render())
+		if actual.Format().String() != testCase.out {
+			t.Errorf("case %d: expected type %s; got %s", idx, testCase.out, actual.Format())
 		}
 	}
 }

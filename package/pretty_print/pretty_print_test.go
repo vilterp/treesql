@@ -34,7 +34,7 @@ func TestPrettyPrint(t *testing.T) {
 	}
 
 	for idx, testCase := range cases {
-		actual := testCase.in.Render()
+		actual := testCase.in.String()
 		if actual != testCase.out {
 			t.Fatalf("case %d:\nEXPECTED\n\n%s\n\nGOT\n\n%s", idx, testCase.out, actual)
 		}

@@ -63,8 +63,8 @@ func TestExprGetType(t *testing.T) {
 		if util.AssertError(t, idx, testCase.error, err) {
 			continue
 		}
-		if actual.Format().Render() != testCase.out {
-			t.Errorf("case %d: expected type %s; got %s", idx, testCase.out, actual.Format().Render())
+		if actual.Format().String() != testCase.out {
+			t.Errorf("case %d: expected type %s; got %s", idx, testCase.out, actual.Format())
 		}
 	}
 }

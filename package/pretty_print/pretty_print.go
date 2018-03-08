@@ -12,10 +12,9 @@ import (
 
 type Doc interface {
 	// Render returns the pretty-printed representation.
-	// TODO: remove this; rename it String; call String debug
-	Render() string
-	// String returns a representation of the doc tree, for debugging.
 	String() string
+	// String returns a representation of the doc tree, for debugging.
+	Debug() string
 }
 
 // Text
@@ -24,6 +23,8 @@ type Doc interface {
 type text struct {
 	str string
 }
+
+var _ Doc = &text{}
 
 func Text(s string) *text {
 	return &text{
@@ -35,11 +36,11 @@ func Textf(format string, args ...interface{}) *text {
 	return Text(fmt.Sprintf(format, args...))
 }
 
-func (s *text) Render() string {
+func (s *text) String() string {
 	return s.str
 }
 
-func (s *text) String() string {
+func (s *text) Debug() string {
 	return fmt.Sprintf("Text(%#v)", s.str)
 }
 
@@ -57,9 +58,9 @@ func Nest(by int, d Doc) Doc {
 	}
 }
 
-func (n *nest) Render() string {
+func (n *nest) String() string {
 	indent := strings.Repeat(" ", n.nestBy)
-	lines := strings.Split(n.doc.Render(), "\n")
+	lines := strings.Split(n.doc.String(), "\n")
 	buf := bytes.NewBufferString("")
 	for idx, line := range lines {
 		if idx > 0 {
@@ -71,7 +72,7 @@ func (n *nest) Render() string {
 	return buf.String()
 }
 
-func (n *nest) String() string {
+func (n *nest) Debug() string {
 	return fmt.Sprintf("Nest(%d, %s)", n.nestBy, n.doc.String())
 }
 
@@ -81,11 +82,11 @@ type empty struct{}
 
 var Empty = &empty{}
 
-func (e *empty) Render() string {
+func (e *empty) String() string {
 	return ""
 }
 
-func (empty) String() string {
+func (empty) Debug() string {
 	return "Empty"
 }
 
@@ -101,15 +102,15 @@ func Concat(docs []Doc) *concat {
 	}
 }
 
-func (c *concat) Render() string {
+func (c *concat) String() string {
 	buf := bytes.NewBufferString("")
 	for _, doc := range c.docs {
-		buf.WriteString(doc.Render())
+		buf.WriteString(doc.String())
 	}
 	return buf.String()
 }
 
-func (c *concat) String() string {
+func (c *concat) Debug() string {
 	docStrs := make([]string, len(c.docs))
 	for idx := range c.docs {
 		docStrs[idx] = c.docs[idx].String()
@@ -123,11 +124,11 @@ type newline struct{}
 
 var Newline = &newline{}
 
-func (newline) Render() string {
+func (newline) String() string {
 	return "\n"
 }
 
-func (newline) String() string {
+func (newline) Debug() string {
 	return "Newline"
 }
 

@@ -73,7 +73,7 @@ func assertType(readType ColumnType, expectedType lang.Type) error {
 	if codeForType[expectedType] != readType {
 		return fmt.Errorf(
 			"deserialization error: expected %s; got %s",
-			expectedType.Format().Render(), typeForCode[readType],
+			expectedType.Format(), typeForCode[readType],
 		)
 	}
 	return nil
@@ -170,7 +170,7 @@ func (record *Record) ToBytes() ([]byte, error) {
 		code, ok := codeForType[column.Type]
 		if !ok {
 			return nil, fmt.Errorf(
-				"serialization error: cannot serialize type %s", column.Type.Format().Render(),
+				"serialization error: cannot serialize type %s", column.Type.Format(),
 			)
 		}
 		buf.WriteByte(byte(code))
