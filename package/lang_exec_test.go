@@ -108,9 +108,10 @@ func TestLangExec(t *testing.T) {
 
 		// Construct scope.
 		userRootScope := db.Schema.toScope(txn)
+		typeScope := userRootScope.ToTypeScope()
 
 		// Get type; compare.
-		typ, err := testCase.in.GetType(userRootScope)
+		typ, err := testCase.in.GetType(typeScope)
 		if err != nil {
 			t.Errorf("case %d: %v", idx, err)
 			continue
