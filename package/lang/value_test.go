@@ -25,7 +25,7 @@ func TestWriteAsJSON(t *testing.T) {
 			"",
 		},
 		{
-			&VObject{
+			&VRecord{
 				vals: map[string]Value{
 					"foo": NewVInt(2),
 					"bar": NewVString("baz"),
@@ -101,7 +101,7 @@ func TestValueGetType(t *testing.T) {
 		{NewVInt(2), "int"},
 		{NewVString("foo"), "string"},
 		{
-			&VObject{
+			&VRecord{
 				vals: map[string]Value{
 					"foo": NewVInt(2),
 					"bar": NewVString("bla"),

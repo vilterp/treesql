@@ -79,7 +79,7 @@ func assertType(readType ColumnType, expectedType lang.Type) error {
 	return nil
 }
 
-func (table *TableDescriptor) objectFromBytes(raw []byte) (*lang.VObject, error) {
+func (table *TableDescriptor) recordFromBytes(raw []byte) (*lang.VRecord, error) {
 	// TODO: see if there's a way to reduce memory allocation.
 	attrs := map[string]lang.Value{}
 	buffer := bytes.NewBuffer(raw)
@@ -99,7 +99,7 @@ func (table *TableDescriptor) objectFromBytes(raw []byte) (*lang.VObject, error)
 			attrs[col.Name] = lang.NewVInt(int(val))
 		}
 	}
-	return lang.NewVObject(attrs), nil
+	return lang.NewVRecord(attrs), nil
 }
 
 func (record *Record) GetField(name string) *Value {
