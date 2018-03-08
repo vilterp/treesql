@@ -285,7 +285,7 @@ func (fc *EFuncCall) GetType(scope *Scope) (Type, error) {
 			if err != nil {
 				return nil, err
 			}
-			matches, argBindings := param.Typ.Matches(argType)
+			matches, argBindings := param.Typ.matches(argType)
 			if !matches {
 				// TODO: add this check back in
 				return nil, fmt.Errorf(
@@ -298,7 +298,8 @@ func (fc *EFuncCall) GetType(scope *Scope) (Type, error) {
 		// Check that body matches declared type.
 		// this should really be a TypeScope, not a scope.
 		// will need to construct a new scope here.
-		return tFuncVal.GetRetType().substitute(bindings), nil
+		subsType, _, err := tFuncVal.GetRetType().substitute(bindings)
+		return subsType, err
 	default:
 		return nil, fmt.Errorf("not a function: %s", fc.funcName)
 	}

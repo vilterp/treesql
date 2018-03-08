@@ -196,7 +196,7 @@ func (v *VIteratorRef) WriteAsJSON(w *bufio.Writer, c Caller) error {
 		}
 		// Check type.
 		// TODO: maybe define my own equality operator instead of relying on reflect.DeepEqual?
-		if matches, _ := nextVal.GetType().Matches(v.ofType); !matches {
+		if matches, _ := nextVal.GetType().matches(v.ofType); !matches {
 			return fmt.Errorf(
 				"iterator of type %s got next value of wrong type: %s",
 				v.ofType.Format().Render(), nextVal.GetType().Format().Render(),
@@ -250,7 +250,7 @@ func (pl ParamList) Matches(other ParamList) (bool, TypeVarBindings) {
 	bindings := make(TypeVarBindings)
 	for idx, param := range pl {
 		otherParam := other[idx]
-		matches, paramBindings := param.Typ.Matches(otherParam.Typ)
+		matches, paramBindings := param.Typ.matches(otherParam.Typ)
 		if !matches {
 			return false, nil
 		}
@@ -259,15 +259,22 @@ func (pl ParamList) Matches(other ParamList) (bool, TypeVarBindings) {
 	return true, bindings
 }
 
-func (pl ParamList) substitute(tvb TypeVarBindings) ParamList {
+// substitute returns new param list, isConcrete, and an error.
+func (pl ParamList) substitute(tvb TypeVarBindings) (ParamList, bool, error) {
 	out := make(ParamList, len(pl))
+	isConcrete := true
 	for idx, param := range pl {
+		newTyp, concrete, err := param.Typ.substitute(tvb)
+		if err != nil {
+			return nil, false, err
+		}
 		out[idx] = Param{
-			Typ:  param.Typ.substitute(tvb),
+			Typ:  newTyp,
 			Name: param.Name,
 		}
+		isConcrete = isConcrete && concrete
 	}
-	return out
+	return out, isConcrete, nil
 }
 
 func mustBeVFunction(v Value) vFunction {
