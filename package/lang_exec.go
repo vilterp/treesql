@@ -12,15 +12,18 @@ type Txn struct {
 	db      *Database
 }
 
-func (s *Schema) toScope(txn *Txn) *lang.Scope {
+func (s *Schema) toScope(txn *Txn) (*lang.Scope, *lang.TypeScope) {
 	newScope := lang.NewScope(lang.BuiltinsScope)
+	newTypeScope := lang.NewTypeScope(lang.BuiltinsTypeScope)
 	for _, table := range s.Tables {
 		if table.IsBuiltin {
 			continue
 		}
-		newScope.Add(table.Name, table.toVRecord(txn))
+		tableRec := table.toVRecord(txn)
+		newScope.Add(table.Name, tableRec)
+		newTypeScope.Add(table.Name, tableRec.GetType())
 	}
-	return newScope
+	return newScope, newTypeScope
 }
 
 func (table *TableDescriptor) toVRecord(txn *Txn) *lang.VRecord {

@@ -43,9 +43,43 @@ func (s *Scope) ToTypeScope() *TypeScope {
 	ts := NewTypeScope(parentScope)
 	for name, val := range s.vals {
 		typ := val.GetType()
-		ts.add(name, typ)
+		ts.Add(name, typ)
 	}
 	return ts
+}
+
+func (s *Scope) Format() pp.Doc {
+	docs := make([]pp.Doc, len(s.vals))
+	idx := 0
+	for name, val := range s.vals {
+		docs[idx] = pp.Concat([]pp.Doc{
+			pp.Text(name),
+			pp.Text(": "),
+			val.Format(),
+		})
+		idx++
+	}
+
+	var parentDoc pp.Doc
+	if s.parent == nil {
+		parentDoc = pp.Text("<nil>")
+	} else {
+		parentDoc = s.parent.Format()
+	}
+
+	return pp.Concat([]pp.Doc{
+		pp.Text("Scope{"), pp.Newline,
+		pp.Nest(2, pp.Concat([]pp.Doc{
+			pp.Text("vals: {"), pp.Newline,
+			pp.Nest(2, pp.Concat([]pp.Doc{
+				pp.Join(docs, pp.CommaNewline),
+			})),
+			pp.Newline, pp.Text("},"), pp.Newline,
+			pp.Text("parent: "),
+			parentDoc,
+		})),
+		pp.CommaNewline, pp.Text("}"),
+	})
 }
 
 // Type Scope
@@ -62,7 +96,7 @@ func NewTypeScope(parent *TypeScope) *TypeScope {
 	}
 }
 
-func (ts *TypeScope) add(name string, typ Type) {
+func (ts *TypeScope) Add(name string, typ Type) {
 	ts.types[name] = typ
 }
 
@@ -75,6 +109,41 @@ func (ts *TypeScope) find(name string) (Type, error) {
 		return nil, fmt.Errorf("not in type scope: %s", name)
 	}
 	return val, nil
+}
+
+func (ts *TypeScope) Format() pp.Doc {
+	// TODO: DRY with Scope
+	docs := make([]pp.Doc, len(ts.types))
+	idx := 0
+	for name, val := range ts.types {
+		docs[idx] = pp.Concat([]pp.Doc{
+			pp.Text(name),
+			pp.Text(": "),
+			val.Format(),
+		})
+		idx++
+	}
+
+	var parentDoc pp.Doc
+	if ts.parent == nil {
+		parentDoc = pp.Text("<nil>")
+	} else {
+		parentDoc = ts.parent.Format()
+	}
+
+	return pp.Concat([]pp.Doc{
+		pp.Text("Scope{"), pp.Newline,
+		pp.Nest(2, pp.Concat([]pp.Doc{
+			pp.Text("vals: {"), pp.Newline,
+			pp.Nest(2, pp.Concat([]pp.Doc{
+				pp.Join(docs, pp.CommaNewline),
+			})),
+			pp.Newline, pp.Text("},"), pp.Newline,
+			pp.Text("parent: "),
+			parentDoc,
+		})),
+		pp.CommaNewline, pp.Text("}"),
+	})
 }
 
 // Param List
@@ -132,7 +201,7 @@ func (pl ParamList) substitute(tvb TypeVarBindings) (ParamList, bool, error) {
 func (pl ParamList) createTypeScope(parentScope *TypeScope) *TypeScope {
 	newTS := NewTypeScope(parentScope)
 	for _, param := range pl {
-		newTS.add(param.Name, param.Typ)
+		newTS.Add(param.Name, param.Typ)
 	}
 	return newTS
 }
