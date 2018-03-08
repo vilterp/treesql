@@ -1,6 +1,7 @@
 package lang
 
 var BuiltinsScope *Scope
+var BuiltinsTypeScope *TypeScope
 
 func init() {
 	BuiltinsScope = NewScope(nil)
@@ -35,6 +36,8 @@ func init() {
 			}, nil
 		},
 	})
+
+	BuiltinsTypeScope = BuiltinsScope.ToTypeScope()
 }
 
 // TODO:
