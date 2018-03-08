@@ -2,9 +2,12 @@ package lang
 
 import (
 	"testing"
+
+	"github.com/vilterp/treesql/package/util"
 )
 
 func TestExprGetType(t *testing.T) {
+	// Create scope.
 	scope := NewScope(BuiltinsScope)
 
 	blogPostType := &TObject{
@@ -19,19 +22,23 @@ func TestExprGetType(t *testing.T) {
 	}))
 	scope.Add("blog_posts", NewVIteratorRef(nil, blogPostType))
 
+	// Cases.
 	testCases := []struct {
-		in  Expr
-		out string
+		in    Expr
+		error string
+		out   string
 	}{
 		{
 			NewMemberAccess(
 				&EObjectLit{exprs: map[string]Expr{"x": NewIntLit(5)}},
 				"x",
 			),
+			"",
 			"int",
 		},
 		{
 			NewMemberAccess(NewVar("blog_post"), "id"),
+			"",
 			"int",
 		},
 		{
@@ -43,6 +50,7 @@ func TestExprGetType(t *testing.T) {
 					TString,
 				),
 			}),
+			"lambda declared as returning string; body is of type int",
 			"Iterator<int>",
 		},
 		// TODO: func call
@@ -52,9 +60,7 @@ func TestExprGetType(t *testing.T) {
 	typeScope := scope.ToTypeScope()
 	for idx, testCase := range testCases {
 		actual, err := testCase.in.GetType(typeScope)
-		// TODO: test errors
-		if err != nil {
-			t.Errorf("case %d: %v", idx, err)
+		if util.AssertError(t, idx, testCase.error, err) {
 			continue
 		}
 		if actual.Format().Render() != testCase.out {
