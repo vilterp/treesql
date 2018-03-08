@@ -59,7 +59,7 @@ func (column *ColumnDescriptor) ToRecord(tableName string, db *Database) *Record
 	record.SetString("id", fmt.Sprintf("%d", column.ID))
 	record.SetString("name", column.Name)
 	record.SetString("table_name", tableName)
-	record.SetString("type", column.Type.Format().Render())
+	record.SetString("type", column.Type.Format().String())
 	if column.ReferencesColumn != nil {
 		record.SetString("references", column.ReferencesColumn.TableName)
 	}

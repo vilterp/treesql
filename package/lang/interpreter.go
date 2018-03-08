@@ -72,7 +72,7 @@ func (i *interpreter) Call(vFunc vFunction, argVals []Value) (Value, error) {
 		if matches, _ := tVFunc.RetType.matches(val.GetType()); !matches {
 			return nil, fmt.Errorf(
 				"builtin %s supposed to return %s; returned %s",
-				tVFunc.Name, tVFunc.RetType.Format().Render(), val.GetType().Format().Render(),
+				tVFunc.Name, tVFunc.RetType.Format(), val.GetType().Format(),
 			)
 		}
 	}
