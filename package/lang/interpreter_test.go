@@ -1,6 +1,10 @@
 package lang
 
-import "testing"
+import (
+	"testing"
+
+	"github.com/vilterp/treesql/package/util"
+)
 
 func TestInterpreter(t *testing.T) {
 	userRootScope := NewScope(BuiltinsScope)
@@ -19,6 +23,11 @@ func TestInterpreter(t *testing.T) {
 					NewIntLit(5),
 				},
 			},
+		},
+		// A little annoying that you have to repeat this, but...
+		typ: &tFunction{
+			params:  []Param{{"a", TInt}},
+			retType: TInt,
 		},
 	})
 
@@ -72,7 +81,7 @@ func TestInterpreter(t *testing.T) {
 					NewStringLit("bla"),
 				},
 			},
-			typErr: "not in scope: foo",
+			typErr: "not in type scope: foo",
 		},
 		// Nonexistent arg
 		{
@@ -83,7 +92,7 @@ func TestInterpreter(t *testing.T) {
 					NewStringLit("bla"),
 				},
 			},
-			typErr: "not in scope: bloop",
+			typErr: "not in type scope: bloop",
 		},
 		// Lambda Call
 		{
@@ -105,17 +114,7 @@ func TestInterpreter(t *testing.T) {
 		interp := NewInterpreter(userRootScope, testCase.expr)
 		// Typecheck
 		typ, typErr := testCase.expr.GetType(typeScope)
-		if typErr == nil {
-			if testCase.typErr != "" {
-				t.Errorf(`case %d: expected type error "%s"; got none`, idx, testCase.typErr)
-				continue
-			}
-		} else {
-			if typErr.Error() != testCase.typErr {
-				t.Errorf(`case %d: expected type error "%s"; got "%s"`, idx, testCase.typErr, typErr)
-				continue
-			}
-			// typeErr not nil; matches case's error
+		if util.AssertError(t, idx, testCase.typErr, typErr) {
 			continue
 		}
 		if typ.Format().Render() != testCase.typ.Format().Render() {
@@ -127,13 +126,7 @@ func TestInterpreter(t *testing.T) {
 		}
 		// Evaluate
 		val, evalErr := interp.Interpret()
-		if evalErr == nil {
-			if testCase.evalErr != "" {
-				t.Errorf(`case %d: expected eval error "%s"; got none`, idx, evalErr.Error())
-				continue
-			}
-		} else if evalErr.Error() != testCase.evalErr {
-			t.Errorf(`case %d: expected eval error "%s"; got "%s"`, idx, testCase.evalErr, evalErr)
+		if util.AssertError(t, idx, testCase.evalErr, evalErr) {
 			continue
 		}
 		if val.Format().Render() != testCase.val {

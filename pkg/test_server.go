@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/vilterp/treesql/package/util"
 )
 
 type testServer struct {
@@ -82,7 +84,9 @@ func runSimpleTestScript(t *testing.T, cases []simpleTestStmt) *testServerRef {
 		// Run a statement.
 		if testCase.stmt != "" {
 			result, err := client.Exec(testCase.stmt)
-			assertError(t, idx, testCase.error, err)
+			if util.AssertError(t, idx, testCase.error, err) {
+				continue
+			}
 			if result != testCase.ack {
 				t.Fatalf(`case %d: expected ack "%s"; got "%s"`, idx, testCase.ack, result)
 			}
@@ -91,7 +95,9 @@ func runSimpleTestScript(t *testing.T, cases []simpleTestStmt) *testServerRef {
 		// Run a query.
 		if testCase.query != "" {
 			res, err := client.Query(testCase.query)
-			assertError(t, idx, testCase.error, err)
+			if util.AssertError(t, idx, testCase.error, err) {
+				continue
+			}
 			indented, _ := json.MarshalIndent(res.Data, "", "  ")
 			if string(indented) != testCase.initialResult {
 				t.Fatalf("expected:\n%sgot:\n%s", testCase.initialResult, indented)
@@ -102,19 +108,5 @@ func runSimpleTestScript(t *testing.T, cases []simpleTestStmt) *testServerRef {
 	return &testServerRef{
 		server: server,
 		client: client,
-	}
-}
-
-func assertError(t *testing.T, caseIdx int, expected string, err error) {
-	if err != nil {
-		if expected == "" {
-			t.Fatalf(`case %d: expected success; got error "%s"`, caseIdx, err.Error())
-		}
-		if err.Error() != expected {
-			t.Fatalf(`case %d: expected error "%s"; got "%s"`, caseIdx, expected, err.Error())
-		}
-	}
-	if err == nil && expected != "" {
-		t.Fatalf(`case %d: expected error "%s"; got success`, caseIdx, expected)
 	}
 }
