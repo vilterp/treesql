@@ -5,15 +5,13 @@ import (
 	"fmt"
 	"sort"
 
-	"reflect"
-
 	pp "github.com/vilterp/treesql/package/pretty_print"
 )
 
 type Value interface {
 	Format() pp.Doc
 	GetType() Type
-	WriteAsJSON(w *bufio.Writer) error
+	WriteAsJSON(*bufio.Writer, Caller) error
 }
 
 // TODO: bool
@@ -37,17 +35,17 @@ func (v *VInt) GetType() Type {
 	return TInt
 }
 
-func (v *VInt) WriteAsJSON(w *bufio.Writer) error {
+func (v *VInt) WriteAsJSON(w *bufio.Writer, _ Caller) error {
 	_, err := w.WriteString(v.Format().Render())
 	return err
 }
 
-func MustBeVInt(v Value) int {
+func mustBeVInt(v Value) *VInt {
 	i, ok := v.(*VInt)
 	if !ok {
 		panic(fmt.Sprintf("not an int: %s", v.Format().Render()))
 	}
-	return int(*i)
+	return i
 }
 
 // String
@@ -70,12 +68,12 @@ func (v *VString) GetType() Type {
 	return TString
 }
 
-func (v *VString) WriteAsJSON(w *bufio.Writer) error {
+func (v *VString) WriteAsJSON(w *bufio.Writer, _ Caller) error {
 	_, err := w.WriteString(fmt.Sprintf("%#v", *v))
 	return err
 }
 
-func MustBeVString(v Value) string {
+func mustBeVString(v Value) string {
 	s, ok := v.(*VString)
 	if !ok {
 		panic(fmt.Sprintf("not a string: %s", v.Format().Render()))
@@ -134,7 +132,7 @@ func (v *VObject) Format() pp.Doc {
 	})
 }
 
-func (v *VObject) WriteAsJSON(w *bufio.Writer) error {
+func (v *VObject) WriteAsJSON(w *bufio.Writer, c Caller) error {
 	w.WriteString("{")
 	idx := 0
 	for name, val := range v.vals {
@@ -142,7 +140,7 @@ func (v *VObject) WriteAsJSON(w *bufio.Writer) error {
 			w.WriteString(",")
 		}
 		w.WriteString(fmt.Sprintf("%#v:", name))
-		val.WriteAsJSON(w)
+		val.WriteAsJSON(w, c)
 		idx++
 	}
 	w.WriteString("}")
@@ -178,11 +176,11 @@ func (v *VIteratorRef) Format() pp.Doc {
 	return pp.Concat([]pp.Doc{pp.Text("<iterator>")})
 }
 
-func (v *VIteratorRef) WriteAsJSON(w *bufio.Writer) error {
+func (v *VIteratorRef) WriteAsJSON(w *bufio.Writer, c Caller) error {
 	w.WriteString("[")
 	idx := 0
 	for {
-		nextVal, err := v.iterator.Next()
+		nextVal, err := v.iterator.Next(c)
 		// Check for end of iteration or other error.
 		var isEOE bool
 		if err != nil {
@@ -198,7 +196,7 @@ func (v *VIteratorRef) WriteAsJSON(w *bufio.Writer) error {
 		}
 		// Check type.
 		// TODO: maybe define my own equality operator instead of relying on reflect.DeepEqual?
-		if !reflect.DeepEqual(nextVal.GetType(), v.ofType) {
+		if matches, _ := nextVal.GetType().Matches(v.ofType); !matches {
 			return fmt.Errorf(
 				"iterator of type %s got next value of wrong type: %s",
 				v.ofType.Format().Render(), nextVal.GetType().Format().Render(),
@@ -207,11 +205,19 @@ func (v *VIteratorRef) WriteAsJSON(w *bufio.Writer) error {
 		if idx > 0 {
 			w.WriteString(",")
 		}
-		nextVal.WriteAsJSON(w)
+		nextVal.WriteAsJSON(w, c)
 		idx++
 	}
 	w.WriteString("]")
 	return nil
+}
+
+func mustBeVIteratorRef(v Value) *VIteratorRef {
+	ir, ok := v.(*VIteratorRef)
+	if !ok {
+		panic("not a VIteratorRef")
+	}
+	return ir
 }
 
 // Function
@@ -235,6 +241,44 @@ func (pl ParamList) Format() pp.Doc {
 		})
 	}
 	return pp.Join(paramDocs, pp.Text(", "))
+}
+
+func (pl ParamList) Matches(other ParamList) (bool, TypeVarBindings) {
+	if len(pl) != len(other) {
+		return false, nil
+	}
+	bindings := make(TypeVarBindings)
+	for idx, param := range pl {
+		otherParam := other[idx]
+		matches, paramBindings := param.Typ.Matches(otherParam.Typ)
+		if !matches {
+			return false, nil
+		}
+		bindings.extend(paramBindings)
+	}
+	return true, bindings
+}
+
+func (pl ParamList) substitute(tvb TypeVarBindings) ParamList {
+	out := make(ParamList, len(pl))
+	for idx, param := range pl {
+		out[idx] = Param{
+			Typ:  param.Typ.substitute(tvb),
+			Name: param.Name,
+		}
+	}
+	return out
+}
+
+func mustBeVFunction(v Value) vFunction {
+	switch tV := v.(type) {
+	case *vLambda:
+		return tV
+	case *VBuiltin:
+		return tV
+	default:
+		panic("not a vFunction")
+	}
 }
 
 // Lambda
@@ -261,7 +305,7 @@ func (vl *vLambda) Format() pp.Doc {
 	return vl.def.Format()
 }
 
-func (vl *vLambda) WriteAsJSON(w *bufio.Writer) error {
+func (vl *vLambda) WriteAsJSON(w *bufio.Writer, _ Caller) error {
 	return fmt.Errorf("can'out write a lambda to JSON")
 }
 
@@ -281,7 +325,7 @@ type VBuiltin struct {
 	RetType Type
 
 	// TODO: maybe give it a more restricted interface
-	Impl func(interp *interpreter, args []Value) (Value, error)
+	Impl func(interp Caller, args []Value) (Value, error)
 }
 
 var _ Value = &VBuiltin{}
@@ -301,7 +345,7 @@ func (vb *VBuiltin) Format() pp.Doc {
 	))
 }
 
-func (vb *VBuiltin) WriteAsJSON(w *bufio.Writer) error {
+func (vb *VBuiltin) WriteAsJSON(w *bufio.Writer, _ Caller) error {
 	return fmt.Errorf("can'out write a builtin to JSON")
 }
 

@@ -53,7 +53,7 @@ type tableIterator struct {
 
 var _ lang.Iterator = &tableIterator{}
 
-func (ti *tableIterator) Next() (lang.Value, error) {
+func (ti *tableIterator) Next(_ lang.Caller) (lang.Value, error) {
 	var key []byte
 	var value []byte
 	if !ti.seekedToFirst {

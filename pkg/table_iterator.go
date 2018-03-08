@@ -7,7 +7,7 @@ import (
 	"github.com/boltdb/bolt"
 )
 
-// TODO: just make a common ArrayIterator for internal tables
+// TODO: just make a common arrayIterator for internal tables
 
 type TableIterator interface {
 	Next() *Record

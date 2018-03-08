@@ -10,7 +10,8 @@ import (
 
 type Type interface {
 	Format() pp.Doc
-	typ()
+	Matches(Type) (bool, TypeVarBindings)
+	substitute(TypeVarBindings) Type
 }
 
 func ParseType(name string) (Type, error) {
@@ -21,6 +22,15 @@ func ParseType(name string) (Type, error) {
 		return TInt, nil
 	default:
 		return nil, fmt.Errorf("can't parse type %s", name)
+	}
+}
+
+type TypeVarBindings map[tVar]Type
+
+func (tvb TypeVarBindings) extend(other TypeVarBindings) {
+	// TODO: error out if overwriting one that doesn't match
+	for name, typ := range other {
+		tvb[name] = typ
 	}
 }
 
@@ -35,7 +45,11 @@ func (tInt) Format() pp.Doc {
 	return pp.Text("int")
 }
 
-func (tInt) typ() {}
+func (tInt) Matches(other Type) (bool, TypeVarBindings) {
+	return other == TInt, nil
+}
+
+func (ti *tInt) substitute(TypeVarBindings) Type { return ti }
 
 // String
 
@@ -48,7 +62,11 @@ func (tString) Format() pp.Doc {
 	return pp.Text("string")
 }
 
-func (tString) typ() {}
+func (tString) Matches(other Type) (bool, TypeVarBindings) {
+	return other == TString, nil
+}
+
+func (ts *tString) substitute(TypeVarBindings) Type { return ts }
 
 // Object
 
@@ -85,7 +103,33 @@ func (to TObject) Format() pp.Doc {
 	})
 }
 
-func (TObject) typ() {}
+func (to *TObject) Matches(other Type) (bool, TypeVarBindings) {
+	otherTO, ok := other.(*TObject)
+	if !ok {
+		return false, nil
+	}
+	if len(otherTO.Types) != len(to.Types) {
+		return false, nil
+	}
+	for name, typ := range to.Types {
+		otherTyp, ok := otherTO.Types[name]
+		if !ok {
+			return false, nil
+		}
+		if matches, _ := typ.Matches(otherTyp); !matches {
+			return false, nil
+		}
+	}
+	return true, nil
+}
+
+func (ts *TObject) substitute(tvb TypeVarBindings) Type {
+	types := map[string]Type{}
+	for name, typ := range ts.Types {
+		types[name] = typ.substitute(tvb)
+	}
+	return &TObject{Types: types}
+}
 
 // Iterator
 
@@ -103,7 +147,19 @@ func (ti tIterator) Format() pp.Doc {
 	})
 }
 
-func (tIterator) typ() {}
+func (ti tIterator) Matches(other Type) (bool, TypeVarBindings) {
+	oti, ok := other.(*tIterator)
+	if !ok {
+		return false, nil
+	}
+	return ti.innerType.Matches(oti.innerType)
+}
+
+func (ti *tIterator) substitute(tvb TypeVarBindings) Type {
+	return &tIterator{
+		innerType: ti.innerType.substitute(tvb),
+	}
+}
 
 // Function
 
@@ -123,9 +179,71 @@ func (tf *tFunction) Format() pp.Doc {
 	})
 }
 
-func (tFunction) typ() {}
+func (tf *tFunction) Matches(other Type) (bool, TypeVarBindings) {
+	otherFunc, ok := other.(*tFunction)
+	if !ok {
+		return false, nil
+	}
+	fmt.Println("matching func", tf.Format().Render(), "with func", other.Format().Render())
+	bindings := make(TypeVarBindings)
+	// match args
+	paramsMatch, paramBindings := tf.params.Matches(otherFunc.params)
+	if !paramsMatch {
+		return false, nil
+	}
+	bindings.extend(paramBindings)
+	// match ret type
+	retMatches, retBindings := tf.retType.Matches(otherFunc.retType)
+	if !retMatches {
+		return false, nil
+	}
+	bindings.extend(retBindings)
+	fmt.Println("matches with bindings", bindings)
+	return true, bindings
+}
 
-// TODO: type vars
-// .isConcrete or something
+func (tf *tFunction) substitute(tvb TypeVarBindings) Type {
+	return &tFunction{
+		params:  tf.params.substitute(tvb),
+		retType: tf.retType.substitute(tvb),
+	}
+}
+
+// Type variables
+
+type tVar string
+
+var _ Type = NewTVar("A")
+
+func NewTVar(name string) *tVar {
+	t := tVar(name)
+	return &t
+}
+
+func (tv *tVar) Format() pp.Doc {
+	return pp.Text(string(*tv))
+}
+
+func (tv *tVar) Matches(other Type) (bool, TypeVarBindings) {
+	_, isTVar := other.(*tVar)
+	if isTVar {
+		return false, nil
+	}
+	return true, map[tVar]Type{
+		*tv: other,
+	}
+}
+
+func (tv *tVar) substitute(tvb TypeVarBindings) Type {
+	fmt.Println("tvb", tvb)
+	binding, ok := tvb[*tv]
+	if !ok {
+		// TODO: return error, don't panic
+		panic(fmt.Sprintf("missing type var: %s", *tv))
+	}
+	return binding
+}
+
+// TODO: .isConcrete or something
 
 // TODO: ADTs
