@@ -194,7 +194,7 @@ func (l *ELambda) Format() pp.Doc {
 	return pp.Text(
 		fmt.Sprintf(
 			"(%s): %s => (%s)",
-			l.params.Format().Render(), l.retType.Format().Render(), l.body.Format().Render(),
+			l.params.Format(), l.retType.Format(), l.body.Format(),
 		),
 	)
 }
@@ -209,7 +209,7 @@ func (l *ELambda) GetType(s *TypeScope) (Type, error) {
 	if matches, _ := innerTyp.matches(l.retType); !matches {
 		return nil, fmt.Errorf(
 			"lambda declared as returning %s; body is of type %s",
-			l.retType.Format().Render(), innerTyp.Format().Render(),
+			l.retType.Format(), innerTyp.Format(),
 		)
 	}
 	return &tFunction{
@@ -313,7 +313,7 @@ func (fc *EFuncCall) GetType(scope *TypeScope) (Type, error) {
 		if !matches {
 			return nil, fmt.Errorf(
 				"call to %s, param %d: have %s; want %s",
-				fc.funcName, idx, argType.Format().Render(), param.Typ.Format().Render(),
+				fc.funcName, idx, argType.Format(), param.Typ.Format(),
 			)
 		}
 		bindings.extend(argBindings)
@@ -354,7 +354,7 @@ func (ma *EMemberAccess) Evaluate(interp *interpreter) (Value, error) {
 		}
 		return val, nil
 	default:
-		return nil, fmt.Errorf("member access on a non-object: %s", ma.Format().Render())
+		return nil, fmt.Errorf("member access on a non-object: %s", ma.Format())
 	}
 }
 
@@ -375,7 +375,7 @@ func (ma *EMemberAccess) GetType(scope *TypeScope) (Type, error) {
 		}
 		return typ, nil
 	default:
-		return nil, fmt.Errorf("member access on a non-object: %s", ma.Format().Render())
+		return nil, fmt.Errorf("member access on a non-object: %s", ma.Format())
 	}
 }
 
