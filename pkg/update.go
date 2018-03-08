@@ -63,14 +63,19 @@ func (conn *Connection) ExecuteUpdate(update *Update, channel *Channel) error {
 		bucket.ForEach(func(key []byte, value []byte) error {
 			record := table.RecordFromBytes(value)
 			if record.GetField(update.WhereColumnName).StringVal == update.EqualsValue {
+				// Clone and update old record.
 				clonedOldRecord := record.Clone()
 				record.SetString(update.ColumnName, update.Value)
-				clonedNewRecord := record.Clone()
-				rowUpdateErr := bucket.Put(key, record.ToBytes())
-				if rowUpdateErr != nil {
-					return rowUpdateErr
+				// Clone new record
+				recordBytes, err := record.ToBytes()
+				if err != nil {
+					return err
+				}
+				if err := bucket.Put(key, recordBytes); err != nil {
+					return err
 				}
 				// Send live query updates.
+				clonedNewRecord := record.Clone()
 				conn.Database.PushTableEvent(channel, update.Table, clonedOldRecord, clonedNewRecord)
 				rowsUpdated++
 			}

@@ -60,7 +60,11 @@ func (conn *Connection) ExecuteInsert(insert *Insert, channel *Channel) error {
 		if current := primaryIndexBucket.Get([]byte(key)); current != nil {
 			return &RecordAlreadyExists{ColName: table.PrimaryKey, Val: key}
 		}
-		return primaryIndexBucket.Put([]byte(key), record.ToBytes())
+		recordBytes, err := record.ToBytes()
+		if err != nil {
+			return err
+		}
+		return primaryIndexBucket.Put([]byte(key), recordBytes)
 	})
 	if err != nil {
 		return errors.Wrap(err, "executing insert")
