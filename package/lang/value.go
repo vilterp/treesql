@@ -229,54 +229,6 @@ type vFunction interface {
 	GetRetType() Type
 }
 
-type ParamList []Param
-
-func (pl ParamList) Format() pp.Doc {
-	paramDocs := make([]pp.Doc, len(pl))
-	for idx, param := range pl {
-		paramDocs[idx] = pp.Concat([]pp.Doc{
-			pp.Text(param.Name),
-			pp.Text(" "),
-			param.Typ.Format(),
-		})
-	}
-	return pp.Join(paramDocs, pp.Text(", "))
-}
-
-func (pl ParamList) Matches(other ParamList) (bool, TypeVarBindings) {
-	if len(pl) != len(other) {
-		return false, nil
-	}
-	bindings := make(TypeVarBindings)
-	for idx, param := range pl {
-		otherParam := other[idx]
-		matches, paramBindings := param.Typ.matches(otherParam.Typ)
-		if !matches {
-			return false, nil
-		}
-		bindings.extend(paramBindings)
-	}
-	return true, bindings
-}
-
-// substitute returns new param list, isConcrete, and an error.
-func (pl ParamList) substitute(tvb TypeVarBindings) (ParamList, bool, error) {
-	out := make(ParamList, len(pl))
-	isConcrete := true
-	for idx, param := range pl {
-		newTyp, concrete, err := param.Typ.substitute(tvb)
-		if err != nil {
-			return nil, false, err
-		}
-		out[idx] = Param{
-			Typ:  newTyp,
-			Name: param.Name,
-		}
-		isConcrete = isConcrete && concrete
-	}
-	return out, isConcrete, nil
-}
-
 func mustBeVFunction(v Value) vFunction {
 	switch tV := v.(type) {
 	case *vLambda:
@@ -294,20 +246,14 @@ func mustBeVFunction(v Value) vFunction {
 type vLambda struct {
 	def            *ELambda
 	definedInScope *Scope
+	typ            Type
 }
 
 var _ Value = &vLambda{}
 var _ vFunction = &vLambda{}
 
 func (vl *vLambda) GetType() Type {
-	// TODO: this is a bit awkward
-	t, err := vl.def.GetType(nil)
-	if err != nil {
-		panic(fmt.Sprintf(
-			"error getting type of lambda value `%s`: %v", vl.def.Format().Render(), err,
-		))
-	}
-	return t
+	return vl.typ
 }
 
 func (vl *vLambda) Format() pp.Doc {

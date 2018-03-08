@@ -69,7 +69,7 @@ func (i *interpreter) Call(vFunc vFunction, argVals []Value) (Value, error) {
 		return val, err
 	case *VBuiltin:
 		val, err = tVFunc.Impl(i, argVals)
-		if matches, _ := val.GetType().matches(tVFunc.RetType); !matches {
+		if matches, _ := tVFunc.RetType.matches(val.GetType()); !matches {
 			return nil, fmt.Errorf(
 				"builtin %s supposed to return %s; returned %s",
 				tVFunc.Name, tVFunc.RetType.Format().Render(), val.GetType().Format().Render(),
