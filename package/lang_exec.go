@@ -28,12 +28,13 @@ func (table *TableDescriptor) toVObject(txn *Txn) *lang.VObject {
 
 	for _, col := range table.Columns {
 		if col.Name == table.PrimaryKey {
+			// Get iterator.
 			iter, err := txn.getTableIterator(table, col.Name)
 			if err != nil {
 				panic(fmt.Sprintf("err getting table iterator: %v", err))
 			}
 			attrs[col.Name] = lang.NewVObject(map[string]lang.Value{
-				"scan": lang.NewVIteratorRef(iter, lang.TInt),
+				"scan": lang.NewVIteratorRef(iter, table.getType()),
 				"get":  lang.NewVInt(2), // getter
 			})
 		}
@@ -65,8 +66,11 @@ func (ti *tableIterator) Next() (lang.Value, error) {
 		return nil, lang.EndOfIteration
 	}
 	// TODO: actually deserialize
-	//record := ti.table.RecordFromBytes(value)
-	return lang.NewVInt(len(value)), nil
+	obj, err := ti.table.objectFromBytes(value)
+	if err != nil {
+		return nil, err
+	}
+	return obj, nil
 }
 
 func (ti *tableIterator) Close() error {

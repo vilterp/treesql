@@ -15,8 +15,8 @@ func TestLangExec(t *testing.T) {
 		{
 			stmt: `
 				CREATETABLE blog_posts (
-					id string PRIMARYKEY,
-					title string
+					id String PRIMARYKEY,
+					title String
 				)
 			`,
 			ack: "CREATE TABLE",
@@ -24,9 +24,9 @@ func TestLangExec(t *testing.T) {
 		{
 			stmt: `
 				CREATETABLE comments (
-					id string PRIMARYKEY,
-					blog_post_id string REFERENCESTABLE blog_posts,
-					body string
+					id String PRIMARYKEY,
+					blog_post_id String REFERENCESTABLE blog_posts,
+					body String
 				)
 			`,
 			ack: "CREATE TABLE",
@@ -59,13 +59,18 @@ func TestLangExec(t *testing.T) {
 
 	testCases := []struct {
 		in      lang.Expr
+		typ     string
 		outJSON string
 	}{
 		{
 			lang.NewMemberAccess(lang.NewMemberAccess(lang.NewVar("blog_posts"), "id"), "scan"),
+			`Iterator<{
+  id: String,
+  title: String
+}>`,
 			`[
-					{"id": 0, "body":"hello world"},
-					{"id": 1, "body": "hello_again_world"}
+					{"id": "0", "title": "hello world"},
+					{"id": "1", "title": "hello again world"}
 			]`,
 		},
 	}
@@ -84,6 +89,16 @@ func TestLangExec(t *testing.T) {
 		// Construct scope.
 		userRootScope := db.Schema.toScope(txn)
 
+		// Get type; compare.
+		typ, err := testCase.in.GetType(userRootScope)
+		if err != nil {
+			t.Errorf("case %d: %v", idx, err)
+			continue
+		}
+		if typ.Format().Render() != testCase.typ {
+			t.Errorf("case %d: expected %s; got %s", idx, testCase.typ, typ.Format().Render())
+		}
+
 		// Interpret the test expression.
 		val, err := lang.Interpret(testCase.in, userRootScope)
 		if err != nil {
@@ -95,7 +110,10 @@ func TestLangExec(t *testing.T) {
 		// Get the output as a string of JSON.
 		buf := bytes.NewBufferString("")
 		bufWriter := bufio.NewWriter(buf)
-		val.WriteAsJSON(bufWriter)
+		if err := val.WriteAsJSON(bufWriter); err != nil {
+			t.Errorf("case %d: %v", idx, err)
+			continue
+		}
 		bufWriter.Flush()
 		json := buf.String()
 

@@ -3,12 +3,25 @@ package lang
 import (
 	"sort"
 
+	"fmt"
+
 	pp "github.com/vilterp/treesql/package/pretty_print"
 )
 
 type Type interface {
 	Format() pp.Doc
 	typ()
+}
+
+func ParseType(name string) (Type, error) {
+	switch name {
+	case "String":
+		return TString, nil
+	case "Int":
+		return TInt, nil
+	default:
+		return nil, fmt.Errorf("can't parse type %s", name)
+	}
 }
 
 // Int

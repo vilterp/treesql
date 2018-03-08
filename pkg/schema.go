@@ -6,6 +6,7 @@ import (
 	"strconv"
 
 	"github.com/boltdb/bolt"
+	"github.com/vilterp/treesql/package/lang"
 )
 
 type Schema struct {
@@ -23,6 +24,14 @@ type TableDescriptor struct {
 	IsBuiltin     bool
 }
 
+func (table *TableDescriptor) getType() *lang.TObject {
+	types := map[string]lang.Type{}
+	for _, col := range table.Columns {
+		types[col.Name] = col.Type
+	}
+	return &lang.TObject{Types: types}
+}
+
 func (table *TableDescriptor) colIDForName(name string) (int, error) {
 	for _, col := range table.Columns {
 		if col.Name == name {
@@ -36,28 +45,12 @@ type ColumnName string
 type ColumnDescriptor struct {
 	ID               int
 	Name             string
-	Type             ColumnType
+	Type             lang.Type
 	ReferencesColumn *ColumnReference
 }
 
 type ColumnReference struct {
 	TableName string // we're gonna assume for now that you can only reference the primary key
-}
-
-// maybe I should use that iota weirdness
-type ColumnType byte
-
-const TypeString ColumnType = 0
-const TypeInt ColumnType = 1
-
-var TypeToName = map[ColumnType]string{
-	TypeString: "string",
-	TypeInt:    "int",
-}
-
-var NameToType = map[string]ColumnType{
-	"string": TypeString,
-	"int":    TypeInt,
 }
 
 func (column *ColumnDescriptor) ToRecord(tableName string, db *Database) *Record {
@@ -66,7 +59,7 @@ func (column *ColumnDescriptor) ToRecord(tableName string, db *Database) *Record
 	record.SetString("id", fmt.Sprintf("%d", column.ID))
 	record.SetString("name", column.Name)
 	record.SetString("table_name", tableName)
-	record.SetString("type", TypeToName[column.Type])
+	record.SetString("type", column.Type.Format().Render())
 	if column.ReferencesColumn != nil {
 		record.SetString("references", column.ReferencesColumn.TableName)
 	}
@@ -82,10 +75,15 @@ func ColumnFromRecord(record *Record) *ColumnDescriptor {
 			TableName: references,
 		}
 	}
+	typ, err := lang.ParseType(record.GetField("type").StringVal)
+	if err != nil {
+		// TODO: something other than panic
+		panic(fmt.Sprintf("error parsing type: %v", err))
+	}
 	return &ColumnDescriptor{
 		ID:               idInt,
 		Name:             record.GetField("name").StringVal,
-		Type:             NameToType[record.GetField("type").StringVal],
+		Type:             typ,
 		ReferencesColumn: columnReference,
 	}
 }
@@ -165,7 +163,7 @@ func (db *Database) LoadUserSchema() {
 // TODO: move to schema? idk
 // buildTableDescriptor converts a CREATE TABLE AST node into a TableDescriptor.
 // It also assigns column ids.
-func (db *Database) buildTableDescriptor(create *CreateTable) *TableDescriptor {
+func (db *Database) buildTableDescriptor(create *CreateTable) (*TableDescriptor, error) {
 	// find primary key
 	var primaryKey string
 	for _, column := range create.Columns {
@@ -189,19 +187,24 @@ func (db *Database) buildTableDescriptor(create *CreateTable) *TableDescriptor {
 				TableName: *parsedColumn.References,
 			}
 		}
+		// parse type
+		typ, err := lang.ParseType(parsedColumn.TypeName)
+		if err != nil {
+			return nil, fmt.Errorf("error parsing type: %v", err)
+		}
 		// build column spec
 		columnSpec := &ColumnDescriptor{
 			ID:               db.Schema.NextColumnID,
 			Name:             parsedColumn.Name,
 			ReferencesColumn: reference,
-			Type:             NameToType[parsedColumn.TypeName],
+			Type:             typ,
 		}
 		// TODO: synchronize access to this
 		db.Schema.NextColumnID++
 		tableDesc.Columns[idx] = columnSpec
 	}
 
-	return tableDesc
+	return tableDesc, nil
 }
 
 // addTableDescriptor initializes the table's LiveQueryInfo
@@ -232,12 +235,12 @@ func (db *Database) AddBuiltinSchema() {
 			{
 				ID:   0,
 				Name: "name",
-				Type: TypeString,
+				Type: lang.TString,
 			},
 			{
 				ID:   1,
 				Name: "primary_key",
-				Type: TypeString,
+				Type: lang.TString,
 			},
 		},
 		IsBuiltin: true,
@@ -249,17 +252,17 @@ func (db *Database) AddBuiltinSchema() {
 			{
 				ID:   2,
 				Name: "id",
-				Type: TypeString, // TODO: switch to int when they work
+				Type: lang.TString, // TODO: switch to int when they work
 			},
 			{
 				ID:   3,
 				Name: "name",
-				Type: TypeString,
+				Type: lang.TString,
 			},
 			{
 				ID:   4,
 				Name: "table_name",
-				Type: TypeString,
+				Type: lang.TString,
 				ReferencesColumn: &ColumnReference{
 					TableName: "__tables__",
 				},
@@ -267,12 +270,12 @@ func (db *Database) AddBuiltinSchema() {
 			{
 				ID:   5,
 				Name: "type",
-				Type: TypeString,
+				Type: lang.TString,
 			},
 			{
 				ID:   6,
 				Name: "references", // TODO: this is a keyword. rename to "references_table"
-				Type: TypeString,
+				Type: lang.TString,
 			},
 		},
 		IsBuiltin: true,
@@ -284,22 +287,22 @@ func (db *Database) AddBuiltinSchema() {
 			{
 				ID:   7,
 				Name: "id",
-				Type: TypeString,
+				Type: lang.TString,
 			},
 			{
 				ID:   8,
 				Name: "connection_id",
-				Type: TypeString,
+				Type: lang.TString,
 			},
 			{
 				ID:   9,
 				Name: "channel_id",
-				Type: TypeString,
+				Type: lang.TString,
 			},
 			{
 				ID:   10,
 				Name: "table_name",
-				Type: TypeString,
+				Type: lang.TString,
 				ReferencesColumn: &ColumnReference{
 					TableName: "__tables__",
 				},
@@ -307,12 +310,12 @@ func (db *Database) AddBuiltinSchema() {
 			{
 				ID:   11,
 				Name: "pk_value",
-				Type: TypeString,
+				Type: lang.TString,
 			},
 			{
 				ID:   12,
 				Name: "query_path",
-				Type: TypeString,
+				Type: lang.TString,
 			},
 		},
 		IsBuiltin: true,

@@ -6,6 +6,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
+	"github.com/vilterp/treesql/package/lang"
 	clog "github.com/vilterp/treesql/pkg/log"
 )
 
@@ -17,8 +18,8 @@ func (db *Database) validateCreateTable(create *CreateTable) error {
 	}
 	// types are real
 	for _, column := range create.Columns {
-		knownType := column.TypeName == "string" || column.TypeName == "int"
-		if !knownType {
+		_, err := lang.ParseType(column.TypeName)
+		if err != nil {
 			return &NonexistentType{TypeName: column.TypeName}
 		}
 	}
@@ -47,7 +48,10 @@ func (db *Database) validateCreateTable(create *CreateTable) error {
 }
 
 func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel) error {
-	tableDesc := conn.Database.buildTableDescriptor(create)
+	tableDesc, err := conn.Database.buildTableDescriptor(create)
+	if err != nil {
+		return err
+	}
 	tableRecord := tableDesc.ToRecord(conn.Database)
 	columnRecords := make([]*Record, len(create.Columns))
 	updateErr := conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
@@ -72,26 +76,31 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 		}
 		// write record to __tables__
 		tablesBucket := tx.Bucket([]byte("__tables__"))
-		tablePutErr := tablesBucket.Put([]byte(create.Name), tableRecord.ToBytes())
-		if tablePutErr != nil {
-			return tablePutErr
+		tableBytes, err := tableRecord.ToBytes()
+		if err != nil {
+			return err
 		}
-		// write columns to __columns__
+		if err := tablesBucket.Put([]byte(create.Name), tableBytes); err != nil {
+			return err
+		}
+		// write column descriptors to __columns__
 		for idx, columnDesc := range tableDesc.Columns {
-			// write record to __columns__
+			// serialize descriptor
 			columnRecord := columnDesc.ToRecord(create.Name, conn.Database)
+			value, err := columnRecord.ToBytes()
+			if err != nil {
+				return err
+			}
+			// write to bucket
 			columnsBucket := tx.Bucket([]byte("__columns__"))
 			key := []byte(fmt.Sprintf("%d", columnDesc.ID))
-			value := columnRecord.ToBytes()
-			columnPutErr := columnsBucket.Put(key, value)
-			if columnPutErr != nil {
-				return columnPutErr
+			if err := columnsBucket.Put(key, value); err != nil {
+				return err
 			}
 			columnRecords[idx] = columnRecord
 		}
 		// write next column id sequence
-		nextColumnIDBytes := make([]byte, 4)
-		binary.BigEndian.PutUint32(nextColumnIDBytes, uint32(conn.Database.Schema.NextColumnID))
+		nextColumnIDBytes := encodeInteger(int32(conn.Database.Schema.NextColumnID))
 		tx.Bucket([]byte("__sequences__")).Put([]byte("__next_column_id__"), nextColumnIDBytes)
 		return nil
 	})
