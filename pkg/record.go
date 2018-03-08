@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"log"
 	"strconv"
+
+	"github.com/vilterp/treesql/package/lang"
 )
 
 type Record struct {
@@ -38,6 +40,7 @@ func (table *TableDescriptor) NewRecord() *Record {
 	}
 }
 
+// TODO: delete once all usages removed
 func (table *TableDescriptor) RecordFromBytes(raw []byte) *Record {
 	record := &Record{
 		Table:  table,
@@ -64,6 +67,39 @@ func (table *TableDescriptor) RecordFromBytes(raw []byte) *Record {
 		}
 	}
 	return record
+}
+
+func assertType(readType ColumnType, expectedType lang.Type) error {
+	if codeForType[expectedType] != readType {
+		return fmt.Errorf(
+			"deserialization error: expected %s; got %s",
+			expectedType.Format().Render(), typeForCode[readType],
+		)
+	}
+	return nil
+}
+
+func (table *TableDescriptor) objectFromBytes(raw []byte) (*lang.VObject, error) {
+	// TODO: see if there's a way to reduce memory allocation.
+	attrs := map[string]lang.Value{}
+	buffer := bytes.NewBuffer(raw)
+	for _, col := range table.Columns {
+		typeCode, _ := buffer.ReadByte()
+		if err := assertType(ColumnType(typeCode), col.Type); err != nil {
+			return nil, err
+		}
+		switch col.Type {
+		case lang.TString:
+			length, _ := readInteger(buffer)
+			stringBytes := make([]byte, length)
+			buffer.Read(stringBytes)
+			attrs[col.Name] = lang.NewVString(string(stringBytes))
+		case lang.TInt:
+			val, _ := readInteger(buffer)
+			attrs[col.Name] = lang.NewVInt(int(val))
+		}
+	}
+	return lang.NewVObject(attrs), nil
 }
 
 func (record *Record) GetField(name string) *Value {
@@ -109,20 +145,45 @@ func (record *Record) fieldIndex(name string) int {
 	return idx
 }
 
-func (record *Record) ToBytes() []byte {
+// maybe I should use that iota weirdness
+type ColumnType byte
+
+const TypeString ColumnType = 0
+const TypeInt ColumnType = 1
+
+var codeForType = map[lang.Type]ColumnType{
+	lang.TInt:    TypeInt,
+	lang.TString: TypeString,
+}
+
+var typeForCode = map[ColumnType]lang.Type{}
+
+func init() {
+	for typ, code := range codeForType {
+		typeForCode[code] = typ
+	}
+}
+
+func (record *Record) ToBytes() ([]byte, error) {
 	buf := new(bytes.Buffer)
 	for idx, column := range record.Table.Columns {
-		buf.Write([]byte{byte(column.Type)})
+		code, ok := codeForType[column.Type]
+		if !ok {
+			return nil, fmt.Errorf(
+				"serialization error: cannot serialize type %s", column.Type.Format().Render(),
+			)
+		}
+		buf.WriteByte(byte(code))
 		value := record.Values[idx]
 		switch column.Type {
-		case TypeInt:
+		case lang.TInt:
 			WriteInteger(buf, value.IntVal)
-		case TypeString:
+		case lang.TString:
 			WriteInteger(buf, int32(len(value.StringVal)))
 			buf.WriteString(value.StringVal)
 		}
 	}
-	return buf.Bytes()
+	return buf.Bytes(), nil
 }
 
 func (record *Record) MarshalJSON() ([]byte, error) {
@@ -138,7 +199,11 @@ func (record *Record) MarshalJSON() ([]byte, error) {
 }
 
 func (record *Record) Clone() *Record {
-	return record.Table.RecordFromBytes(record.ToBytes())
+	clone, err := record.ToBytes()
+	if err != nil {
+		panic(fmt.Sprintf("can't serialize record in clone: %v", err))
+	}
+	return record.Table.RecordFromBytes(clone)
 }
 
 // these are only uints

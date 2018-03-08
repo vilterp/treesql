@@ -375,16 +375,16 @@ func getRecordResults(
 			recordResults[selection.Name] = subselectResult
 		} else {
 			// save field value
-			columnSpec := columnsMap[selection.Name]
-			switch columnSpec.Type {
-			case TypeInt:
-				val := record.GetField(columnSpec.Name).StringVal
-				recordResults[columnSpec.Name] = val
-
-			case TypeString:
-				val := record.GetField(columnSpec.Name).StringVal
-				recordResults[columnSpec.Name] = val
-			}
+			//columnSpec := columnsMap[selection.Name]
+			//switch columnSpec.Type {
+			//case TypeInt:
+			//	val := record.GetField(columnSpec.Name).StringVal
+			//	recordResults[columnSpec.Name] = val
+			//
+			//case TypeString:
+			//	val := record.GetField(columnSpec.Name).StringVal
+			//	recordResults[columnSpec.Name] = val
+			//}
 		}
 	}
 	return recordResults, nil
