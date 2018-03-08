@@ -15,9 +15,9 @@ type Type interface {
 
 func ParseType(name string) (Type, error) {
 	switch name {
-	case "String":
+	case "string":
 		return TString, nil
-	case "Int":
+	case "int":
 		return TInt, nil
 	default:
 		return nil, fmt.Errorf("can't parse type %s", name)
@@ -32,7 +32,7 @@ var TInt = &tInt{}
 var _ Type = TInt
 
 func (tInt) Format() pp.Doc {
-	return pp.Text("Int")
+	return pp.Text("int")
 }
 
 func (tInt) typ() {}
@@ -45,7 +45,7 @@ var TString = &tString{}
 var _ Type = TString
 
 func (tString) Format() pp.Doc {
-	return pp.Text("String")
+	return pp.Text("string")
 }
 
 func (tString) typ() {}
