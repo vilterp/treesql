@@ -173,10 +173,18 @@ type ELambda struct {
 var _ Expr = &ELambda{}
 
 func (l *ELambda) Evaluate(interp *interpreter) (Value, error) {
+	parentTypeScope := interp.stackTop.scope.ToTypeScope()
+	newTypeScope := l.params.createTypeScope(parentTypeScope)
+	typ, err := l.body.GetType(newTypeScope)
+	if err != nil {
+		return nil, err
+	}
 	return &vLambda{
 		def: l,
 		// TODO: don't close over the scope if we don't need anything from there
 		definedInScope: interp.stackTop.scope,
+		// TODO: keep a type scope around
+		typ: typ,
 	}, nil
 }
 
@@ -192,10 +200,8 @@ func (l *ELambda) Format() pp.Doc {
 }
 
 func (l *ELambda) GetType(s *TypeScope) (Type, error) {
-	innerScope := NewTypeScope(s)
-	for _, param := range l.params {
-		innerScope.add(param.Name, param.Typ)
-	}
+	innerScope := l.params.createTypeScope(s)
+
 	innerTyp, err := l.body.GetType(innerScope)
 	if err != nil {
 		return nil, err
@@ -258,7 +264,7 @@ func (fc *EFuncCall) Evaluate(interp *interpreter) (Value, error) {
 	case *VBuiltin:
 		return interp.Call(tFuncVal, argVals)
 	default:
-		return nil, fmt.Errorf("not a function: %s %v", fc.funcName, tFuncVal)
+		return nil, fmt.Errorf("not a function: %s", fc.funcName)
 	}
 }
 
@@ -277,42 +283,43 @@ func (fc *EFuncCall) Format() pp.Doc {
 }
 
 func (fc *EFuncCall) GetType(scope *TypeScope) (Type, error) {
-	funcVal, err := scope.find(fc.funcName)
+	maybeFunc, err := scope.find(fc.funcName)
 	if err != nil {
 		return nil, err
 	}
-	switch tFuncVal := funcVal.(type) {
-	case vFunction:
-		// Check # args matches.
-		if len(fc.args) != len(tFuncVal.GetParamList()) {
+
+	tFunc, ok := maybeFunc.(*tFunction)
+	if !ok {
+		return nil, fmt.Errorf(
+			"expected %s to be a function; it's %v", fc.funcName, tFunc,
+		)
+	}
+	if len(fc.args) != len(tFunc.params) {
+		return nil, fmt.Errorf(
+			"%s: expected %d args; given %d",
+			fc.funcName, len(tFunc.params), len(fc.args),
+		)
+	}
+	// Check arg types match.
+	params := tFunc.params
+	bindings := make(TypeVarBindings)
+	for idx, argExpr := range fc.args {
+		param := params[idx]
+		argType, err := argExpr.GetType(scope)
+		if err != nil {
+			return nil, err
+		}
+		matches, argBindings := param.Typ.matches(argType)
+		if !matches {
 			return nil, fmt.Errorf(
-				"%s: expected %d args; given %d",
-				fc.funcName, len(tFuncVal.GetParamList()), len(fc.args),
+				"call to %s, param %d: have %s; want %s",
+				fc.funcName, idx, argType.Format().Render(), param.Typ.Format().Render(),
 			)
 		}
-		// Check arg types match.
-		params := tFuncVal.GetParamList()
-		bindings := make(TypeVarBindings)
-		for idx, argExpr := range fc.args {
-			param := params[idx]
-			argType, err := argExpr.GetType(scope)
-			if err != nil {
-				return nil, err
-			}
-			matches, argBindings := param.Typ.matches(argType)
-			if !matches {
-				return nil, fmt.Errorf(
-					"call to %s, param %d: have %s; want %s",
-					fc.funcName, idx, argType.Format().Render(), param.Typ.Format().Render(),
-				)
-			}
-			bindings.extend(argBindings)
-		}
-		subsType, _, err := tFuncVal.GetRetType().substitute(bindings)
-		return subsType, err
-	default:
-		return nil, fmt.Errorf("not a function: %s", fc.funcName)
+		bindings.extend(argBindings)
 	}
+	subsType, _, err := tFunc.retType.substitute(bindings)
+	return subsType, err
 }
 
 // Member Access
