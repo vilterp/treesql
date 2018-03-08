@@ -10,13 +10,13 @@ func TestExprGetType(t *testing.T) {
 	// Create scope.
 	scope := NewScope(BuiltinsScope)
 
-	blogPostType := &TObject{
+	blogPostType := &TRecord{
 		Types: map[string]Type{
 			"id": TInt,
 		},
 	}
 
-	scope.Add("blog_post", NewVObject(map[string]Value{
+	scope.Add("blog_post", NewVRecord(map[string]Value{
 		"id":    NewVInt(2),
 		"title": NewVString("hello world"),
 	}))
@@ -30,7 +30,7 @@ func TestExprGetType(t *testing.T) {
 	}{
 		{
 			NewMemberAccess(
-				&EObjectLit{exprs: map[string]Expr{"x": NewIntLit(5)}},
+				&ERecordLit{exprs: map[string]Expr{"x": NewIntLit(5)}},
 				"x",
 			),
 			"",
