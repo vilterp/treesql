@@ -12,6 +12,7 @@ import (
 
 type Doc interface {
 	// Render returns the pretty-printed representation.
+	// TODO: remove this; rename it String; call String debug
 	Render() string
 	// String returns a representation of the doc tree, for debugging.
 	String() string
