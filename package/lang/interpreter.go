@@ -8,10 +8,14 @@ type interpreter struct {
 	stackTop *stackFrame
 }
 
+type Caller interface {
+	Call(vFunction, []Value) (Value, error)
+}
+
 // TODO: callLookuper interface
 // to pass in places?
 
-func newInterpreter(rootScope *Scope, expr Expr) *interpreter {
+func NewInterpreter(rootScope *Scope, expr Expr) *interpreter {
 	return &interpreter{
 		stackTop: &stackFrame{
 			expr:  expr,
@@ -20,7 +24,7 @@ func newInterpreter(rootScope *Scope, expr Expr) *interpreter {
 	}
 }
 
-func (i *interpreter) interpret() (Value, error) {
+func (i *interpreter) Interpret() (Value, error) {
 	return i.stackTop.expr.Evaluate(i)
 }
 
@@ -38,7 +42,7 @@ func (i *interpreter) popFrame() *stackFrame {
 	return top
 }
 
-func (i *interpreter) call(vFunc vFunction, argVals []Value) (Value, error) {
+func (i *interpreter) Call(vFunc vFunction, argVals []Value) (Value, error) {
 	// Make new scope.
 	newScope := NewScope(i.stackTop.scope)
 	params := vFunc.GetParamList()
@@ -62,7 +66,7 @@ func (i *interpreter) call(vFunc vFunction, argVals []Value) (Value, error) {
 	switch tVFunc := vFunc.(type) {
 	case *vLambda:
 		newFrame.expr = tVFunc.def.body
-		val, err = i.interpret()
+		val, err = i.Interpret()
 		return val, err
 	case *VBuiltin:
 		val, err = tVFunc.Impl(i, argVals)
@@ -130,6 +134,6 @@ type stackFrame struct {
 // listeners.
 
 func Interpret(e Expr, rootScope *Scope) (Value, error) {
-	i := newInterpreter(rootScope, e)
-	return i.interpret()
+	i := NewInterpreter(rootScope, e)
+	return i.Interpret()
 }

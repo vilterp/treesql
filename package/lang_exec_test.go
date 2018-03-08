@@ -57,13 +57,21 @@ func TestLangExec(t *testing.T) {
 
 	db := tsr.server.db
 
+	// Common stuff
+	scanPostsByID := lang.NewMemberAccess(
+		lang.NewMemberAccess(lang.NewVar("blog_posts"), "id"),
+		"scan",
+	)
+	blogPostType := db.Schema.Tables["blog_posts"].getType()
+
+	// Cases
 	testCases := []struct {
 		in      lang.Expr
 		typ     string
 		outJSON string
 	}{
 		{
-			lang.NewMemberAccess(lang.NewMemberAccess(lang.NewVar("blog_posts"), "id"), "scan"),
+			scanPostsByID,
 			`Iterator<{
   id: string,
   title: string
@@ -72,6 +80,18 @@ func TestLangExec(t *testing.T) {
 					{"id": "0", "title": "hello world"},
 					{"id": "1", "title": "hello again world"}
 			]`,
+		},
+		{
+			lang.NewFuncCall("map", []lang.Expr{
+				scanPostsByID,
+				lang.NewELambda(
+					[]lang.Param{{"post", blogPostType}},
+					lang.NewMemberAccess(lang.NewVar("post"), "title"),
+					lang.TString,
+				),
+			}),
+			`Iterator<string>`,
+			`["hello world", "hello again world"]`,
 		},
 	}
 
@@ -97,10 +117,12 @@ func TestLangExec(t *testing.T) {
 		}
 		if typ.Format().Render() != testCase.typ {
 			t.Errorf("case %d: expected %s; got %s", idx, testCase.typ, typ.Format().Render())
+			continue
 		}
 
 		// Interpret the test expression.
-		val, err := lang.Interpret(testCase.in, userRootScope)
+		interp := lang.NewInterpreter(userRootScope, testCase.in)
+		val, err := interp.Interpret()
 		if err != nil {
 			// TODO: test for error
 			t.Errorf("case %d: %v", idx, err)
@@ -110,12 +132,14 @@ func TestLangExec(t *testing.T) {
 		// Get the output as a string of JSON.
 		buf := bytes.NewBufferString("")
 		bufWriter := bufio.NewWriter(buf)
-		if err := val.WriteAsJSON(bufWriter); err != nil {
+		if err := val.WriteAsJSON(bufWriter, interp); err != nil {
 			t.Errorf("case %d: %v", idx, err)
 			continue
 		}
 		bufWriter.Flush()
 		json := buf.String()
+
+		t.Log(json)
 
 		// Compare expected and actual JSON.
 		eq, err := util.AreEqualJSON(json, testCase.outJSON)
