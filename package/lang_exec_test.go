@@ -113,7 +113,7 @@ func TestLangExec(t *testing.T) {
 		}
 
 		// Check pretty printed form.
-		pretty := testCase.in.Format().Render()
+		pretty := testCase.in.Format().String()
 		if pretty != testCase.prettyExpr {
 			t.Errorf("case %d: expected pretty form `%s`; got `%s`", idx, testCase.prettyExpr, pretty)
 			continue
@@ -129,8 +129,8 @@ func TestLangExec(t *testing.T) {
 			t.Errorf("case %d: %v", idx, err)
 			continue
 		}
-		if typ.Format().Render() != testCase.typ {
-			t.Errorf("case %d: expected %s; got %s", idx, testCase.typ, typ.Format().Render())
+		if typ.Format().String() != testCase.typ {
+			t.Errorf("case %d: expected %s; got %s", idx, testCase.typ, typ.Format())
 			continue
 		}
 
@@ -152,8 +152,6 @@ func TestLangExec(t *testing.T) {
 		}
 		bufWriter.Flush()
 		json := buf.String()
-
-		t.Log(json)
 
 		// Compare expected and actual JSON.
 		eq, err := util.AreEqualJSON(json, testCase.outJSON)

@@ -117,10 +117,10 @@ func TestInterpreter(t *testing.T) {
 		if util.AssertError(t, idx, testCase.typErr, typErr) {
 			continue
 		}
-		if typ.Format().Render() != testCase.typ.Format().Render() {
+		if typ.Format().String() != testCase.typ.Format().String() {
 			t.Errorf(
 				`case %d: expected type "%s"; got "%s"`,
-				idx, testCase.typ.Format().Render(), typ.Format().Render(),
+				idx, testCase.typ.Format(), typ.Format(),
 			)
 			continue
 		}
@@ -129,10 +129,10 @@ func TestInterpreter(t *testing.T) {
 		if util.AssertError(t, idx, testCase.evalErr, evalErr) {
 			continue
 		}
-		if val.Format().Render() != testCase.val {
+		if val.Format().String() != testCase.val {
 			t.Errorf(
 				`case %d: expected value "%s"; got "%s"`,
-				idx, testCase.val, val.Format().Render(),
+				idx, testCase.val, val.Format(),
 			)
 		}
 	}

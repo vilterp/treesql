@@ -36,14 +36,14 @@ func (v *VInt) GetType() Type {
 }
 
 func (v *VInt) WriteAsJSON(w *bufio.Writer, _ Caller) error {
-	_, err := w.WriteString(v.Format().Render())
+	_, err := w.WriteString(v.Format().String())
 	return err
 }
 
 func mustBeVInt(v Value) *VInt {
 	i, ok := v.(*VInt)
 	if !ok {
-		panic(fmt.Sprintf("not an int: %s", v.Format().Render()))
+		panic(fmt.Sprintf("not an int: %s", v.Format()))
 	}
 	return i
 }
@@ -76,7 +76,7 @@ func (v *VString) WriteAsJSON(w *bufio.Writer, _ Caller) error {
 func mustBeVString(v Value) string {
 	s, ok := v.(*VString)
 	if !ok {
-		panic(fmt.Sprintf("not a string: %s", v.Format().Render()))
+		panic(fmt.Sprintf("not a string: %s", v.Format()))
 	}
 	return string(*s)
 }
@@ -199,7 +199,7 @@ func (v *VIteratorRef) WriteAsJSON(w *bufio.Writer, c Caller) error {
 		if matches, _ := nextVal.GetType().matches(v.ofType); !matches {
 			return fmt.Errorf(
 				"iterator of type %s got next value of wrong type: %s",
-				v.ofType.Format().Render(), nextVal.GetType().Format().Render(),
+				v.ofType.Format(), nextVal.GetType().Format(),
 			)
 		}
 		if idx > 0 {
@@ -295,8 +295,7 @@ func (vb *VBuiltin) GetType() Type {
 
 func (vb *VBuiltin) Format() pp.Doc {
 	return pp.Text(fmt.Sprintf(
-		`<builtin %s(%s): %s>`,
-		vb.Name, vb.Params.Format().Render(), vb.RetType.Format().Render(),
+		`<builtin %s(%s): %s>`, vb.Name, vb.Params.Format(), vb.RetType.Format(),
 	))
 }
 
