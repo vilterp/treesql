@@ -148,4 +148,6 @@ func Join(docs []Doc, sep Doc) Doc {
 	return Concat(out)
 }
 
-var CommaNewline = Concat([]Doc{Text(","), Newline})
+var Comma = Text(",")
+
+var CommaNewline = Concat([]Doc{Comma, Newline})

@@ -109,7 +109,7 @@ func TestValueGetType(t *testing.T) {
 			},
 			`{
   bar: string,
-  foo: int
+  foo: int,
 }`,
 		},
 	}
