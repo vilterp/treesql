@@ -24,12 +24,12 @@ type TableDescriptor struct {
 	IsBuiltin     bool
 }
 
-func (table *TableDescriptor) getType() *lang.TObject {
+func (table *TableDescriptor) getType() *lang.TRecord {
 	types := map[string]lang.Type{}
 	for _, col := range table.Columns {
 		types[col.Name] = col.Type
 	}
-	return &lang.TObject{Types: types}
+	return &lang.TRecord{Types: types}
 }
 
 func (table *TableDescriptor) colIDForName(name string) (int, error) {

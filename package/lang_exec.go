@@ -18,12 +18,12 @@ func (s *Schema) toScope(txn *Txn) *lang.Scope {
 		if table.IsBuiltin {
 			continue
 		}
-		newScope.Add(table.Name, table.toVObject(txn))
+		newScope.Add(table.Name, table.toVRecord(txn))
 	}
 	return newScope
 }
 
-func (table *TableDescriptor) toVObject(txn *Txn) *lang.VObject {
+func (table *TableDescriptor) toVRecord(txn *Txn) *lang.VRecord {
 	attrs := map[string]lang.Value{}
 
 	for _, col := range table.Columns {
@@ -33,14 +33,14 @@ func (table *TableDescriptor) toVObject(txn *Txn) *lang.VObject {
 			if err != nil {
 				panic(fmt.Sprintf("err getting table iterator: %v", err))
 			}
-			attrs[col.Name] = lang.NewVObject(map[string]lang.Value{
+			attrs[col.Name] = lang.NewVRecord(map[string]lang.Value{
 				"scan": lang.NewVIteratorRef(iter, table.getType()),
 				"get":  lang.NewVInt(2), // getter
 			})
 		}
 	}
 
-	return lang.NewVObject(attrs)
+	return lang.NewVRecord(attrs)
 }
 
 // TODO: maybe name BoltIterator
@@ -66,7 +66,7 @@ func (ti *tableIterator) Next(_ lang.Caller) (lang.Value, error) {
 		return nil, lang.EndOfIteration
 	}
 	// TODO: actually deserialize
-	obj, err := ti.table.objectFromBytes(value)
+	obj, err := ti.table.recordFromBytes(value)
 	if err != nil {
 		return nil, err
 	}

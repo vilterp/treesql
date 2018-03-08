@@ -81,31 +81,31 @@ func mustBeVString(v Value) string {
 	return string(*s)
 }
 
-// Object
+// Record
 
-type VObject struct {
+type VRecord struct {
 	vals map[string]Value
 }
 
-var _ Value = &VObject{}
+var _ Value = &VRecord{}
 
-func NewVObject(vals map[string]Value) *VObject {
-	return &VObject{
+func NewVRecord(vals map[string]Value) *VRecord {
+	return &VRecord{
 		vals: vals,
 	}
 }
 
-func (v *VObject) GetType() Type {
+func (v *VRecord) GetType() Type {
 	types := map[string]Type{}
 	for name, val := range v.vals {
 		types[name] = val.GetType()
 	}
-	return &TObject{
+	return &TRecord{
 		Types: types,
 	}
 }
 
-func (v *VObject) Format() pp.Doc {
+func (v *VRecord) Format() pp.Doc {
 	// Sort keys
 	keys := make([]string, len(v.vals))
 	idx := 0
@@ -132,7 +132,7 @@ func (v *VObject) Format() pp.Doc {
 	})
 }
 
-func (v *VObject) WriteAsJSON(w *bufio.Writer, c Caller) error {
+func (v *VRecord) WriteAsJSON(w *bufio.Writer, c Caller) error {
 	w.WriteString("{")
 	idx := 0
 	for name, val := range v.vals {

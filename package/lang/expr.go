@@ -89,19 +89,19 @@ func (e *EVar) GetType(scope *TypeScope) (Type, error) {
 	return typ, nil
 }
 
-// Object
+// Record
 
-type EObjectLit struct {
+type ERecordLit struct {
 	exprs map[string]Expr
 }
 
-var _ Expr = &EObjectLit{}
+var _ Expr = &ERecordLit{}
 
-func (ol *EObjectLit) Evaluate(interp *interpreter) (Value, error) {
-	// TODO: push an object path frame
+func (rl *ERecordLit) Evaluate(interp *interpreter) (Value, error) {
+	// TODO: push an record path frame
 	vals := map[string]Value{}
 
-	for name, expr := range ol.exprs {
+	for name, expr := range rl.exprs {
 		val, err := expr.Evaluate(interp)
 		if err != nil {
 			return nil, err
@@ -109,27 +109,27 @@ func (ol *EObjectLit) Evaluate(interp *interpreter) (Value, error) {
 		vals[name] = val
 	}
 
-	return &VObject{
+	return &VRecord{
 		vals: vals,
 	}, nil
 }
 
-func (ol *EObjectLit) Format() pp.Doc {
+func (rl *ERecordLit) Format() pp.Doc {
 	// Sort keys
-	keys := make([]string, len(ol.exprs))
+	keys := make([]string, len(rl.exprs))
 	idx := 0
-	for k := range ol.exprs {
+	for k := range rl.exprs {
 		keys[idx] = k
 		idx++
 	}
 	sort.Strings(keys)
 
-	kvDocs := make([]pp.Doc, len(ol.exprs))
+	kvDocs := make([]pp.Doc, len(rl.exprs))
 	for idx, key := range keys {
 		kvDocs[idx] = pp.Concat([]pp.Doc{
 			pp.Text(key),
 			pp.Text(": "),
-			ol.exprs[key].Format(),
+			rl.exprs[key].Format(),
 		})
 	}
 
@@ -141,10 +141,10 @@ func (ol *EObjectLit) Format() pp.Doc {
 	})
 }
 
-func (ol *EObjectLit) GetType(scope *TypeScope) (Type, error) {
+func (rl *ERecordLit) GetType(scope *TypeScope) (Type, error) {
 	types := map[string]Type{}
 
-	for name, expr := range ol.exprs {
+	for name, expr := range rl.exprs {
 		typ, err := expr.GetType(scope)
 		if err != nil {
 			return nil, err
@@ -152,7 +152,7 @@ func (ol *EObjectLit) GetType(scope *TypeScope) (Type, error) {
 		types[name] = typ
 	}
 
-	return &TObject{
+	return &TRecord{
 		Types: types,
 	}, nil
 }
@@ -347,14 +347,14 @@ func (ma *EMemberAccess) Evaluate(interp *interpreter) (Value, error) {
 		return nil, err
 	}
 	switch tRecordVal := objVal.(type) {
-	case *VObject:
+	case *VRecord:
 		val, ok := tRecordVal.vals[ma.member]
 		if !ok {
 			return nil, fmt.Errorf("nonexistent member: %s", ma.member)
 		}
 		return val, nil
 	default:
-		return nil, fmt.Errorf("member access on a non-object: %s", ma.Format())
+		return nil, fmt.Errorf("member access on a non-record: %s", ma.Format())
 	}
 }
 
@@ -368,14 +368,14 @@ func (ma *EMemberAccess) GetType(scope *TypeScope) (Type, error) {
 		return nil, err
 	}
 	switch tTyp := objTyp.(type) {
-	case *TObject:
+	case *TRecord:
 		typ, ok := tTyp.Types[ma.member]
 		if !ok {
 			return nil, fmt.Errorf("nonexistent member: %s", ma.member)
 		}
 		return typ, nil
 	default:
-		return nil, fmt.Errorf("member access on a non-object: %s", ma.Format())
+		return nil, fmt.Errorf("member access on a non-record: %s", ma.Format())
 	}
 }
 

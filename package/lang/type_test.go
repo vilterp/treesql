@@ -13,8 +13,8 @@ func TestTypeMatches(t *testing.T) {
 		{TInt, TString, false, nil},
 		{TString, TString, true, nil},
 		{
-			&TObject{Types: map[string]Type{"foo": TString, "bar": TInt}},
-			&TObject{Types: map[string]Type{"foo": TString, "bar": TInt}},
+			&TRecord{Types: map[string]Type{"foo": TString, "bar": TInt}},
+			&TRecord{Types: map[string]Type{"foo": TString, "bar": TInt}},
 			true,
 			nil,
 		},
@@ -49,7 +49,7 @@ func TestTypeIsConcrete(t *testing.T) {
 		{TInt, true},
 		{TString, true},
 		{
-			&TObject{Types: map[string]Type{"foo": TString, "bar": TInt}},
+			&TRecord{Types: map[string]Type{"foo": TString, "bar": TInt}},
 			true,
 		},
 		{
@@ -61,7 +61,7 @@ func TestTypeIsConcrete(t *testing.T) {
 			false,
 		},
 		{
-			&TObject{Types: map[string]Type{"foo": TString, "bar": NewTVar("A")}},
+			&TRecord{Types: map[string]Type{"foo": TString, "bar": NewTVar("A")}},
 			false,
 		},
 		{
