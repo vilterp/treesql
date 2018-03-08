@@ -34,9 +34,46 @@ func TestTypeMatches(t *testing.T) {
 	}
 
 	for idx, testCase := range cases {
-		matches, _ := testCase.a.Matches(testCase.b)
+		matches, _ := testCase.a.matches(testCase.b)
 		if matches != testCase.match {
 			t.Errorf("case %d: expected %v got %v", idx, testCase.match, matches)
+		}
+	}
+}
+
+func TestTypeIsConcrete(t *testing.T) {
+	cases := []struct {
+		typ      Type
+		concrete bool
+	}{
+		{TInt, true},
+		{TString, true},
+		{
+			&TObject{Types: map[string]Type{"foo": TString, "bar": TInt}},
+			true,
+		},
+		{
+			&tFunction{params: []Param{{"a", TInt}}, retType: TString},
+			true,
+		},
+		{
+			&tFunction{params: []Param{{"a", NewTVar("A")}}, retType: NewTVar("B")},
+			false,
+		},
+		{
+			&TObject{Types: map[string]Type{"foo": TString, "bar": NewTVar("A")}},
+			false,
+		},
+		{
+			NewTVar("A"),
+			false,
+		},
+	}
+
+	for idx, testCase := range cases {
+		concrete := TypeIsConcrete(testCase.typ)
+		if concrete != testCase.concrete {
+			t.Errorf("case %d: expected %v; got %v", idx, testCase.concrete, concrete)
 		}
 	}
 }

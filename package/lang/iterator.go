@@ -1,7 +1,5 @@
 package lang
 
-import "fmt"
-
 type Iterator interface {
 	// Next returns the next value, or an error if we have reached the
 	// end of the sequence.
@@ -25,7 +23,6 @@ func (mi *mapIterator) Next(c Caller) (Value, error) {
 		return nil, err
 	}
 	val, err := c.Call(mi.f, []Value{next})
-	fmt.Println("next of map iterator", val.Format().Render(), err)
 	return val, err
 }
 
