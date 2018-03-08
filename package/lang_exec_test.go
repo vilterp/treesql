@@ -66,12 +66,14 @@ func TestLangExec(t *testing.T) {
 
 	// Cases
 	testCases := []struct {
-		in      lang.Expr
-		typ     string
-		outJSON string
+		in         lang.Expr
+		prettyExpr string
+		typ        string
+		outJSON    string
 	}{
 		{
 			scanPostsByID,
+			`blog_posts.id.scan`,
 			`Iterator<{
   id: string,
   title: string
@@ -90,6 +92,10 @@ func TestLangExec(t *testing.T) {
 					lang.TString,
 				),
 			}),
+			`map(blog_posts.id.scan, (post: {
+  id: string,
+  title: string
+}): string => (post.title))`,
 			`Iterator<string>`,
 			`["hello world", "hello again world"]`,
 		},
@@ -104,6 +110,13 @@ func TestLangExec(t *testing.T) {
 		txn := &Txn{
 			boltTxn: boltTxn,
 			db:      db,
+		}
+
+		// Check pretty printed form.
+		pretty := testCase.in.Format().Render()
+		if pretty != testCase.prettyExpr {
+			t.Errorf("case %d: expected pretty form `%s`; got `%s`", idx, testCase.prettyExpr, pretty)
+			continue
 		}
 
 		// Construct scope.
