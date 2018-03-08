@@ -107,7 +107,7 @@ func (tr TRecord) Format() pp.Doc {
 	return pp.Concat([]pp.Doc{
 		pp.Text("{"), pp.Newline,
 		pp.Nest(2, pp.Join(kvDocs, pp.CommaNewline)),
-		pp.Newline,
+		pp.CommaNewline,
 		pp.Text("}"),
 	})
 }

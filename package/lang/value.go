@@ -127,7 +127,7 @@ func (v *VRecord) Format() pp.Doc {
 	return pp.Concat([]pp.Doc{
 		pp.Text("("), pp.Newline,
 		pp.Nest(2, pp.Join(kvDocs, pp.CommaNewline)),
-		pp.Newline,
+		pp.CommaNewline,
 		pp.Text("}"),
 	})
 }
@@ -173,7 +173,11 @@ func (v *VIteratorRef) GetType() Type {
 
 func (v *VIteratorRef) Format() pp.Doc {
 	// TODO: some memory address or something to make them distinct?
-	return pp.Concat([]pp.Doc{pp.Text("<iterator>")})
+	return pp.Concat([]pp.Doc{
+		pp.Text("<Iterator"),
+		v.ofType.Format(),
+		pp.Text(">"),
+	})
 }
 
 func (v *VIteratorRef) WriteAsJSON(w *bufio.Writer, c Caller) error {
@@ -295,7 +299,7 @@ func (vb *VBuiltin) GetType() Type {
 
 func (vb *VBuiltin) Format() pp.Doc {
 	return pp.Text(fmt.Sprintf(
-		`<builtin %s(%s): %s>`, vb.Name, vb.Params.Format(), vb.RetType.Format(),
+		`<builtin %s: (%s) => %s>`, vb.Name, vb.Params.Format(), vb.RetType.Format(),
 	))
 }
 

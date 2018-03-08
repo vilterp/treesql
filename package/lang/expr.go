@@ -342,11 +342,11 @@ func NewMemberAccess(record Expr, member string) *EMemberAccess {
 }
 
 func (ma *EMemberAccess) Evaluate(interp *interpreter) (Value, error) {
-	objVal, err := ma.record.Evaluate(interp)
+	recVal, err := ma.record.Evaluate(interp)
 	if err != nil {
 		return nil, err
 	}
-	switch tRecordVal := objVal.(type) {
+	switch tRecordVal := recVal.(type) {
 	case *VRecord:
 		val, ok := tRecordVal.vals[ma.member]
 		if !ok {
@@ -363,11 +363,11 @@ func (ma *EMemberAccess) Format() pp.Doc {
 }
 
 func (ma *EMemberAccess) GetType(scope *TypeScope) (Type, error) {
-	objTyp, err := ma.record.GetType(scope)
+	recTyp, err := ma.record.GetType(scope)
 	if err != nil {
 		return nil, err
 	}
-	switch tTyp := objTyp.(type) {
+	switch tTyp := recTyp.(type) {
 	case *TRecord:
 		typ, ok := tTyp.Types[ma.member]
 		if !ok {
@@ -375,7 +375,7 @@ func (ma *EMemberAccess) GetType(scope *TypeScope) (Type, error) {
 		}
 		return typ, nil
 	default:
-		return nil, fmt.Errorf("member access on a non-record: %s", ma.Format())
+		return nil, fmt.Errorf("member access on a non-record: %s %T", ma.Format(), recTyp)
 	}
 }
 

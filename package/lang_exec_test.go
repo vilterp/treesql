@@ -76,7 +76,7 @@ func TestLangExec(t *testing.T) {
 			`blog_posts.id.scan`,
 			`Iterator<{
   id: string,
-  title: string
+  title: string,
 }>`,
 			`[
 					{"id": "0", "title": "hello world"},
@@ -94,7 +94,7 @@ func TestLangExec(t *testing.T) {
 			}),
 			`map(blog_posts.id.scan, (post: {
   id: string,
-  title: string
+  title: string,
 }): string => (post.title))`,
 			`Iterator<string>`,
 			`["hello world", "hello again world"]`,
@@ -120,8 +120,7 @@ func TestLangExec(t *testing.T) {
 		}
 
 		// Construct scope.
-		userRootScope := db.Schema.toScope(txn)
-		typeScope := userRootScope.ToTypeScope()
+		userRootScope, typeScope := db.Schema.toScope(txn)
 
 		// Get type; compare.
 		typ, err := testCase.in.GetType(typeScope)
