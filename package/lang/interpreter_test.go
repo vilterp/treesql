@@ -29,7 +29,7 @@ func TestInterpreter(t *testing.T) {
 		typErr  string
 		evalErr string
 	}{
-		// Basic func call
+		// Basic func Call
 		{
 			expr: &EFuncCall{
 				funcName: "plus",
@@ -61,7 +61,7 @@ func TestInterpreter(t *testing.T) {
 					NewStringLit("bla"),
 				},
 			},
-			typErr: "call to plus, param 0: have string; want int",
+			typErr: "Call to plus, param 0: have string; want int",
 		},
 		// Nonexistent func
 		{
@@ -85,7 +85,7 @@ func TestInterpreter(t *testing.T) {
 			},
 			typErr: "not in scope: bloop",
 		},
-		// Lambda call
+		// Lambda Call
 		{
 			expr: &EFuncCall{
 				funcName: "plus5",
@@ -100,7 +100,7 @@ func TestInterpreter(t *testing.T) {
 
 	// lord this error checking code is tedious
 	for idx, testCase := range cases {
-		interp := newInterpreter(userRootScope, testCase.expr)
+		interp := NewInterpreter(userRootScope, testCase.expr)
 		// Typecheck
 		typ, typErr := testCase.expr.GetType(userRootScope)
 		if typErr == nil {
@@ -124,7 +124,7 @@ func TestInterpreter(t *testing.T) {
 			continue
 		}
 		// Evaluate
-		val, evalErr := interp.interpret()
+		val, evalErr := interp.Interpret()
 		if evalErr == nil {
 			if testCase.evalErr != "" {
 				t.Errorf(`case %d: expected eval error "%s"; got none`, idx, evalErr.Error())
