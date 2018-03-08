@@ -35,7 +35,7 @@ func (i *interpreter) pushFrame(frame *stackFrame) {
 
 func (i *interpreter) popFrame() *stackFrame {
 	if i.stackTop == nil {
-		panic("can'out pop frame; at bottom")
+		panic("can't pop frame; at bottom")
 	}
 	top := i.stackTop
 	i.stackTop = top.parentFrame
@@ -47,8 +47,7 @@ func (i *interpreter) Call(vFunc vFunction, argVals []Value) (Value, error) {
 	newScope := NewScope(i.stackTop.scope)
 	params := vFunc.GetParamList()
 	if len(params) != len(argVals) {
-		// Checked when we get the type.
-		panic("wrong number of args")
+		panic("wrong number of args; should have been caught by type checker")
 	}
 	for idx, argVal := range argVals {
 		param := params[idx]
@@ -70,47 +69,16 @@ func (i *interpreter) Call(vFunc vFunction, argVals []Value) (Value, error) {
 		return val, err
 	case *VBuiltin:
 		val, err = tVFunc.Impl(i, argVals)
+		if matches, _ := val.GetType().matches(tVFunc.RetType); !matches {
+			return nil, fmt.Errorf(
+				"builtin %s supposed to return %s; returned %s",
+				tVFunc.Name, tVFunc.RetType.Format().Render(), val.GetType().Format().Render(),
+			)
+		}
 	}
 	// Pop and return.
 	i.popFrame()
 	return val, err
-}
-
-type Scope struct {
-	parent *Scope
-	vals   map[string]Value
-}
-
-func NewScope(parent *Scope) *Scope {
-	return &Scope{
-		vals:   map[string]Value{},
-		parent: parent,
-	}
-}
-
-type notInScopeError struct {
-	name string
-}
-
-func (e *notInScopeError) Error() string {
-	return fmt.Sprintf("not in scope: %s", e.name)
-}
-
-func (s *Scope) find(name string) (Value, error) {
-	val, ok := s.vals[name]
-	if !ok {
-		if s.parent != nil {
-			return s.parent.find(name)
-		}
-		return nil, &notInScopeError{
-			name: name,
-		}
-	}
-	return val, nil
-}
-
-func (s *Scope) Add(name string, value Value) {
-	s.vals[name] = value
 }
 
 type stackFrame struct {

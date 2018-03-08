@@ -303,7 +303,9 @@ func (vl *vLambda) GetType() Type {
 	// TODO: this is a bit awkward
 	t, err := vl.def.GetType(nil)
 	if err != nil {
-		panic("panic in lambda get type")
+		panic(fmt.Sprintf(
+			"error getting type of lambda value `%s`: %v", vl.def.Format().Render(), err,
+		))
 	}
 	return t
 }

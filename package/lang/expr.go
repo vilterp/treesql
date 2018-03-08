@@ -9,7 +9,7 @@ import (
 
 type Expr interface {
 	Evaluate(*interpreter) (Value, error)
-	GetType(*Scope) (Type, error)
+	GetType(*TypeScope) (Type, error)
 	Format() pp.Doc
 }
 
@@ -33,7 +33,7 @@ func (e *EIntLit) Format() pp.Doc {
 	return pp.Textf("%d", *e)
 }
 
-func (e *EIntLit) GetType(_ *Scope) (Type, error) {
+func (e *EIntLit) GetType(*TypeScope) (Type, error) {
 	return TInt, nil
 }
 
@@ -57,7 +57,7 @@ func (e *EStringLit) Format() pp.Doc {
 	return pp.Textf("%#v", *e)
 }
 
-func (e *EStringLit) GetType(_ *Scope) (Type, error) {
+func (e *EStringLit) GetType(*TypeScope) (Type, error) {
 	return TString, nil
 }
 
@@ -81,12 +81,12 @@ func (e *EVar) Format() pp.Doc {
 	return pp.Text(e.name)
 }
 
-func (e *EVar) GetType(scope *Scope) (Type, error) {
-	val, err := scope.find(e.name)
+func (e *EVar) GetType(scope *TypeScope) (Type, error) {
+	typ, err := scope.find(e.name)
 	if err != nil {
 		return nil, err
 	}
-	return val.GetType(), nil
+	return typ, nil
 }
 
 // Object
@@ -141,7 +141,7 @@ func (ol *EObjectLit) Format() pp.Doc {
 	})
 }
 
-func (ol *EObjectLit) GetType(scope *Scope) (Type, error) {
+func (ol *EObjectLit) GetType(scope *TypeScope) (Type, error) {
 	types := map[string]Type{}
 
 	for name, expr := range ol.exprs {
@@ -175,7 +175,7 @@ var _ Expr = &ELambda{}
 func (l *ELambda) Evaluate(interp *interpreter) (Value, error) {
 	return &vLambda{
 		def: l,
-		// TODO: don'out close over the scope if we don'out need anything from there
+		// TODO: don't close over the scope if we don't need anything from there
 		definedInScope: interp.stackTop.scope,
 	}, nil
 }
@@ -191,7 +191,21 @@ func (l *ELambda) Format() pp.Doc {
 	)
 }
 
-func (l *ELambda) GetType(_ *Scope) (Type, error) {
+func (l *ELambda) GetType(s *TypeScope) (Type, error) {
+	innerScope := NewTypeScope(s)
+	for _, param := range l.params {
+		innerScope.add(param.Name, param.Typ)
+	}
+	innerTyp, err := l.body.GetType(innerScope)
+	if err != nil {
+		return nil, err
+	}
+	if matches, _ := innerTyp.matches(l.retType); !matches {
+		return nil, fmt.Errorf(
+			"lambda declared as returning %s; body is of type %s",
+			l.retType.Format().Render(), innerTyp.Format().Render(),
+		)
+	}
 	return &tFunction{
 		params:  l.params,
 		retType: l.retType,
@@ -244,7 +258,7 @@ func (fc *EFuncCall) Evaluate(interp *interpreter) (Value, error) {
 	case *VBuiltin:
 		return interp.Call(tFuncVal, argVals)
 	default:
-		return nil, fmt.Errorf("not a function: %s", fc.funcName)
+		return nil, fmt.Errorf("not a function: %s %v", fc.funcName, tFuncVal)
 	}
 }
 
@@ -262,7 +276,7 @@ func (fc *EFuncCall) Format() pp.Doc {
 	})
 }
 
-func (fc *EFuncCall) GetType(scope *Scope) (Type, error) {
+func (fc *EFuncCall) GetType(scope *TypeScope) (Type, error) {
 	funcVal, err := scope.find(fc.funcName)
 	if err != nil {
 		return nil, err
@@ -287,7 +301,6 @@ func (fc *EFuncCall) GetType(scope *Scope) (Type, error) {
 			}
 			matches, argBindings := param.Typ.matches(argType)
 			if !matches {
-				// TODO: add this check back in
 				return nil, fmt.Errorf(
 					"call to %s, param %d: have %s; want %s",
 					fc.funcName, idx, argType.Format().Render(), param.Typ.Format().Render(),
@@ -295,9 +308,6 @@ func (fc *EFuncCall) GetType(scope *Scope) (Type, error) {
 			}
 			bindings.extend(argBindings)
 		}
-		// Check that body matches declared type.
-		// this should really be a TypeScope, not a scope.
-		// will need to construct a new scope here.
 		subsType, _, err := tFuncVal.GetRetType().substitute(bindings)
 		return subsType, err
 	default:
@@ -345,7 +355,7 @@ func (ma *EMemberAccess) Format() pp.Doc {
 	return pp.Concat([]pp.Doc{ma.record.Format(), pp.Text("."), pp.Text(ma.member)})
 }
 
-func (ma *EMemberAccess) GetType(scope *Scope) (Type, error) {
+func (ma *EMemberAccess) GetType(scope *TypeScope) (Type, error) {
 	objTyp, err := ma.record.GetType(scope)
 	if err != nil {
 		return nil, err
