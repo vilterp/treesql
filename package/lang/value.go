@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"sort"
 
+	"reflect"
+
 	pp "github.com/vilterp/treesql/package/pretty_print"
 )
 
@@ -69,7 +71,7 @@ func (v *VString) GetType() Type {
 }
 
 func (v *VString) WriteAsJSON(w *bufio.Writer) error {
-	_, err := w.WriteString(v.Format().Render())
+	_, err := w.WriteString(fmt.Sprintf("%#v", *v))
 	return err
 }
 
@@ -195,12 +197,11 @@ func (v *VIteratorRef) WriteAsJSON(w *bufio.Writer) error {
 			break
 		}
 		// Check type.
-		// TODO: not sure this actually checks value equality, since
-		// these are both pointers.
-		if nextVal.GetType() != v.ofType {
+		// TODO: maybe define my own equality operator instead of relying on reflect.DeepEqual?
+		if !reflect.DeepEqual(nextVal.GetType(), v.ofType) {
 			return fmt.Errorf(
-				"iterator of type %s got next value %s",
-				v.ofType.Format().Render(), nextVal.Format().Render(),
+				"iterator of type %s got next value of wrong type: %s",
+				v.ofType.Format().Render(), nextVal.GetType().Format().Render(),
 			)
 		}
 		if idx > 0 {
