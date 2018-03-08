@@ -88,7 +88,7 @@ func (pl ParamList) Format() pp.Doc {
 	for idx, param := range pl {
 		paramDocs[idx] = pp.Concat([]pp.Doc{
 			pp.Text(param.Name),
-			pp.Text(" "),
+			pp.Text(": "),
 			param.Typ.Format(),
 		})
 	}
