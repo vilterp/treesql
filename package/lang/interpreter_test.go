@@ -98,11 +98,13 @@ func TestInterpreter(t *testing.T) {
 		},
 	}
 
+	typeScope := userRootScope.ToTypeScope()
+
 	// lord this error checking code is tedious
 	for idx, testCase := range cases {
 		interp := NewInterpreter(userRootScope, testCase.expr)
 		// Typecheck
-		typ, typErr := testCase.expr.GetType(userRootScope)
+		typ, typErr := testCase.expr.GetType(typeScope)
 		if typErr == nil {
 			if testCase.typErr != "" {
 				t.Errorf(`case %d: expected type error "%s"; got none`, idx, testCase.typErr)
