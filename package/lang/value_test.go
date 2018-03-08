@@ -4,6 +4,8 @@ import (
 	"bufio"
 	"bytes"
 	"testing"
+
+	"github.com/vilterp/treesql/package/util"
 )
 
 func TestWriteAsJSON(t *testing.T) {
@@ -80,7 +82,7 @@ func TestWriteAsJSON(t *testing.T) {
 		}
 		w.Flush()
 		actual := buf.String()
-		equal, err := AreEqualJSON(testCase.json, actual)
+		equal, err := util.AreEqualJSON(testCase.json, actual)
 		if err != nil {
 			t.Errorf("case %d: %v", idx, err)
 			break
@@ -96,8 +98,8 @@ func TestValueGetType(t *testing.T) {
 		in  Value
 		out string
 	}{
-		{NewVInt(2), "Int"},
-		{NewVString("foo"), "String"},
+		{NewVInt(2), "int"},
+		{NewVString("foo"), "string"},
 		{
 			&VObject{
 				vals: map[string]Value{
@@ -106,8 +108,8 @@ func TestValueGetType(t *testing.T) {
 				},
 			},
 			`{
-  bar: String,
-  foo: Int
+  bar: string,
+  foo: int
 }`,
 		},
 	}
