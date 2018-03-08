@@ -89,7 +89,7 @@ type stackFrame struct {
 
 	// if it's a function stack frame
 	vFunc vFunction
-	// if it's a object key stack frame
+	// if it's a record key stack frame
 	objKey string
 	// if it's a record stack frame
 	primaryKey Value

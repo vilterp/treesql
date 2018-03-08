@@ -77,30 +77,30 @@ func (tString) matches(other Type) (bool, TypeVarBindings) {
 
 func (ts *tString) substitute(TypeVarBindings) (Type, bool, error) { return ts, true, nil }
 
-// Object
+// Record
 
-type TObject struct {
+type TRecord struct {
 	Types map[string]Type
 }
 
-var _ Type = &TObject{}
+var _ Type = &TRecord{}
 
-func (to TObject) Format() pp.Doc {
+func (tr TRecord) Format() pp.Doc {
 	// Sort keys
-	keys := make([]string, len(to.Types))
+	keys := make([]string, len(tr.Types))
 	idx := 0
-	for k := range to.Types {
+	for k := range tr.Types {
 		keys[idx] = k
 		idx++
 	}
 	sort.Strings(keys)
 
-	kvDocs := make([]pp.Doc, len(to.Types))
+	kvDocs := make([]pp.Doc, len(tr.Types))
 	for idx, key := range keys {
 		kvDocs[idx] = pp.Concat([]pp.Doc{
 			pp.Text(key),
 			pp.Text(": "),
-			to.Types[key].Format(),
+			tr.Types[key].Format(),
 		})
 	}
 
@@ -112,15 +112,15 @@ func (to TObject) Format() pp.Doc {
 	})
 }
 
-func (to *TObject) matches(other Type) (bool, TypeVarBindings) {
-	otherTO, ok := other.(*TObject)
+func (tr *TRecord) matches(other Type) (bool, TypeVarBindings) {
+	otherTO, ok := other.(*TRecord)
 	if !ok {
 		return false, nil
 	}
-	if len(otherTO.Types) != len(to.Types) {
+	if len(otherTO.Types) != len(tr.Types) {
 		return false, nil
 	}
-	for name, typ := range to.Types {
+	for name, typ := range tr.Types {
 		otherTyp, ok := otherTO.Types[name]
 		if !ok {
 			return false, nil
@@ -132,10 +132,10 @@ func (to *TObject) matches(other Type) (bool, TypeVarBindings) {
 	return true, nil
 }
 
-func (ts *TObject) substitute(tvb TypeVarBindings) (Type, bool, error) {
+func (tr *TRecord) substitute(tvb TypeVarBindings) (Type, bool, error) {
 	types := map[string]Type{}
 	isConcrete := true
-	for name, typ := range ts.Types {
+	for name, typ := range tr.Types {
 		newTyp, typConcrete, err := typ.substitute(tvb)
 		if err != nil {
 			return nil, false, err
@@ -143,7 +143,7 @@ func (ts *TObject) substitute(tvb TypeVarBindings) (Type, bool, error) {
 		types[name] = newTyp
 		isConcrete = isConcrete && typConcrete
 	}
-	return &TObject{Types: types}, isConcrete, nil
+	return &TRecord{Types: types}, isConcrete, nil
 }
 
 // Iterator

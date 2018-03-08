@@ -40,5 +40,4 @@ func init() {
 // TODO:
 // comparision
 // arithmetic
-// object member access
-// maybe object subset and object update
+// maybe record subset and update
