@@ -57,22 +57,13 @@ func TestLangExec(t *testing.T) {
 
 	db := tsr.server.db
 
-	// Common stuff
-	scanPostsByID := lang.NewMemberAccess(
-		lang.NewMemberAccess(lang.NewVar("blog_posts"), "id"),
-		"scan",
-	)
-	blogPostType := db.Schema.Tables["blog_posts"].getType()
-
 	// Cases
 	testCases := []struct {
-		in         lang.Expr
-		prettyExpr string
-		typ        string
-		outJSON    string
+		in      string
+		typ     string
+		outJSON string
 	}{
 		{
-			scanPostsByID,
 			`blog_posts.id.scan`,
 			`Iterator<{
   id: string,
@@ -84,18 +75,7 @@ func TestLangExec(t *testing.T) {
 			]`,
 		},
 		{
-			lang.NewFuncCall("map", []lang.Expr{
-				scanPostsByID,
-				lang.NewELambda(
-					[]lang.Param{{"post", blogPostType}},
-					lang.NewMemberAccess(lang.NewVar("post"), "title"),
-					lang.TString,
-				),
-			}),
-			`map(blog_posts.id.scan, (post: {
-  id: string,
-  title: string,
-}): string => (post.title))`,
+			`map(blog_posts.id.scan, (post: blog_posts_t): string => (post.title))`,
 			`Iterator<string>`,
 			`["hello world", "hello again world"]`,
 		},
@@ -112,10 +92,10 @@ func TestLangExec(t *testing.T) {
 			db:      db,
 		}
 
-		// Check pretty printed form.
-		pretty := testCase.in.Format().String()
-		if pretty != testCase.prettyExpr {
-			t.Errorf("case %d: expected pretty form `%s`; got `%s`", idx, testCase.prettyExpr, pretty)
+		// Parse it.
+		parseTree, err := lang.Parse(testCase.in)
+		if err != nil {
+			t.Errorf("case %d: error: %v", err)
 			continue
 		}
 

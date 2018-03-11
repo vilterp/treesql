@@ -20,6 +20,11 @@ type TraceTree struct {
 	RegexMatch string
 	// If it's a ref
 	RefTrace *TraceTree `json:",omitempty"`
+	// If it's a mapper
+	InnerTrace *TraceTree `json:",omitempty"`
+	MapRes     interface{}
+	// If it's a success
+	Success bool
 }
 
 func (tt *TraceTree) String(g *Grammar) string {
@@ -51,4 +56,27 @@ func (tt *TraceTree) stringInner(g *Grammar) string {
 	default:
 		panic(fmt.Sprintf("unimplemented: %T", rule))
 	}
+}
+
+func (tt *TraceTree) GetMapRes() interface{} {
+	if tt.MapRes != nil {
+		return tt.MapRes
+	}
+	if tt.RefTrace != nil {
+		return tt.RefTrace.GetMapRes()
+	}
+	if tt.ChoiceTrace != nil {
+		return tt.ChoiceTrace.GetMapRes()
+	}
+	if tt.ItemTraces != nil {
+		results := make([]interface{}, len(tt.ItemTraces))
+		for idx, thing := range tt.ItemTraces {
+			results[idx] = thing.GetMapRes()
+		}
+	}
+	if tt.Success {
+		return nil
+	}
+	//panic(fmt.Sprintf("can't get map res for %+v", tt))
+	return nil
 }

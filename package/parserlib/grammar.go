@@ -68,6 +68,36 @@ type Rule interface {
 	Serialize(g *Grammar) SerializedRule
 }
 
+// map
+
+type mapper struct {
+	innerRule Rule
+	fun       func(*TraceTree) interface{}
+}
+
+var _ Rule = &mapper{}
+
+func Map(rule Rule, fun func(*TraceTree) interface{}) *mapper {
+	return &mapper{
+		innerRule: rule,
+		fun:       fun,
+	}
+}
+
+func (m *mapper) String() string {
+	return fmt.Sprintf("map(%s)", m.innerRule.String())
+}
+
+func (m *mapper) Validate(g *Grammar) error {
+	return m.innerRule.Validate(g)
+}
+
+func (m *mapper) Children() []Rule {
+	return []Rule{
+		m.innerRule,
+	}
+}
+
 // choice
 
 type choice struct {

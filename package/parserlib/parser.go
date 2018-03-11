@@ -178,7 +178,18 @@ func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 			EndPos:     endPos,
 			RegexMatch: matchText,
 		}, nil
+	case *mapper:
+		innerTrace, err := ps.callRule(tRule.innerRule, frame.pos)
+		minimalTrace.InnerTrace = innerTrace
+		minimalTrace.EndPos = innerTrace.EndPos
+		if err != nil {
+			return minimalTrace, err
+		}
+		res := tRule.fun(innerTrace)
+		minimalTrace.MapRes = res
+		return minimalTrace, nil
 	case *succeed:
+		minimalTrace.Success = true
 		return minimalTrace, nil
 	default:
 		panic(fmt.Sprintf("not implemented: %T", rule))
