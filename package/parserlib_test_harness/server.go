@@ -1,8 +1,7 @@
-package main
+package parserlib_test_harness
 
 import (
 	"encoding/json"
-	"flag"
 	"fmt"
 	"log"
 	"net/http"
@@ -10,8 +9,6 @@ import (
 
 	"github.com/vilterp/treesql/package/parserlib"
 )
-
-var port = flag.String("port", "9999", "port to serve on")
 
 type completionsRequest struct {
 	Input     string
@@ -26,27 +23,17 @@ type completionsResponse struct {
 // TODO: use some logging middleware
 // which prints statuses, urls, and times
 
-// TODO: parameterize this server so it can be started up with other grammars
-
-func main() {
-	flag.Parse()
-
-	// Create a serialized version of the grammar.
-
-	tsg, err := parserlib.TestTreeSQLGrammar()
-	if err != nil {
-		log.Fatal("error loading grammar:", err)
-	}
-	tsgSerialized := tsg.Serialize()
+func NewServer(port string, gram *parserlib.Grammar, startRule string) {
+	gramSerialized := gram.Serialize()
 
 	// Serve UI static files.
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("/index.html")
-		http.ServeFile(w, r, "build/index.html")
+		http.ServeFile(w, r, "package/parserlib_test_harness/build/index.html")
 	})
 
-	fileServer := http.FileServer(http.Dir("build/static"))
+	fileServer := http.FileServer(http.Dir("package/parserlib_test_harness/build/static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fileServer))
 
 	// Serve grammar and completions.
@@ -54,7 +41,7 @@ func main() {
 	http.HandleFunc("/grammar", func(w http.ResponseWriter, r *http.Request) {
 		start := time.Now()
 		w.Header().Set("Access-Control-Allow-Origin", "*")
-		if err := json.NewEncoder(w).Encode(&tsgSerialized); err != nil {
+		if err := json.NewEncoder(w).Encode(&gramSerialized); err != nil {
 			log.Println("err encoding json:", err)
 		}
 		end := time.Now()
@@ -83,7 +70,7 @@ func main() {
 		var resp completionsResponse
 
 		// Parse it.
-		trace, err := tsg.Parse("select", cr.Input)
+		trace, err := gram.Parse(startRule, cr.Input)
 		resp.Trace = trace
 		if err != nil {
 			resp.Err = err.Error()
@@ -101,7 +88,7 @@ func main() {
 	})
 
 	// Start 'er up.
-	addr := fmt.Sprintf(":%s", *port)
+	addr := fmt.Sprintf(":%s", port)
 	log.Printf("serving on %s", addr)
 	if err := http.ListenAndServe(addr, nil); err != nil {
 		log.Fatal(err)
