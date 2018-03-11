@@ -25,6 +25,10 @@ func (g *Grammar) GetCompletions(startRule string, input string) ([]string, erro
 	}
 }
 
+func (m *mapper) Completions(g *Grammar) []string {
+	return m.innerRule.Completions(g)
+}
+
 func (c *choice) Completions(g *Grammar) []string {
 	var out []string
 	for _, choice := range c.choices {
