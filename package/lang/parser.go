@@ -3,6 +3,8 @@ package lang
 import (
 	"fmt"
 
+	"strconv"
+
 	p "github.com/vilterp/treesql/package/parserlib"
 )
 
@@ -44,16 +46,36 @@ var rules = map[string]p.Rule{
 	"param":      p.Ref("var"),
 	"param_list": p.ListRule("param", "param_list", p.CommaWhitespace),
 
-	"member_access": p.Sequence([]p.Rule{
-		p.Ref("var"),
-		p.Keyword("."),
-		p.Ident,
-	}),
+	"member_access": p.Map(
+		p.Sequence([]p.Rule{
+			p.Ref("var"),
+			p.Keyword("."),
+			p.Ident,
+		}),
+		func(tree *p.TraceTree) interface{} {
+			recordExpr, ok := tree.ItemTraces[0].GetMapRes().(Expr)
+			if !ok {
+				panic(fmt.Sprintf("failed to cast %T to expr", recordExpr))
+			}
+			member := tree.ItemTraces[2].RegexMatch
+			return NewMemberAccess(recordExpr, member)
+		},
+	),
 
 	// Primitives.
-	"var":            p.Ident,
-	"string_lit":     p.StringLit,
-	"signed_int_lit": p.SignedIntLit,
+	"var": p.Map(p.Ident, func(tt *p.TraceTree) interface{} {
+		return NewVar(tt.RegexMatch)
+	}),
+	"string_lit": p.Map(p.StringLit, func(tree *p.TraceTree) interface{} {
+		return NewStringLit(tree.RegexMatch)
+	}),
+	"signed_int_lit": p.Map(p.SignedIntLit, func(tree *p.TraceTree) interface{} {
+		val, err := strconv.Atoi(tree.RegexMatch)
+		if err != nil {
+			panic(fmt.Sprintf("err parsing int: %v", err))
+		}
+		return NewIntLit(val)
+	}),
 
 	// Expression.
 	"expr": p.Choice([]p.Rule{
@@ -79,6 +101,17 @@ func init() {
 	Grammar = g
 }
 
-func Parse(input string) (*p.TraceTree, error) {
-	return Grammar.Parse("expr", input)
+func Parse(input string) (Expr, error) {
+	tree, err := Grammar.Parse("expr", input)
+	if err != nil {
+		return nil, err
+	}
+
+	mapRes := tree.GetMapRes()
+	expr, ok := mapRes.(Expr)
+	if !ok {
+		fmt.Printf("TRACE: %+v\n", tree)
+		return nil, fmt.Errorf("failed to cast %T to Expr", mapRes)
+	}
+	return expr, nil
 }

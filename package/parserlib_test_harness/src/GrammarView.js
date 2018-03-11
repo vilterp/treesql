@@ -125,6 +125,18 @@ class RuleView extends React.Component {
         return highlightWrapper(<span className="rule-regex">/${rule.Regex}/</span>);
       case "SUCCEED":
         return <span className="rule-succeed">&lt;succeed&gt;</span>;
+      case "MAP":
+        return (
+          <span>
+            MAP(
+            <RuleView
+              ruleID={rule.InnerRule}
+              grammar={grammar}
+              {...highlightProps}
+            />
+            )
+          </span>
+        );
       case "REF":
         return (
           <RuleNameView
