@@ -107,6 +107,14 @@ class SourceViewNode extends React.Component {
             {trace.RegexMatch}
           </span>
         );
+      case "MAP":
+        return (
+          <SourceViewNode
+            trace={trace.InnerTrace}
+            grammar={grammar}
+            {...highlightProps}
+          />
+        );
       case "SUCCEED":
         return null;
       default:

@@ -143,6 +143,18 @@ class TraceNode extends React.Component {
             `"${trace.RegexMatch.replace("\n", "\\n").replace("\t", "\\t")}"`,
           ),
         );
+      case "MAP":
+        return (
+          <div>
+            MAP
+            <br />
+            <TraceNode
+              grammar={grammar}
+              trace={trace.InnerTrace}
+              {...highlightProps}
+            />
+          </div>
+        );
       case "SUCCEED":
         return <span className="rule-succeed">&lt;succeed&gt;</span>;
       default:

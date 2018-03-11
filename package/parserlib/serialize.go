@@ -5,11 +5,12 @@ package parserlib
 type SerializedRule struct {
 	RuleType string
 
-	Choices  []RuleID `json:",omitempty"`
-	SeqItems []RuleID `json:",omitempty"`
-	Ref      string   `json:",omitempty"`
-	Regex    string   `json:",omitempty"`
-	Keyword  string   `json:",omitempty"`
+	Choices   []RuleID `json:",omitempty"`
+	SeqItems  []RuleID `json:",omitempty"`
+	InnerRule RuleID
+	Ref       string `json:",omitempty"`
+	Regex     string `json:",omitempty"`
+	Keyword   string `json:",omitempty"`
 }
 
 type SerializedGrammar struct {
@@ -29,6 +30,13 @@ func (g *Grammar) Serialize() *SerializedGrammar {
 		sg.RulesByID[id] = rule.Serialize(g)
 	}
 	return sg
+}
+
+func (m *mapper) Serialize(g *Grammar) SerializedRule {
+	return SerializedRule{
+		RuleType:  "MAP",
+		InnerRule: g.idForRule[m.innerRule],
+	}
 }
 
 func (c *choice) Serialize(g *Grammar) SerializedRule {

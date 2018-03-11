@@ -21,7 +21,7 @@ func (s *Schema) toScope(txn *Txn) (*lang.Scope, *lang.TypeScope) {
 		}
 		tableRec := table.toVRecord(txn)
 		newScope.Add(table.Name, tableRec)
-		newTypeScope.Add(table.Name, tableRec.GetType())
+		newTypeScope.Add(fmt.Sprintf("%s_t", table.Name), tableRec.GetType())
 	}
 	return newScope, newTypeScope
 }
