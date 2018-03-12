@@ -4,7 +4,6 @@ import "fmt"
 
 func (g *Grammar) GetCompletions(startRule string, input string) ([]string, error) {
 	trace, err := g.Parse(startRule, input)
-	fmt.Println("trace:", trace.String(g))
 	switch err.(type) {
 	case *ParseError:
 		break

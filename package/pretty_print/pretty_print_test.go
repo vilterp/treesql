@@ -8,17 +8,17 @@ func TestPrettyPrint(t *testing.T) {
 		out string
 	}{
 		{
-			Concat([]Doc{Text("foo"), Text(" "), Text("bar")}),
+			Seq([]Doc{Text("foo"), Text(" "), Text("bar")}),
 			`foo bar`,
 		},
 		{
-			Concat([]Doc{Text("foo"), Text("["), Newline, Nest(2, Text("bar")), Newline, Text("]")}),
+			Seq([]Doc{Text("foo"), Text("["), Newline, Nest(2, Text("bar")), Newline, Text("]")}),
 			`foo[
   bar
 ]`,
 		},
 		{
-			Concat([]Doc{
+			Seq([]Doc{
 				Text("["), Newline,
 				Nest(2, Join([]Doc{
 					Text("foo: bar,"),

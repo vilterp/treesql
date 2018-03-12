@@ -8,33 +8,64 @@ import (
 	p "github.com/vilterp/treesql/package/parserlib"
 )
 
+type recordKVPair struct {
+	key   string
+	value Expr
+}
+
 var rules = map[string]p.Rule{
 	// Func call.
-	"func_call": p.Sequence([]p.Rule{
-		p.Ref("var"),
-		p.Keyword("("),
-		p.Ref("arg_list"),
-		p.Keyword(")"),
-	}),
+	"func_call": p.Map(
+		p.Sequence([]p.Rule{
+			p.Ref("var"),
+			p.Keyword("("),
+			p.Ref("arg_list"),
+			p.Keyword(")"),
+		}),
+		func(tree *p.TraceTree) interface{} {
+			return NewFuncCall("foo", []Expr{})
+		},
+	),
 	"arg_list": p.ListRule(
 		"expr",
 		"arg_list",
 		p.Sequence([]p.Rule{p.Keyword(","), p.OptWhitespace}),
 	),
 
-	"object_literal": p.Sequence([]p.Rule{
-		p.Keyword("{"),
-		p.OptWhitespaceSurround(p.Ref("obj_kv_pairs")),
-		p.Keyword("}"),
+	"record_literal": p.Map(
+		p.Sequence([]p.Rule{
+			p.Keyword("{"),
+			p.OptWhitespaceSurround(p.Ref("record_kv_pairs")),
+			p.Keyword("}"),
+		}),
+		func(tree *p.TraceTree) interface{} {
+			listT := tree.ItemTraces[1]
+			exprs := map[string]Expr{}
+			for _, kvInterface := range listT.ItemTraces[1].GetListRes() {
+				kv := kvInterface.(*recordKVPair)
+				exprs[kv.key] = kv.value
+			}
+			return &ERecordLit{
+				exprs: exprs,
+			}
+		},
+	),
+	"record_kv_pairs": p.Sequence([]p.Rule{
+		p.ListRule("record_kv_pair", "record_kv_pairs", p.CommaWhitespace),
 	}),
-	"obj_kv_pairs": p.Sequence([]p.Rule{
-		p.ListRule("obj_kv_pair", "obj_kv_pairs", p.CommaWhitespace),
-	}),
-	"obj_kv_pair": p.Sequence([]p.Rule{
-		p.Ident,
-		ColonWhitespace,
-		p.Ref("expr"),
-	}),
+	"record_kv_pair": p.Map(
+		p.Sequence([]p.Rule{
+			p.Ident,
+			ColonWhitespace,
+			p.Ref("expr"),
+		}),
+		func(tree *p.TraceTree) interface{} {
+			return &recordKVPair{
+				key:   tree.ItemTraces[0].RegexMatch,
+				value: tree.ItemTraces[2].GetMapRes().(Expr),
+			}
+		},
+	),
 
 	// Lambda.
 	"lambda": p.Sequence([]p.Rule{
@@ -82,7 +113,7 @@ var rules = map[string]p.Rule{
 		p.Ref("func_call"),
 		p.Ref("member_access"),
 		p.Ref("var"),
-		p.Ref("object_literal"),
+		p.Ref("record_literal"),
 		p.Ref("lambda"),
 		p.Ref("string_lit"),
 		p.Ref("signed_int_lit"),
@@ -110,7 +141,6 @@ func Parse(input string) (Expr, error) {
 	mapRes := tree.GetMapRes()
 	expr, ok := mapRes.(Expr)
 	if !ok {
-		fmt.Printf("TRACE: %+v\n", tree)
 		return nil, fmt.Errorf("failed to cast %T to Expr", mapRes)
 	}
 	return expr, nil

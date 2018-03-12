@@ -2,10 +2,13 @@ package parserlib
 
 import (
 	"fmt"
-	"strings"
+
+	pp "github.com/vilterp/treesql/package/pretty_print"
 )
 
 type TraceTree struct {
+	grammar *Grammar
+
 	RuleID   RuleID
 	StartPos Position
 	EndPos   Position
@@ -27,34 +30,54 @@ type TraceTree struct {
 	Success bool
 }
 
-func (tt *TraceTree) String(g *Grammar) string {
-	if tt == nil {
-		return "<nil>"
-	}
-	return fmt.Sprintf("<%s => %s>", tt.stringInner(g), tt.EndPos.CompactString())
-}
+func (tt *TraceTree) Format() pp.Doc {
+	rule := tt.grammar.ruleForID[tt.RuleID]
 
-func (tt *TraceTree) stringInner(g *Grammar) string {
-	rule := g.ruleForID[tt.RuleID]
 	switch tRule := rule.(type) {
 	case *choice:
-		return fmt.Sprintf("CHOICE %d %s", tt.ChoiceIdx, tt.ChoiceTrace.String(g))
+		return pp.Seq([]pp.Doc{
+			pp.Textf("CHOICE(%d, ", tt.ChoiceIdx),
+			pp.Newline,
+			pp.Nest(2, tt.ChoiceTrace.Format()),
+			pp.Newline,
+			pp.Text(")"),
+		})
 	case *sequence:
-		seqTraces := make([]string, len(tt.ItemTraces))
-		for idx, itemTrace := range tt.ItemTraces {
-			seqTraces[idx] = itemTrace.String(g)
+		seqDocs := make([]pp.Doc, len(tt.ItemTraces))
+		for idx, item := range tt.ItemTraces {
+			seqDocs[idx] = item.Format()
 		}
-		return fmt.Sprintf("SEQ [%s]", strings.Join(seqTraces, ", "))
-	case *keyword:
-		return fmt.Sprintf("KW %#v", tRule.value)
+		return pp.Seq([]pp.Doc{
+			pp.Text("SEQUENCE("),
+			pp.Newline,
+			pp.Nest(2, pp.Join(seqDocs, pp.CommaNewline)),
+			pp.Newline,
+			pp.Text(")"),
+		})
 	case *regex:
-		return fmt.Sprintf(`REGEX "%s"`, tt.RegexMatch)
-	case *ref:
-		return fmt.Sprintf("REF %s %s", tRule.name, tt.RefTrace)
+		return pp.Textf("REGEX(%#v)", tt.RegexMatch)
 	case *succeed:
-		return "<succeed>"
+		return pp.Text("SUCCESS")
+	case *ref:
+		return pp.Seq([]pp.Doc{
+			pp.Textf("REF(%s,", tRule.name),
+			pp.Newline,
+			pp.Nest(2, tt.RefTrace.Format()),
+			pp.Newline,
+			pp.Text(")"),
+		})
+	case *keyword:
+		return pp.Textf("%#v", tRule.value)
+	case *mapper:
+		return pp.Seq([]pp.Doc{
+			pp.Text("MAP("),
+			pp.Newline,
+			pp.Nest(2, tt.InnerTrace.Format()),
+			pp.Newline,
+			pp.Text(")"),
+		})
 	default:
-		panic(fmt.Sprintf("unimplemented: %T", rule))
+		panic(fmt.Sprintf("don't know how to format a %T trace", rule))
 	}
 }
 
@@ -73,10 +96,40 @@ func (tt *TraceTree) GetMapRes() interface{} {
 		for idx, thing := range tt.ItemTraces {
 			results[idx] = thing.GetMapRes()
 		}
+		return results
 	}
 	if tt.Success {
 		return nil
 	}
-	//panic(fmt.Sprintf("can't get map res for %+v", tt))
 	return nil
+}
+
+func (tt *TraceTree) GetListRes() []interface{} {
+	// Get list ref.
+	anyItemsChoice := tt.RefTrace.ItemTraces[0]
+	// Return empty array if there's nothing.
+	if anyItemsChoice.ChoiceIdx == 1 {
+		return []interface{}{}
+	}
+	return anyItemsChoice.ChoiceTrace.GetList1Res()
+}
+
+func (tt *TraceTree) GetList1Res() []interface{} {
+	justOneItemChoice := tt
+	// If there's just one item, return it.
+	if justOneItemChoice.ChoiceIdx == 1 {
+		return []interface{}{
+			justOneItemChoice.ChoiceTrace.GetMapRes(),
+		}
+	}
+	// Otherwise, there are at least one items.
+	out := make([]interface{}, 1)
+	// Get the first item.
+	seqTrace := justOneItemChoice.ChoiceTrace
+	refTrace := seqTrace.ItemTraces[0].RefTrace
+	out[0] = refTrace.GetMapRes()
+	// Now get the rest.
+	rest := seqTrace.ItemTraces[2].GetListRes()
+	out = append(out, rest...)
+	return out
 }

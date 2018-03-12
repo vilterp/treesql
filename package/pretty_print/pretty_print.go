@@ -90,13 +90,13 @@ func (empty) Debug() string {
 	return "Empty"
 }
 
-// Concat
+// Seq
 
 type concat struct {
 	docs []Doc
 }
 
-func Concat(docs []Doc) *concat {
+func Seq(docs []Doc) *concat {
 	return &concat{
 		docs: docs,
 	}
@@ -115,7 +115,7 @@ func (c *concat) Debug() string {
 	for idx := range c.docs {
 		docStrs[idx] = c.docs[idx].String()
 	}
-	return fmt.Sprintf("Concat(%s)", strings.Join(docStrs, ", "))
+	return fmt.Sprintf("Seq(%s)", strings.Join(docStrs, ", "))
 }
 
 // Newline
@@ -145,9 +145,9 @@ func Join(docs []Doc, sep Doc) Doc {
 		}
 		out = append(out, doc)
 	}
-	return Concat(out)
+	return Seq(out)
 }
 
 var Comma = Text(",")
 
-var CommaNewline = Concat([]Doc{Comma, Newline})
+var CommaNewline = Seq([]Doc{Comma, Newline})
