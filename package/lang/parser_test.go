@@ -6,7 +6,7 @@ import (
 
 func TestParser(t *testing.T) {
 	cases := []string{
-		// var
+		//var
 		`blerp`,
 		`42`,
 		// member access
@@ -25,12 +25,12 @@ func TestParser(t *testing.T) {
   gloop: 3
 }`,
 		// lambda
-		//`(foo) => plus(foo, bar)`,
-		//{`(foo, bar) => plus(foo, bar)`},
-		//{`map(blog_posts.by_id, (post) => {
-		//  id: post.id,
-		//  title: post.title
-		//})`},
+		`() => plus(foo, bar)`,
+		`(foo, bar) => plus(foo, bar)`,
+		`map(blog_posts.by_id, (post) => {
+  id: post.id,
+  title: post.title
+})`,
 	}
 
 	for idx, testCase := range cases {
