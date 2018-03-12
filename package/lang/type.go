@@ -97,14 +97,14 @@ func (tr TRecord) Format() pp.Doc {
 
 	kvDocs := make([]pp.Doc, len(tr.Types))
 	for idx, key := range keys {
-		kvDocs[idx] = pp.Concat([]pp.Doc{
+		kvDocs[idx] = pp.Seq([]pp.Doc{
 			pp.Text(key),
 			pp.Text(": "),
 			tr.Types[key].Format(),
 		})
 	}
 
-	return pp.Concat([]pp.Doc{
+	return pp.Seq([]pp.Doc{
 		pp.Text("{"), pp.Newline,
 		pp.Nest(2, pp.Join(kvDocs, pp.CommaNewline)),
 		pp.CommaNewline,
@@ -155,7 +155,7 @@ type tIterator struct {
 var _ Type = &tIterator{}
 
 func (ti tIterator) Format() pp.Doc {
-	return pp.Concat([]pp.Doc{
+	return pp.Seq([]pp.Doc{
 		pp.Text("Iterator<"),
 		ti.innerType.Format(),
 		pp.Text(">"),
@@ -190,7 +190,7 @@ type tFunction struct {
 var _ Type = &tFunction{}
 
 func (tf *tFunction) Format() pp.Doc {
-	return pp.Concat([]pp.Doc{
+	return pp.Seq([]pp.Doc{
 		pp.Text("("),
 		tf.params.Format(),
 		pp.Text(") => "),

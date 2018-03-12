@@ -115,6 +115,11 @@ func (rl *ERecordLit) Evaluate(interp *interpreter) (Value, error) {
 }
 
 func (rl *ERecordLit) Format() pp.Doc {
+	// Empty record
+	if len(rl.exprs) == 0 {
+		return pp.Text("{}")
+	}
+
 	// Sort keys
 	keys := make([]string, len(rl.exprs))
 	idx := 0
@@ -126,15 +131,15 @@ func (rl *ERecordLit) Format() pp.Doc {
 
 	kvDocs := make([]pp.Doc, len(rl.exprs))
 	for idx, key := range keys {
-		kvDocs[idx] = pp.Concat([]pp.Doc{
+		kvDocs[idx] = pp.Seq([]pp.Doc{
 			pp.Text(key),
 			pp.Text(": "),
 			rl.exprs[key].Format(),
 		})
 	}
 
-	return pp.Concat([]pp.Doc{
-		pp.Text("("), pp.Newline,
+	return pp.Seq([]pp.Doc{
+		pp.Text("{"), pp.Newline,
 		pp.Nest(2, pp.Join(kvDocs, pp.CommaNewline)),
 		pp.Newline,
 		pp.Text("}"),
@@ -274,7 +279,7 @@ func (fc *EFuncCall) Format() pp.Doc {
 		argDocs[idx] = arg.Format()
 	}
 
-	return pp.Concat([]pp.Doc{
+	return pp.Seq([]pp.Doc{
 		pp.Text(fc.funcName),
 		pp.Text("("),
 		pp.Join(argDocs, pp.Text(", ")),
@@ -359,7 +364,7 @@ func (ma *EMemberAccess) Evaluate(interp *interpreter) (Value, error) {
 }
 
 func (ma *EMemberAccess) Format() pp.Doc {
-	return pp.Concat([]pp.Doc{ma.record.Format(), pp.Text("."), pp.Text(ma.member)})
+	return pp.Seq([]pp.Doc{ma.record.Format(), pp.Text("."), pp.Text(ma.member)})
 }
 
 func (ma *EMemberAccess) GetType(scope *TypeScope) (Type, error) {

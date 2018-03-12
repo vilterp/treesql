@@ -117,14 +117,14 @@ func (v *VRecord) Format() pp.Doc {
 
 	kvDocs := make([]pp.Doc, len(v.vals))
 	for idx, key := range keys {
-		kvDocs[idx] = pp.Concat([]pp.Doc{
+		kvDocs[idx] = pp.Seq([]pp.Doc{
 			pp.Text(key),
 			pp.Text(": "),
 			v.vals[key].Format(),
 		})
 	}
 
-	return pp.Concat([]pp.Doc{
+	return pp.Seq([]pp.Doc{
 		pp.Text("("), pp.Newline,
 		pp.Nest(2, pp.Join(kvDocs, pp.CommaNewline)),
 		pp.CommaNewline,
@@ -173,7 +173,7 @@ func (v *VIteratorRef) GetType() Type {
 
 func (v *VIteratorRef) Format() pp.Doc {
 	// TODO: some memory address or something to make them distinct?
-	return pp.Concat([]pp.Doc{
+	return pp.Seq([]pp.Doc{
 		pp.Text("<Iterator"),
 		v.ofType.Format(),
 		pp.Text(">"),
