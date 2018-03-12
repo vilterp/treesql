@@ -188,20 +188,15 @@ func (l *ELambda) Evaluate(interp *interpreter) (Value, error) {
 		def: l,
 		// TODO: don't close over the scope if we don't need anything from there
 		definedInScope: interp.stackTop.scope,
-		// TODO: keep a type scope around
-		typ: typ,
+		typ:            typ,
 	}, nil
 }
 
 func (l *ELambda) Format() pp.Doc {
-	// TODO: use concat instead of sprintf here to facilitate line breaking
-	// when it has that
-	return pp.Text(
-		fmt.Sprintf(
-			"(%s): %s => (%s)",
-			l.params.Format(), l.retType.Format(), l.body.Format(),
-		),
-	)
+	return pp.Seq([]pp.Doc{
+		pp.Textf("(%s) => ", l.params.Format()),
+		l.body.Format(),
+	})
 }
 
 func (l *ELambda) GetType(s *TypeScope) (Type, error) {

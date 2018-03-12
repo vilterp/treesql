@@ -17,12 +17,15 @@ var rules = map[string]p.Rule{
 	// Func call.
 	"func_call": p.Map(
 		p.Sequence([]p.Rule{
-			p.Ref("var"),
+			p.Ident,
 			p.Keyword("("),
 			p.OptWhitespaceSurround(p.Ref("arg_list")),
 			p.Keyword(")"),
 		}),
 		func(tree *p.TraceTree) interface{} {
+			// Get name.
+			name := tree.ItemTraces[0].RegexMatch
+			// Get param list.
 			inParens := tree.ItemTraces[2]
 			inWhitespace := inParens.OptWhitespaceSurroundRes()
 			exprIs := inWhitespace.GetMapRes().([]interface{})
@@ -31,7 +34,7 @@ var rules = map[string]p.Rule{
 				// Don't understand why we can cast the individual but not the array...
 				exprs[idx] = exprI.(Expr)
 			}
-			return NewFuncCall("foo", exprs)
+			return NewFuncCall(name, exprs)
 		},
 	),
 	"arg_list": p.Map(
@@ -89,15 +92,42 @@ var rules = map[string]p.Rule{
 	),
 
 	// Lambda.
-	"lambda": p.Sequence([]p.Rule{
-		p.Keyword("("),
-		p.Ref("param_list"),
-		p.Keyword(") => "),
-		p.Ref("expr"),
-	}),
-	"param":      p.Ref("var"),
-	"param_list": p.ListRule("param", "param_list", p.CommaOptWhitespace),
+	"lambda": p.Map(
+		p.Sequence([]p.Rule{
+			p.Keyword("("),
+			p.Ref("param_list"),
+			p.Keyword(") => "),
+			p.Ref("expr"),
+		}),
+		func(tree *p.TraceTree) interface{} {
+			// Get param list.
+			paramIs := tree.ItemTraces[1].RefTrace.GetMapRes().([]interface{})
+			params := make(ParamList, len(paramIs))
+			for idx, paramI := range paramIs {
+				params[idx] = paramI.(Param)
+			}
+			// Get expr.
+			expr := tree.ItemTraces[3].GetMapRes().(Expr)
+			return NewELambda(params, expr, TInt)
+		},
+	),
+	"param": p.Map(
+		p.Ident,
+		func(tree *p.TraceTree) interface{} {
+			return Param{
+				Name: tree.RegexMatch,
+				// TODO: parse types
+			}
+		},
+	),
+	"param_list": p.Map(
+		p.ListRule("param", "param_list", p.CommaOptWhitespace),
+		func(tree *p.TraceTree) interface{} {
+			return tree.GetListRes()
+		},
+	),
 
+	// Member access.
 	"member_access": p.Map(
 		p.Sequence([]p.Rule{
 			p.Ref("var"),
