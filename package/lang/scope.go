@@ -157,8 +157,8 @@ func (pl ParamList) Format() pp.Doc {
 	for idx, param := range pl {
 		paramDocs[idx] = pp.Seq([]pp.Doc{
 			pp.Text(param.Name),
-			//pp.Text(": "),
-			//param.Typ.Format(),
+			pp.Text(": "),
+			param.Typ.Format(),
 		})
 	}
 	return pp.Join(paramDocs, pp.Text(", "))

@@ -93,9 +93,9 @@ func TestLangExec(t *testing.T) {
 		}
 
 		// Parse it.
-		parseTree, err := lang.Parse(testCase.in)
+		expr, err := lang.Parse(testCase.in)
 		if err != nil {
-			t.Errorf("case %d: error: %v", err)
+			t.Errorf("case %d: error: %v", idx, err)
 			continue
 		}
 
@@ -103,7 +103,7 @@ func TestLangExec(t *testing.T) {
 		userRootScope, typeScope := db.Schema.toScope(txn)
 
 		// Get type; compare.
-		typ, err := testCase.in.GetType(typeScope)
+		typ, err := expr.GetType(typeScope)
 		if err != nil {
 			t.Errorf("case %d: %v", idx, err)
 			continue
@@ -114,7 +114,7 @@ func TestLangExec(t *testing.T) {
 		}
 
 		// Interpret the test expression.
-		interp := lang.NewInterpreter(userRootScope, testCase.in)
+		interp := lang.NewInterpreter(userRootScope, expr)
 		val, err := interp.Interpret()
 		if err != nil {
 			// TODO: test for error
