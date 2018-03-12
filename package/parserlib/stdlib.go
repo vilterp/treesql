@@ -2,7 +2,7 @@ package parserlib
 
 import "regexp"
 
-func ListRule(ruleName string, listName string, sep Rule) Rule {
+func ListRule1(ruleName string, listName string, sep Rule) Rule {
 	return Choice([]Rule{
 		Sequence([]Rule{
 			Ref(ruleName),
@@ -11,6 +11,10 @@ func ListRule(ruleName string, listName string, sep Rule) Rule {
 		}),
 		Ref(ruleName),
 	})
+}
+
+func ListRule(ruleName string, listName string, sep Rule) Rule {
+	return Opt(ListRule1(ruleName, listName, sep))
 }
 
 func Opt(r Rule) Rule {
@@ -30,20 +34,6 @@ func WhitespaceSeq(items []Rule) Rule {
 	for idx, item := range items {
 		if idx > 0 {
 			outItems = append(outItems, Whitespace)
-		}
-		outItems = append(outItems, item)
-	}
-	return &sequence{
-		items: outItems,
-	}
-}
-
-func OptWhitespaceSeq(items []Rule) Rule {
-	// hoo, a generic intercalate function sure would be nice
-	var outItems []Rule
-	for idx, item := range items {
-		if idx > 0 {
-			outItems = append(outItems, OptWhitespace)
 		}
 		outItems = append(outItems, item)
 	}
