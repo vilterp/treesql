@@ -1,0 +1,46 @@
+.grammar-view tbody {
+  font-family: monospace;
+}
+
+.rule-keyword {
+  color: green;
+}
+
+.rule-regex {
+  color: orangered;
+}
+
+.rule-symbol {
+  font-weight: bold;
+}
+
+.rule-ref {
+  color: blue;
+  cursor: pointer;
+}
+
+.rule-ref.highlighted {
+  font-weight: bold;
+}
+
+.rule-succeed {
+  color: purple;
+}
+
+.grammar-view {
+  border-collapse: collapse;
+}
+
+.grammar-view td, .grammar-view th {
+  border-left: 1px solid lightgrey;
+  border-right: 1px solid lightgrey;
+  padding: 3px;
+}
+
+.grammar-view th {
+  border-bottom: 1px solid black;
+}
+
+.rule-def.highlighted {
+  background-color: #e6e6e6;
+}
