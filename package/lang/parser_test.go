@@ -27,9 +27,9 @@ func TestParser(t *testing.T) {
 		// lambda
 		`(): int => 2`,
 		`(): int => plus(foo, bar)`,
-		`(foo, bar): int => plus(foo, bar)`,
+		`(foo: int, bar: int): int => plus(foo, bar)`,
 		// TODO: handle type aliases... ugh
-		`map(blog_posts.by_id, (post): int => {
+		`map(blog_posts.by_id, (post: string): int => {
   id: post.id,
   title: post.title
 })`,
