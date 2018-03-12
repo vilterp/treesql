@@ -106,7 +106,7 @@ func (tt *TraceTree) GetMapRes() interface{} {
 
 func (tt *TraceTree) GetListRes() []interface{} {
 	// Get list ref.
-	anyItemsChoice := tt.RefTrace.ItemTraces[0]
+	anyItemsChoice := tt
 	// Return empty array if there's nothing.
 	if anyItemsChoice.ChoiceIdx == 1 {
 		return []interface{}{}
@@ -129,7 +129,12 @@ func (tt *TraceTree) GetList1Res() []interface{} {
 	refTrace := seqTrace.ItemTraces[0].RefTrace
 	out[0] = refTrace.GetMapRes()
 	// Now get the rest.
-	rest := seqTrace.ItemTraces[2].GetListRes()
+	rest := seqTrace.ItemTraces[2].RefTrace.InnerTrace.GetListRes()
 	out = append(out, rest...)
 	return out
+}
+
+func (tt *TraceTree) OptWhitespaceSurroundRes() *TraceTree {
+	whitespaceSeq := tt
+	return whitespaceSeq.ItemTraces[1]
 }

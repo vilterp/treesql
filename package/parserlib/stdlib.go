@@ -52,7 +52,7 @@ func OptWhitespaceSurround(r Rule) Rule {
 
 var Whitespace = &regex{regex: regexp.MustCompile("\\s+")}
 
-var CommaWhitespace = Sequence([]Rule{Keyword(","), OptWhitespace})
+var CommaOptWhitespace = Sequence([]Rule{Keyword(","), OptWhitespace})
 
 var UnsignedIntLit = &regex{regex: regexp.MustCompile("[0-9]+")}
 
