@@ -25,9 +25,11 @@ func TestParser(t *testing.T) {
   gloop: 3
 }`,
 		// lambda
-		`() => plus(foo, bar)`,
-		`(foo, bar) => plus(foo, bar)`,
-		`map(blog_posts.by_id, (post) => {
+		`(): int => 2`,
+		`(): int => plus(foo, bar)`,
+		`(foo, bar): int => plus(foo, bar)`,
+		// TODO: handle type aliases... ugh
+		`map(blog_posts.by_id, (post): int => {
   id: post.id,
   title: post.title
 })`,
@@ -36,7 +38,7 @@ func TestParser(t *testing.T) {
 	for idx, testCase := range cases {
 		resExpr, err := Parse(testCase)
 		if err != nil {
-			t.Errorf("case %d: err: %v", idx, err)
+			t.Errorf("case %d: `%s` err: %v", idx, testCase, err)
 			continue
 		}
 
