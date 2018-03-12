@@ -52,7 +52,7 @@ func (s *Scope) Format() pp.Doc {
 	docs := make([]pp.Doc, len(s.vals))
 	idx := 0
 	for name, val := range s.vals {
-		docs[idx] = pp.Concat([]pp.Doc{
+		docs[idx] = pp.Seq([]pp.Doc{
 			pp.Text(name),
 			pp.Text(": "),
 			val.Format(),
@@ -67,11 +67,11 @@ func (s *Scope) Format() pp.Doc {
 		parentDoc = s.parent.Format()
 	}
 
-	return pp.Concat([]pp.Doc{
+	return pp.Seq([]pp.Doc{
 		pp.Text("Scope{"), pp.Newline,
-		pp.Nest(2, pp.Concat([]pp.Doc{
+		pp.Nest(2, pp.Seq([]pp.Doc{
 			pp.Text("vals: {"), pp.Newline,
-			pp.Nest(2, pp.Concat([]pp.Doc{
+			pp.Nest(2, pp.Seq([]pp.Doc{
 				pp.Join(docs, pp.CommaNewline),
 			})),
 			pp.Newline, pp.Text("},"), pp.Newline,
@@ -116,7 +116,7 @@ func (ts *TypeScope) Format() pp.Doc {
 	docs := make([]pp.Doc, len(ts.types))
 	idx := 0
 	for name, val := range ts.types {
-		docs[idx] = pp.Concat([]pp.Doc{
+		docs[idx] = pp.Seq([]pp.Doc{
 			pp.Text(name),
 			pp.Text(": "),
 			val.Format(),
@@ -131,11 +131,11 @@ func (ts *TypeScope) Format() pp.Doc {
 		parentDoc = ts.parent.Format()
 	}
 
-	return pp.Concat([]pp.Doc{
+	return pp.Seq([]pp.Doc{
 		pp.Text("Scope{"), pp.Newline,
-		pp.Nest(2, pp.Concat([]pp.Doc{
+		pp.Nest(2, pp.Seq([]pp.Doc{
 			pp.Text("vals: {"), pp.Newline,
-			pp.Nest(2, pp.Concat([]pp.Doc{
+			pp.Nest(2, pp.Seq([]pp.Doc{
 				pp.Join(docs, pp.CommaNewline),
 			})),
 			pp.Newline, pp.Text("},"), pp.Newline,
@@ -155,7 +155,7 @@ type ParamList []Param
 func (pl ParamList) Format() pp.Doc {
 	paramDocs := make([]pp.Doc, len(pl))
 	for idx, param := range pl {
-		paramDocs[idx] = pp.Concat([]pp.Doc{
+		paramDocs[idx] = pp.Seq([]pp.Doc{
 			pp.Text(param.Name),
 			pp.Text(": "),
 			param.Typ.Format(),

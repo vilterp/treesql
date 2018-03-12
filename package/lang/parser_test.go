@@ -11,10 +11,19 @@ func TestParser(t *testing.T) {
 		`42`,
 		// member access
 		`foo.bar`,
-		//// func call
+		// func call
+		//`foo()`,
+		//`foo(2, 3)`,
 		//{`foo(bar, baz)`},
-		//// obj lit
-		//{`{bloop:2}`},
+		// obj lit
+		`{}`,
+		`{
+  bloop: 2
+}`,
+		`{
+  bloop: 2,
+  gloop: 3
+}`,
 		//{`{bloop: 2}`},
 		//{`{ bloop: 2 }`},
 		//{`{ bloop: 2, gloop: "bloop" }`},
@@ -31,6 +40,7 @@ func TestParser(t *testing.T) {
 		resExpr, err := Parse(testCase)
 		if err != nil {
 			t.Errorf("case %d: err: %v", idx, err)
+			continue
 		}
 
 		if resExpr.Format().String() != testCase {
