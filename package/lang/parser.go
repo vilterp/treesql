@@ -116,11 +116,15 @@ var rules = map[string]p.Rule{
 		},
 	),
 	"param": p.Map(
-		p.Ident,
+		p.Sequence([]p.Rule{
+			p.Ident,
+			p.Keyword(": "),
+			p.Ref("type"),
+		}),
 		func(tree *p.TraceTree) interface{} {
 			return Param{
-				Name: tree.RegexMatch,
-				// TODO: parse types
+				Name: tree.ItemTraces[0].RegexMatch,
+				Typ:  tree.ItemTraces[2].GetMapRes().(Type),
 			}
 		},
 	),
