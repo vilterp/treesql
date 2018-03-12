@@ -194,7 +194,7 @@ func (l *ELambda) Evaluate(interp *interpreter) (Value, error) {
 
 func (l *ELambda) Format() pp.Doc {
 	return pp.Seq([]pp.Doc{
-		pp.Textf("(%s) => ", l.params.Format()),
+		pp.Textf("(%s): %s => ", l.params.Format(), l.retType.Format()),
 		l.body.Format(),
 	})
 }

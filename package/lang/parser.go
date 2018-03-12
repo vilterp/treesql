@@ -96,7 +96,9 @@ var rules = map[string]p.Rule{
 		p.Sequence([]p.Rule{
 			p.Keyword("("),
 			p.Ref("param_list"),
-			p.Keyword(") => "),
+			p.Keyword("): "),
+			p.Ref("type"),
+			p.Keyword(" => "),
 			p.Ref("expr"),
 		}),
 		func(tree *p.TraceTree) interface{} {
@@ -106,9 +108,11 @@ var rules = map[string]p.Rule{
 			for idx, paramI := range paramIs {
 				params[idx] = paramI.(Param)
 			}
+			// Get type.
+			typ := tree.ItemTraces[3].GetMapRes().(Type)
 			// Get expr.
-			expr := tree.ItemTraces[3].GetMapRes().(Expr)
-			return NewELambda(params, expr, TInt)
+			expr := tree.ItemTraces[5].GetMapRes().(Expr)
+			return NewELambda(params, expr, typ)
 		},
 	),
 	"param": p.Map(
@@ -175,6 +179,23 @@ var rules = map[string]p.Rule{
 		p.Ref("string_lit"),
 		p.Ref("signed_int_lit"),
 	}),
+
+	// Type.
+	"type": p.Map(
+		p.Ident,
+		func(tree *p.TraceTree) interface{} {
+			// TODO: return a type expression; resolve it later
+			str := tree.RegexMatch
+			switch str {
+			case "int":
+				return TInt
+			case "string":
+				return TString
+			default:
+				panic(fmt.Sprintf("cannot parse type %s", str))
+			}
+		},
+	),
 }
 
 var ColonWhitespace = p.Sequence([]p.Rule{p.Keyword(":"), p.OptWhitespace})
