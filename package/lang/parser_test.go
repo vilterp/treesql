@@ -12,9 +12,9 @@ func TestParser(t *testing.T) {
 		// member access
 		`foo.bar`,
 		// func call
-		//`foo()`,
-		//`foo(2, 3)`,
-		//{`foo(bar, baz)`},
+		`foo()`,
+		`foo(2, 3)`,
+		`foo(bar, baz)`,
 		// obj lit
 		`{}`,
 		`{
@@ -24,11 +24,8 @@ func TestParser(t *testing.T) {
   bloop: 2,
   gloop: 3
 }`,
-		//{`{bloop: 2}`},
-		//{`{ bloop: 2 }`},
-		//{`{ bloop: 2, gloop: "bloop" }`},
-		//// lambda
-		//{`(foo) => plus(foo, bar)`},
+		// lambda
+		//`(foo) => plus(foo, bar)`,
 		//{`(foo, bar) => plus(foo, bar)`},
 		//{`map(blog_posts.by_id, (post) => {
 		//  id: post.id,
