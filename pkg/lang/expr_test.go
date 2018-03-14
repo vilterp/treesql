@@ -3,7 +3,7 @@ package lang
 import (
 	"testing"
 
-	"github.com/vilterp/treesql/package/util"
+	"github.com/vilterp/treesql/pkg/util"
 )
 
 func TestExprGetType(t *testing.T) {

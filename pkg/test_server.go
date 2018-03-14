@@ -9,7 +9,7 @@ import (
 	"testing"
 
 	"github.com/phayes/freeport"
-	"github.com/vilterp/treesql/package/util"
+	"github.com/vilterp/treesql/pkg/util"
 )
 
 func NewTestServer() (*Server, *Client, error) {

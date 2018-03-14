@@ -6,7 +6,7 @@ import (
 	"strconv"
 
 	"github.com/boltdb/bolt"
-	"github.com/vilterp/treesql/package/lang"
+	"github.com/vilterp/treesql/pkg/lang"
 )
 
 type Schema struct {
