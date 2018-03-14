@@ -4,7 +4,7 @@ import (
 	"context"
 	"fmt"
 
-	clog "github.com/vilterp/treesql/package/log"
+	clog "github.com/vilterp/treesql/pkg/log"
 )
 
 type ChannelID int

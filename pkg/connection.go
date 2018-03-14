@@ -4,7 +4,7 @@ import (
 	"context"
 
 	"github.com/gorilla/websocket"
-	clog "github.com/vilterp/treesql/package/log"
+	clog "github.com/vilterp/treesql/pkg/log"
 )
 
 type ConnectionID int

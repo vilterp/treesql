@@ -4,7 +4,7 @@ import (
 	"sync"
 	"time"
 
-	clog "github.com/vilterp/treesql/package/log"
+	clog "github.com/vilterp/treesql/pkg/log"
 )
 
 // LiveQueryInfo lives in a table...

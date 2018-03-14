@@ -9,7 +9,7 @@ import (
 
 	"github.com/chzyer/readline"
 	"github.com/robertkrimen/isatty"
-	"github.com/vilterp/treesql/package"
+	"github.com/vilterp/treesql/pkg"
 )
 
 var url = flag.String("url", "ws://localhost:9000/ws", "URL of TreeSQL server to connect to")

@@ -7,7 +7,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
-	clog "github.com/vilterp/treesql/package/log"
+	clog "github.com/vilterp/treesql/pkg/log"
 )
 
 // want to not export this and do it via the server, but...

@@ -9,7 +9,7 @@ import (
 	"os/signal"
 	"syscall"
 
-	"github.com/vilterp/treesql/package"
+	"github.com/vilterp/treesql/pkg"
 )
 
 func main() {

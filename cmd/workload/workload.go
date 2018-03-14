@@ -8,7 +8,7 @@ import (
 	"math/rand"
 
 	"github.com/pkg/errors"
-	"github.com/vilterp/treesql/package"
+	"github.com/vilterp/treesql/pkg"
 )
 
 var load = flag.Bool("load", false, "load schema")

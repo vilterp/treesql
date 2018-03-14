@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
-	"github.com/vilterp/treesql/package"
+	"github.com/vilterp/treesql/pkg"
 )
 
 func main() {

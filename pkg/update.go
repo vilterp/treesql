@@ -6,7 +6,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
-	clog "github.com/vilterp/treesql/package/log"
+	clog "github.com/vilterp/treesql/pkg/log"
 )
 
 func (db *Database) validateUpdate(update *Update) error {
