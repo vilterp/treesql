@@ -1,6 +1,6 @@
 package treesql
 
-import "github.com/vilterp/treesql/package/lang"
+import "github.com/vilterp/treesql/pkg/lang"
 
 func (db *Database) AddBuiltinSchema() {
 	// these never go in the on-disk __tables__ and __columns__ Bolt buckets

@@ -8,7 +8,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/vilterp/treesql/package/util"
+	"github.com/vilterp/treesql/pkg/util"
 )
 
 type testServer struct {

@@ -7,7 +7,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/vilterp/treesql/package/parserlib"
+	"github.com/vilterp/treesql/pkg/parserlib"
 )
 
 type completionsRequest struct {

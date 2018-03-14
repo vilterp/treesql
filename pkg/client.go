@@ -5,7 +5,6 @@ package treesql
 
 import (
 	"errors"
-
 	"log"
 
 	"github.com/gorilla/websocket"

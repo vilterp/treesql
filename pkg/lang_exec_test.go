@@ -5,8 +5,8 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/vilterp/treesql/package/lang"
-	"github.com/vilterp/treesql/package/util"
+	"github.com/vilterp/treesql/pkg/lang"
+	"github.com/vilterp/treesql/pkg/util"
 )
 
 func TestLangExec(t *testing.T) {

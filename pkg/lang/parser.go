@@ -5,7 +5,7 @@ import (
 
 	"strconv"
 
-	p "github.com/vilterp/treesql/package/parserlib"
+	p "github.com/vilterp/treesql/pkg/parserlib"
 )
 
 type recordKVPair struct {
