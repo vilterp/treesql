@@ -4,7 +4,7 @@ import (
 	"fmt"
 
 	"github.com/boltdb/bolt"
-	"github.com/vilterp/treesql/package/lang"
+	"github.com/vilterp/treesql/pkg/lang"
 )
 
 type Txn struct {

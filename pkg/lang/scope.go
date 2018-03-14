@@ -3,7 +3,7 @@ package lang
 import (
 	"fmt"
 
-	pp "github.com/vilterp/treesql/package/pretty_print"
+	pp "github.com/vilterp/treesql/pkg/pretty_print"
 )
 
 // Value Scope
