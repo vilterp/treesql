@@ -185,6 +185,14 @@ var rules = map[string]p.Rule{
 	}),
 
 	// Type.
+	// TODO: choice:
+	// - simple_name
+	// - iterator
+	// - index
+	// - object lit
+	// (maybe some day)
+	// - dicts (for group by)
+	// - returns
 	"type": p.Map(
 		p.Ident,
 		func(tree *p.TraceTree) interface{} {
