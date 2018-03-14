@@ -7,7 +7,7 @@ import (
 	"log"
 	"strconv"
 
-	"github.com/vilterp/treesql/package/lang"
+	"github.com/vilterp/treesql/pkg/lang"
 )
 
 type Record struct {

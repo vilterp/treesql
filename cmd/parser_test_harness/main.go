@@ -3,8 +3,8 @@ package main
 import (
 	"flag"
 
-	"github.com/vilterp/treesql/package/lang"
-	"github.com/vilterp/treesql/package/parserlib_test_harness"
+	"github.com/vilterp/treesql/pkg/lang"
+	"github.com/vilterp/treesql/pkg/parserlib_test_harness"
 )
 
 var port = flag.String("port", "9999", "port to listen on")

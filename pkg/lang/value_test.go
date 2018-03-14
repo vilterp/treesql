@@ -5,7 +5,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/vilterp/treesql/package/util"
+	"github.com/vilterp/treesql/pkg/util"
 )
 
 func TestWriteAsJSON(t *testing.T) {
