@@ -155,11 +155,7 @@ type paramList []Param
 func (pl paramList) Format() pp.Doc {
 	paramDocs := make([]pp.Doc, len(pl))
 	for idx, param := range pl {
-		paramDocs[idx] = pp.Seq([]pp.Doc{
-			pp.Text(param.Name),
-			pp.Text(": "),
-			param.Typ.Format(),
-		})
+		paramDocs[idx] = pp.Text(param.Name)
 	}
 	return pp.Join(paramDocs, pp.Text(", "))
 }
