@@ -25,7 +25,7 @@ func AreEqualJSON(s1, s2 string) (bool, error) {
 	return reflect.DeepEqual(o1, o2), nil
 }
 
-// fails the test if the actual error doesn't match the expected error.
+// AssertError fails the test if the actual error doesn't match the expected error.
 // if an error is expected and matches, returns true.
 // i.e. the return value is "shouldContinue"
 func AssertError(t *testing.T, caseIdx int, expected string, err error) bool {
