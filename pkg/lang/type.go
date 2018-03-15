@@ -9,10 +9,10 @@ import (
 
 type Type interface {
 	Format() pp.Doc
-	matches(Type) (bool, TypeVarBindings)
+	matches(Type) (bool, typeVarBindings)
 
 	// Returns substituted type, isConcrete, and an error.
-	substitute(TypeVarBindings) (Type, bool, error)
+	substitute(typeVarBindings) (Type, bool, error)
 }
 
 func ParseType(name string) (Type, error) {
@@ -26,17 +26,17 @@ func ParseType(name string) (Type, error) {
 	}
 }
 
-func TypeIsConcrete(t Type) bool {
-	_, isConcrete, err := t.substitute(make(TypeVarBindings))
+func typeIsConcrete(t Type) bool {
+	_, isConcrete, err := t.substitute(make(typeVarBindings))
 	if err != nil {
 		return false
 	}
 	return isConcrete
 }
 
-type TypeVarBindings map[tVar]Type
+type typeVarBindings map[tVar]Type
 
-func (tvb TypeVarBindings) extend(other TypeVarBindings) {
+func (tvb typeVarBindings) extend(other typeVarBindings) {
 	// TODO: error out if overwriting one that doesn't match
 	for name, typ := range other {
 		tvb[name] = typ
@@ -54,11 +54,11 @@ func (tInt) Format() pp.Doc {
 	return pp.Text("int")
 }
 
-func (tInt) matches(other Type) (bool, TypeVarBindings) {
+func (tInt) matches(other Type) (bool, typeVarBindings) {
 	return other == TInt, nil
 }
 
-func (ti *tInt) substitute(TypeVarBindings) (Type, bool, error) { return ti, true, nil }
+func (ti *tInt) substitute(typeVarBindings) (Type, bool, error) { return ti, true, nil }
 
 // String
 
@@ -71,11 +71,11 @@ func (tString) Format() pp.Doc {
 	return pp.Text("string")
 }
 
-func (tString) matches(other Type) (bool, TypeVarBindings) {
+func (tString) matches(other Type) (bool, typeVarBindings) {
 	return other == TString, nil
 }
 
-func (ts *tString) substitute(TypeVarBindings) (Type, bool, error) { return ts, true, nil }
+func (ts *tString) substitute(typeVarBindings) (Type, bool, error) { return ts, true, nil }
 
 // Record
 
@@ -118,7 +118,7 @@ func (tr TRecord) Format() pp.Doc {
 	})
 }
 
-func (tr *TRecord) matches(other Type) (bool, TypeVarBindings) {
+func (tr *TRecord) matches(other Type) (bool, typeVarBindings) {
 	otherTO, ok := other.(*TRecord)
 	if !ok {
 		return false, nil
@@ -138,7 +138,7 @@ func (tr *TRecord) matches(other Type) (bool, TypeVarBindings) {
 	return true, nil
 }
 
-func (tr *TRecord) substitute(tvb TypeVarBindings) (Type, bool, error) {
+func (tr *TRecord) substitute(tvb typeVarBindings) (Type, bool, error) {
 	types := map[string]Type{}
 	isConcrete := true
 	for name, typ := range tr.types {
@@ -174,7 +174,7 @@ func (ti tIterator) Format() pp.Doc {
 	})
 }
 
-func (ti tIterator) matches(other Type) (bool, TypeVarBindings) {
+func (ti tIterator) matches(other Type) (bool, typeVarBindings) {
 	oti, ok := other.(*tIterator)
 	if !ok {
 		return false, nil
@@ -182,7 +182,7 @@ func (ti tIterator) matches(other Type) (bool, TypeVarBindings) {
 	return ti.innerType.matches(oti.innerType)
 }
 
-func (ti *tIterator) substitute(tvb TypeVarBindings) (Type, bool, error) {
+func (ti *tIterator) substitute(tvb typeVarBindings) (Type, bool, error) {
 	innerTyp, innerConcrete, err := ti.innerType.substitute(tvb)
 	if err != nil {
 		return nil, false, err
@@ -195,7 +195,7 @@ func (ti *tIterator) substitute(tvb TypeVarBindings) (Type, bool, error) {
 // Function
 
 type tFunction struct {
-	params  ParamList
+	params  paramList
 	retType Type
 }
 
@@ -210,12 +210,12 @@ func (tf *tFunction) Format() pp.Doc {
 	})
 }
 
-func (tf *tFunction) matches(other Type) (bool, TypeVarBindings) {
+func (tf *tFunction) matches(other Type) (bool, typeVarBindings) {
 	otherFunc, ok := other.(*tFunction)
 	if !ok {
 		return false, nil
 	}
-	bindings := make(TypeVarBindings)
+	bindings := make(typeVarBindings)
 	// match args
 	paramsMatch, paramBindings := tf.params.Matches(otherFunc.params)
 	if !paramsMatch {
@@ -231,7 +231,7 @@ func (tf *tFunction) matches(other Type) (bool, TypeVarBindings) {
 	return true, bindings
 }
 
-func (tf *tFunction) substitute(tvb TypeVarBindings) (Type, bool, error) {
+func (tf *tFunction) substitute(tvb typeVarBindings) (Type, bool, error) {
 	params, paramsConcrete, err := tf.params.substitute(tvb)
 	if err != nil {
 		return nil, false, err
@@ -262,7 +262,7 @@ func (tv *tVar) Format() pp.Doc {
 	return pp.Text(string(*tv))
 }
 
-func (tv *tVar) matches(other Type) (bool, TypeVarBindings) {
+func (tv *tVar) matches(other Type) (bool, typeVarBindings) {
 	_, isTVar := other.(*tVar)
 	if isTVar {
 		return false, nil
@@ -272,7 +272,7 @@ func (tv *tVar) matches(other Type) (bool, TypeVarBindings) {
 	}
 }
 
-func (tv *tVar) substitute(tvb TypeVarBindings) (Type, bool, error) {
+func (tv *tVar) substitute(tvb typeVarBindings) (Type, bool, error) {
 	binding, ok := tvb[*tv]
 	if !ok {
 		return nil, false, fmt.Errorf("missing type var: %s", *tv)

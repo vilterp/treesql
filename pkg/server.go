@@ -52,7 +52,7 @@ func newServerInternal(dataFile string) (*Database, http.Handler) {
 	// Serve metrics.
 	mux.Handle(
 		"/metrics",
-		promhttp.HandlerFor(database.Metrics.registry, promhttp.HandlerOpts{}),
+		promhttp.HandlerFor(database.metrics.registry, promhttp.HandlerOpts{}),
 	)
 
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
@@ -73,7 +73,7 @@ func newServerInternal(dataFile string) (*Database, http.Handler) {
 			log.Println(err)
 			return
 		}
-		database.AddConnection(conn)
+		database.addConnection(conn)
 	})
 
 	return database, mux

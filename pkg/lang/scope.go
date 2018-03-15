@@ -35,10 +35,10 @@ func (s *Scope) Add(name string, value Value) {
 	s.vals[name] = value
 }
 
-func (s *Scope) ToTypeScope() *TypeScope {
+func (s *Scope) toTypeScope() *TypeScope {
 	var parentScope *TypeScope
 	if s.parent != nil {
-		parentScope = s.parent.ToTypeScope()
+		parentScope = s.parent.toTypeScope()
 	}
 	ts := NewTypeScope(parentScope)
 	for name, val := range s.vals {
@@ -150,9 +150,9 @@ func (ts *TypeScope) Format() pp.Doc {
 
 // (maybe there is a better place for this)
 
-type ParamList []Param
+type paramList []Param
 
-func (pl ParamList) Format() pp.Doc {
+func (pl paramList) Format() pp.Doc {
 	paramDocs := make([]pp.Doc, len(pl))
 	for idx, param := range pl {
 		paramDocs[idx] = pp.Seq([]pp.Doc{
@@ -164,11 +164,11 @@ func (pl ParamList) Format() pp.Doc {
 	return pp.Join(paramDocs, pp.Text(", "))
 }
 
-func (pl ParamList) Matches(other ParamList) (bool, TypeVarBindings) {
+func (pl paramList) Matches(other paramList) (bool, typeVarBindings) {
 	if len(pl) != len(other) {
 		return false, nil
 	}
-	bindings := make(TypeVarBindings)
+	bindings := make(typeVarBindings)
 	for idx, param := range pl {
 		otherParam := other[idx]
 		matches, paramBindings := param.Typ.matches(otherParam.Typ)
@@ -181,8 +181,8 @@ func (pl ParamList) Matches(other ParamList) (bool, TypeVarBindings) {
 }
 
 // substitute returns new param list, isConcrete, and an error.
-func (pl ParamList) substitute(tvb TypeVarBindings) (ParamList, bool, error) {
-	out := make(ParamList, len(pl))
+func (pl paramList) substitute(tvb typeVarBindings) (paramList, bool, error) {
+	out := make(paramList, len(pl))
 	isConcrete := true
 	for idx, param := range pl {
 		newTyp, concrete, err := param.Typ.substitute(tvb)
@@ -198,7 +198,7 @@ func (pl ParamList) substitute(tvb TypeVarBindings) (ParamList, bool, error) {
 	return out, isConcrete, nil
 }
 
-func (pl ParamList) createTypeScope(parentScope *TypeScope) *TypeScope {
+func (pl paramList) createTypeScope(parentScope *TypeScope) *TypeScope {
 	newTS := NewTypeScope(parentScope)
 	for _, param := range pl {
 		newTS.Add(param.Name, param.Typ)
