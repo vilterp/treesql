@@ -7,6 +7,9 @@ import (
 )
 
 func TestInterpreter(t *testing.T) {
+	// TODO: check for type scope errors... seems like they're
+	// getting swallowed
+
 	userRootScope := NewScope(BuiltinsScope)
 	userRootScope.Add("a", NewVInt(2))
 	userRootScope.Add("b", NewVInt(3))
