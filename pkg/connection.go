@@ -1,6 +1,7 @@
 package treesql
 
 import (
+	"bufio"
 	"context"
 
 	"github.com/gorilla/websocket"
@@ -40,8 +41,22 @@ func (conn *Connection) Ctx() context.Context {
 
 func (conn *Connection) writeMessagesToSocket() {
 	for msg := range conn.Messages {
-		if err := conn.clientConn.WriteJSON(msg); err != nil {
+		writer, err := conn.clientConn.NextWriter(websocket.TextMessage)
+		if err != nil {
 			clog.Println(conn, "error writing to socket:", err)
+			break
+		}
+
+		bufWriter := bufio.NewWriter(writer)
+
+		if err := msg.ToVal().WriteAsJSON(bufWriter, msg.GetCaller()); err != nil {
+			clog.Println(conn, "error writing msg to conn:", err)
+		}
+		if err := bufWriter.Flush(); err != nil {
+			clog.Println(conn, "error writing msg to conn:", err)
+		}
+		if err := writer.Close(); err != nil {
+			clog.Println(conn, "error writing msg to conn:", err)
 		}
 	}
 }

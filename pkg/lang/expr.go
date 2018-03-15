@@ -97,6 +97,12 @@ type ERecordLit struct {
 
 var _ Expr = &ERecordLit{}
 
+func NewRecordLit(exprs map[string]Expr) *ERecordLit {
+	return &ERecordLit{
+		exprs: exprs,
+	}
+}
+
 func (rl *ERecordLit) Evaluate(interp *interpreter) (Value, error) {
 	// TODO: push an record path frame
 	vals := map[string]Value{}
@@ -158,7 +164,7 @@ func (rl *ERecordLit) GetType(scope *TypeScope) (Type, error) {
 	}
 
 	return &TRecord{
-		Types: types,
+		types: types,
 	}, nil
 }
 
@@ -369,7 +375,7 @@ func (ma *EMemberAccess) GetType(scope *TypeScope) (Type, error) {
 	}
 	switch tTyp := recTyp.(type) {
 	case *TRecord:
-		typ, ok := tTyp.Types[ma.member]
+		typ, ok := tTyp.types[ma.member]
 		if !ok {
 			return nil, fmt.Errorf("nonexistent member: %s", ma.member)
 		}

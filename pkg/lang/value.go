@@ -11,6 +11,9 @@ import (
 type Value interface {
 	Format() pp.Doc
 	GetType() Type
+
+	// TODO: implementations of this are swallowing errors all over the place.
+	// also, what would we even do if we found an error? stop the stream mid-JSON?
 	WriteAsJSON(*bufio.Writer, Caller) error
 }
 
@@ -101,7 +104,7 @@ func (v *VRecord) GetType() Type {
 		types[name] = val.GetType()
 	}
 	return &TRecord{
-		Types: types,
+		types: types,
 	}
 }
 
@@ -125,7 +128,7 @@ func (v *VRecord) Format() pp.Doc {
 	}
 
 	return pp.Seq([]pp.Doc{
-		pp.Text("("), pp.Newline,
+		pp.Text("{"), pp.Newline,
 		pp.Nest(2, pp.Join(kvDocs, pp.CommaNewline)),
 		pp.CommaNewline,
 		pp.Text("}"),
@@ -144,6 +147,41 @@ func (v *VRecord) WriteAsJSON(w *bufio.Writer, c Caller) error {
 		idx++
 	}
 	w.WriteString("}")
+	return nil
+}
+
+// Array
+
+type VArray struct {
+	innerType Type
+	values    []Value
+}
+
+var _ Value = &VArray{}
+
+func (v *VArray) GetType() Type {
+	panic("unimplemented")
+}
+
+func (v *VArray) Format() pp.Doc {
+	return pp.Seq([]pp.Doc{
+		pp.Text("Array<"),
+		v.innerType.Format(),
+		pp.Text(">"),
+	})
+}
+
+func (v *VArray) WriteAsJSON(w *bufio.Writer, c Caller) error {
+	w.WriteString("[")
+	for idx, val := range v.values {
+		if idx > 0 {
+			w.WriteString(",")
+		}
+		if err := val.WriteAsJSON(w, c); err != nil {
+			return err
+		}
+	}
+	w.WriteString("]")
 	return nil
 }
 
@@ -209,7 +247,9 @@ func (v *VIteratorRef) WriteAsJSON(w *bufio.Writer, c Caller) error {
 		if idx > 0 {
 			w.WriteString(",")
 		}
-		nextVal.WriteAsJSON(w, c)
+		if err := nextVal.WriteAsJSON(w, c); err != nil {
+			return err
+		}
 		idx++
 	}
 	w.WriteString("]")

@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/vilterp/treesql/pkg/lang"
 	clog "github.com/vilterp/treesql/pkg/log"
 )
 
@@ -89,6 +90,27 @@ type ChannelMessage struct {
 	Message     *MessageToClient
 }
 
+// TODO: this is pretty ugly. Maybe it should be embedded in the value?
+func (cm *ChannelMessage) GetCaller() lang.Caller {
+	if cm.Message.InitialResultMessage != nil {
+		return cm.Message.InitialResultMessage.Caller
+	}
+	if cm.Message.AckMessage != nil {
+		return nil
+	}
+	if cm.Message.ErrorMessage != nil {
+		return nil
+	}
+	panic(fmt.Sprintf("can't get caller for %+v", cm.Message))
+}
+
+func (cm *ChannelMessage) ToVal() lang.Value {
+	return lang.NewVRecord(map[string]lang.Value{
+		"StatementID": lang.NewVInt(cm.StatementID),
+		"Message":     cm.Message.ToVal(),
+	})
+}
+
 // ugh. this sucks.
 type MessageToClientType int
 
@@ -100,20 +122,20 @@ const (
 	TableUpdateMessage
 )
 
-func (m *MessageToClientType) MarshalJSON() ([]byte, error) {
+func (m *MessageToClientType) String() string {
 	switch *m {
 	case ErrorMessage:
-		return []byte("\"error\""), nil
+		return "error"
 	case AckMessage:
-		return []byte("\"ack\""), nil
+		return "ack"
 	case InitialResultMessage:
-		return []byte("\"initial_result\""), nil
+		return "initial_result"
 	case RecordUpdateMessage:
-		return []byte("\"record_update\""), nil
+		return "record_update"
 	case TableUpdateMessage:
-		return []byte("\"table_update\""), nil
+		return "table_update"
 	}
-	return nil, fmt.Errorf("unknown error type %d", *m)
+	panic(fmt.Errorf("unknown type %d", *m))
 }
 
 func (m *MessageToClientType) UnmarshalText(text []byte) error {
@@ -143,19 +165,57 @@ type MessageToClient struct {
 	TableUpdateMessage   *TableUpdate   `json:"table_update,omitempty"`
 }
 
+func (mtc *MessageToClient) ToVal() lang.Value {
+	vals := map[string]lang.Value{}
+	vals["type"] = lang.NewVString(mtc.Type.String())
+	if mtc.ErrorMessage != nil {
+		vals["error"] = lang.NewVString(*mtc.ErrorMessage)
+	}
+	if mtc.AckMessage != nil {
+		vals["ack"] = lang.NewVString(*mtc.AckMessage)
+	}
+	if mtc.InitialResultMessage != nil {
+		vals["initial_result"] = mtc.InitialResultMessage.ToVal()
+	}
+	if mtc.RecordUpdateMessage != nil {
+		vals["record_update"] = mtc.RecordUpdateMessage.ToVal()
+	}
+	if mtc.TableUpdateMessage != nil {
+		vals["table_update"] = mtc.TableUpdateMessage.ToVal()
+	}
+	return lang.NewVRecord(vals)
+}
+
 type InitialResult struct {
-	Schema map[string]interface{}
-	Data   SelectResult
+	Type   lang.Type
+	Value  lang.Value
+	Caller lang.Caller
+}
+
+func (ir *InitialResult) ToVal() lang.Value {
+	return lang.NewVRecord(map[string]lang.Value{
+		// TODO: send Type in a structured format, not pretty-prim
+		"Type":  lang.NewVString(ir.Value.GetType().Format().String()),
+		"Value": ir.Value,
+	})
 }
 
 type TableUpdate struct {
-	Selection SelectResult
+	Selection lang.Value
 	QueryPath FlattenedQueryPath
+}
+
+func (tu *TableUpdate) ToVal() lang.Value {
+	panic("unimplemented")
 }
 
 type RecordUpdate struct {
 	TableEvent *TableEvent
 	QueryPath  FlattenedQueryPath
+}
+
+func (ru *RecordUpdate) ToVal() lang.Value {
+	panic("unimplemented")
 }
 
 func (channel *Channel) WriteErrorMessage(err error) {
