@@ -59,7 +59,13 @@ func TestLangExec(t *testing.T) {
 
 	// Common stuff
 	scanPostsByID := lang.NewMemberAccess(
-		lang.NewMemberAccess(lang.NewVar("blog_posts"), "id"),
+		lang.NewMemberAccess(
+			lang.NewMemberAccess(
+				lang.NewVar("tables"),
+				"blog_posts",
+			),
+			"id",
+		),
 		"scan",
 	)
 	blogPostType := db.schema.tables["blog_posts"].getType()
@@ -73,7 +79,7 @@ func TestLangExec(t *testing.T) {
 	}{
 		{
 			scanPostsByID,
-			`blog_posts.id.scan`,
+			`tables.blog_posts.id.scan`,
 			`Iterator<{
   id: string,
   title: string,
@@ -92,10 +98,7 @@ func TestLangExec(t *testing.T) {
 					lang.TString,
 				),
 			}),
-			`map(blog_posts.id.scan, (post: {
-  id: string,
-  title: string,
-}): string => post.title)`,
+			`map(tables.blog_posts.id.scan, (post) => post.title)`,
 			`Iterator<string>`,
 			`["hello world", "hello again world"]`,
 		},

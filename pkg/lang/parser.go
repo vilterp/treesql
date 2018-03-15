@@ -96,7 +96,7 @@ var rules = map[string]p.Rule{
 		p.Sequence([]p.Rule{
 			p.Keyword("("),
 			p.Ref("param_list"),
-			p.Keyword("): "),
+			p.Keyword(")"),
 			p.Ref("type"),
 			p.Keyword(" => "),
 			p.Ref("expr"),
