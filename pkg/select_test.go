@@ -45,6 +45,14 @@ func TestSelect(t *testing.T) {
 			stmt: `INSERT INTO comments VALUES ("2", "1", "so creative")`,
 			ack:  "INSERT 1",
 		},
+		{
+			stmt: `CREATETABLE map (id string PRIMARYKEY)`,
+			ack:  "CREATE TABLE",
+		},
+		{
+			stmt: `INSERT INTO map VALUES ("1")`,
+			ack:  "INSERT 1",
+		},
 		// Test select.
 		{
 			query: `MANY blog_posts { id, title }`,
@@ -59,6 +67,15 @@ func TestSelect(t *testing.T) {
   }
 ]`,
 		},
+		{
+			query: `MANY map { id }`,
+			initialResult: `[
+  {
+    "id": "1"
+  }
+]`,
+		},
+		// TODO: test validation errors
 
 		// TODO: sort output so we don't have indeterminant map iteration flakiness.
 		//		{
