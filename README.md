@@ -3,11 +3,12 @@
 ![logo](logo.png)
 
 A proof of concept of a database which:
+- Is relational (tables with typed columns and foreign keys)
 - Has a tree-structured query language
 - Returns tree-structured results
 - Can push live updates to those result trees
 
-Currently uses [BoltDB](https://github.com/boltdb/bolt) as a storage layer, which means it can't do concurrent write transactions.
+Currently uses [BoltDB](https://github.com/boltdb/bolt) as a storage layer.
 
 [Docker Hub](https://hub.docker.com/r/vilterp/treesql/)
 
