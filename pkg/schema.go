@@ -29,16 +29,24 @@ func (table *TableDescriptor) getType() *lang.TRecord {
 	for _, col := range table.Columns {
 		types[col.Name] = col.Type
 	}
-	return &lang.TRecord{Types: types}
+	return lang.NewRecordType(types)
 }
 
 func (table *TableDescriptor) colIDForName(name string) (int, error) {
+	desc, err := table.getColDesc(name)
+	if err != nil {
+		return 0, err
+	}
+	return desc.ID, nil
+}
+
+func (table *TableDescriptor) getColDesc(name string) (*ColumnDescriptor, error) {
 	for _, col := range table.Columns {
 		if col.Name == name {
-			return col.ID, nil
+			return col, nil
 		}
 	}
-	return 0, fmt.Errorf("col not found: %s", name)
+	return nil, fmt.Errorf("col not found: %s", name)
 }
 
 type ColumnName string

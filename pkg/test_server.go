@@ -1,12 +1,13 @@
 package treesql
 
 import (
-	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"os"
 	"testing"
+
+	"encoding/json"
 
 	"github.com/phayes/freeport"
 	"github.com/vilterp/treesql/pkg/util"
@@ -86,7 +87,7 @@ func runSimpleTestScript(t *testing.T, cases []simpleTestStmt) *testServerRef {
 			if util.AssertError(t, idx, testCase.error, err) {
 				continue
 			}
-			indented, _ := json.MarshalIndent(res.Data, "", "  ")
+			indented, _ := json.MarshalIndent(res.Value, "", "  ")
 			if string(indented) != testCase.initialResult {
 				t.Fatalf("expected:\n%sgot:\n%s", testCase.initialResult, indented)
 			}

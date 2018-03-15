@@ -40,7 +40,7 @@ func main() {
 
 	// open files LQ
 	res, channel, err := clientConn.LiveQuery(getFilesQuery(*appID))
-	log.Println("initial files:", res.Data)
+	log.Println("initial files:", res.Value)
 	if err != nil {
 		log.Fatal(err)
 	}

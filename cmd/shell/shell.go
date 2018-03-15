@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 
+	"log"
+
 	"github.com/chzyer/readline"
 	"github.com/robertkrimen/isatty"
 	"github.com/vilterp/treesql/pkg"
@@ -26,6 +28,9 @@ func main() {
 		return
 	}
 	defer client.Close()
+
+	// Wait for server closing
+	go waitForServerClose(client)
 
 	// check if is TTY
 	isInputTty := isatty.Check(os.Stdin.Fd())
@@ -82,30 +87,36 @@ func main() {
 	}
 }
 
+func waitForServerClose(client *treesql.Client) {
+	<-client.ServerClosed
+	log.Println("server closed the connection")
+	// TODO: just reset the connection
+	os.Exit(0)
+}
+
 func runLiveQuery(client *treesql.Client, query string) {
 	initialResult, channel, err := client.LiveQuery(query)
 	if err != nil {
 		fmt.Println("error:", err)
 	}
-	printJSON("init", initialResult.Data)
+	printJSON("init", initialResult.Value)
 	go handleMessages(channel)
 }
 
 func runStatement(client *treesql.Client, stmt string) {
-	channel := client.Statement(stmt)
+	channel := client.RunStatement(stmt)
 	firstUpdate := <-channel.Updates
 	printMessage(channel, firstUpdate)
 	go handleMessages(channel)
 }
 
 func handleMessages(channel *treesql.ClientChannel) {
-	for {
-		message := <-channel.Updates
+	for message := range channel.Updates {
 		printMessage(channel, message)
 	}
 }
 
-func printMessage(channel *treesql.ClientChannel, msg *treesql.MessageToClient) {
+func printMessage(channel *treesql.ClientChannel, msg *treesql.BasicMessageToClient) {
 	fmt.Printf("chan %d: ", channel.StatementID)
 	if msg.AckMessage != nil {
 		fmt.Println("ack", *msg.AckMessage)
@@ -116,17 +127,17 @@ func printMessage(channel *treesql.ClientChannel, msg *treesql.MessageToClient) 
 		return
 	}
 	if msg.InitialResultMessage != nil {
-		printJSON("init", msg.InitialResultMessage.Data)
+		printJSON("init", msg.InitialResultMessage.Value)
 		return
 	}
-	if msg.RecordUpdateMessage != nil {
-		printJSON("record_update", msg.RecordUpdateMessage)
-		return
-	}
-	if msg.TableUpdateMessage != nil {
-		printJSON("table_update", msg.TableUpdateMessage)
-		return
-	}
+	//if msg.RecordUpdateMessage != nil {
+	//	printJSON("record_update", msg.RecordUpdateMessage)
+	//	return
+	//}
+	//if msg.TableUpdateMessage != nil {
+	//	printJSON("table_update", msg.TableUpdateMessage)
+	//	return
+	//}
 }
 
 func printJSON(tag string, thing interface{}) {
