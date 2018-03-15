@@ -9,13 +9,13 @@ import (
 )
 
 type Database struct {
-	Schema           *Schema
-	BoltDB           *bolt.DB
-	Connections      map[ConnectionID]*Connection
-	NextConnectionID int
+	schema           *schema
+	boltDB           *bolt.DB
+	connections      map[connectionID]*connection
+	nextConnectionID int
 
-	Ctx     context.Context
-	Metrics *Metrics
+	ctx     context.Context
+	metrics *metrics
 }
 
 func NewDatabase(dataFile string) (*Database, error) {
@@ -28,50 +28,42 @@ func NewDatabase(dataFile string) (*Database, error) {
 
 	// TODO: load this from somewhere in data dir
 	database := &Database{
-		Schema:           EmptySchema(),
-		BoltDB:           boltDB,
-		Connections:      make(map[ConnectionID]*Connection),
-		NextConnectionID: 0,
-		Ctx:              ctx,
+		schema:           emptySchema(),
+		boltDB:           boltDB,
+		connections:      make(map[connectionID]*connection),
+		nextConnectionID: 0,
+		ctx:              ctx,
 	}
-	database.AddBuiltinSchema()
-	database.EnsureBuiltinSchema()
-	database.LoadUserSchema()
+	database.addBuiltinSchema()
+	database.ensureBuiltinSchema()
+	database.loadUserSchema()
 
-	database.Metrics = NewMetrics(database)
+	database.metrics = newMetrics(database)
 
 	return database, nil
 }
 
-// AddConnection connects a websocket to the database, s.t. the database
+// addConnection connects a websocket to the database, s.t. the database
 // will interact with the connection.
-func (db *Database) AddConnection(wsConn *websocket.Conn) {
-	conn := NewConnection(wsConn, db, db.NextConnectionID)
-	db.NextConnectionID++
-	db.Connections[conn.ID] = conn
-	conn.HandleStatements()
+func (db *Database) addConnection(wsConn *websocket.Conn) {
+	conn := newConnection(wsConn, db, db.nextConnectionID)
+	db.nextConnectionID++
+	db.connections[conn.id] = conn
+	conn.handleStatements()
 }
 
-func (db *Database) removeConn(conn *Connection) {
-	delete(db.Connections, conn.ID)
-	for _, table := range db.Schema.Tables {
-		table.removeListenersForConn(conn.ID)
+func (db *Database) removeConn(conn *connection) {
+	delete(db.connections, conn.id)
+	for _, table := range db.schema.tables {
+		table.removeListenersForConn(conn.id)
 	}
 }
 
 func (db *Database) Close() error {
-	return db.BoltDB.Close()
+	return db.boltDB.Close()
 }
 
-// query validation
-// this is more rigamarole than it would be in Erlang
-
-type QueryValidationRequest struct {
-	query        *Select
-	responseChan chan error
-}
-
-func (db *Database) ValidateStatement(statement *Statement) error {
+func (db *Database) validateStatement(statement *Statement) error {
 	if statement.Select != nil {
 		// Validates during the planning phase
 		// TODO: replace entire `ValidateStatement` with planning
@@ -89,13 +81,13 @@ func (db *Database) ValidateStatement(statement *Statement) error {
 	return errors.New("unknown statement type")
 }
 
-func (db *Database) PushTableEvent(
-	channel *Channel, // originating channel
+func (db *Database) pushTableEvent(
+	channel *channel, // originating channel
 	tableName string,
-	oldRecord *Record,
-	newRecord *Record,
+	oldRecord *record,
+	newRecord *record,
 ) {
-	db.Schema.Tables[tableName].LiveQueryInfo.TableEvents <- &TableEvent{
+	db.schema.tables[tableName].liveQueryInfo.TableEvents <- &tableEvent{
 		TableName: tableName,
 		OldRecord: oldRecord,
 		NewRecord: newRecord,

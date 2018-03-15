@@ -6,12 +6,12 @@ import (
 	"github.com/vilterp/treesql/pkg/lang"
 )
 
-func (s *Schema) planSelect(query *Select) (lang.Expr, error) {
+func (s *schema) planSelect(query *Select) (lang.Expr, error) {
 	if query.Where != nil {
 		return nil, fmt.Errorf("don't know how to plan queries with WHERE yet")
 	}
 
-	tableDesc, ok := s.Tables[query.Table]
+	tableDesc, ok := s.tables[query.Table]
 	if !ok {
 		return nil, fmt.Errorf("no such table: %s", query.Table)
 	}
@@ -30,7 +30,7 @@ func (s *Schema) planSelect(query *Select) (lang.Expr, error) {
 			return nil, fmt.Errorf("no such column: %s.%s", query.Table, selection.Name)
 		}
 
-		types[selection.Name] = colDesc.Type
+		types[selection.Name] = colDesc.typ
 		exprs[selection.Name] = lang.NewMemberAccess(lang.NewVar("row"), selection.Name)
 	}
 
@@ -39,7 +39,7 @@ func (s *Schema) planSelect(query *Select) (lang.Expr, error) {
 		lang.NewMemberAccess(
 			lang.NewMemberAccess(
 				lang.NewVar(query.Table),
-				tableDesc.PrimaryKey,
+				tableDesc.primaryKey,
 			),
 			"scan",
 		),

@@ -14,13 +14,13 @@ type Client struct {
 	webSocketConn    *websocket.Conn
 	URL              string
 	nextStatementID  int
-	statementsToSend chan *StatementRequest
+	statementsToSend chan *statementRequest
 	incomingMessages chan *BasicChannelMessage
 	channels         map[int]*ClientChannel
 	ServerClosed     chan bool
 }
 
-type StatementRequest struct {
+type statementRequest struct {
 	Statement  string
 	ResultChan chan *ClientChannel
 }
@@ -34,7 +34,7 @@ func NewClient(url string) (*Client, error) {
 		nextStatementID:  0,
 		webSocketConn:    conn,
 		URL:              url,
-		statementsToSend: make(chan *StatementRequest),
+		statementsToSend: make(chan *statementRequest),
 		incomingMessages: make(chan *BasicChannelMessage),
 		channels:         map[int]*ClientChannel{},
 		ServerClosed:     make(chan bool),
@@ -88,10 +88,10 @@ type BasicMessageToClient struct {
 	ErrorMessage *string             `json:"error,omitempty"`
 	AckMessage   *string             `json:"ack,omitempty"`
 	// data
-	InitialResultMessage *BasicInitialResult `json:"initial_result,omitempty"`
+	InitialResultMessage *basicInitialResult `json:"initial_result,omitempty"`
 }
 
-type BasicInitialResult struct {
+type basicInitialResult struct {
 	Type  string
 	Value interface{}
 }
@@ -124,14 +124,14 @@ type ClientChannel struct {
 
 func (conn *Client) RunStatement(statement string) *ClientChannel {
 	resultChan := make(chan *ClientChannel)
-	conn.statementsToSend <- &StatementRequest{
+	conn.statementsToSend <- &statementRequest{
 		ResultChan: resultChan,
 		Statement:  statement,
 	}
 	return <-resultChan
 }
 
-func (conn *Client) LiveQuery(query string) (*BasicInitialResult, *ClientChannel, error) {
+func (conn *Client) LiveQuery(query string) (*basicInitialResult, *ClientChannel, error) {
 	channel := conn.RunStatement(query)
 	update := <-channel.Updates
 	if update.ErrorMessage != nil {
@@ -143,7 +143,7 @@ func (conn *Client) LiveQuery(query string) (*BasicInitialResult, *ClientChannel
 	return nil, nil, errors.New("query result neither error nor initial result")
 }
 
-func (conn *Client) Query(query string) (*BasicInitialResult, error) {
+func (conn *Client) Query(query string) (*basicInitialResult, error) {
 	resultChan := conn.RunStatement(query)
 	update := <-resultChan.Updates
 	if update.ErrorMessage != nil {

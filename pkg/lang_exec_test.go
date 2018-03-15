@@ -62,7 +62,7 @@ func TestLangExec(t *testing.T) {
 		lang.NewMemberAccess(lang.NewVar("blog_posts"), "id"),
 		"scan",
 	)
-	blogPostType := db.Schema.Tables["blog_posts"].getType()
+	blogPostType := db.schema.tables["blog_posts"].getType()
 
 	// Cases
 	testCases := []struct {
@@ -103,11 +103,11 @@ func TestLangExec(t *testing.T) {
 
 	for idx, testCase := range testCases {
 		// Construct transaction.
-		boltTxn, err := db.BoltDB.Begin(false)
+		boltTxn, err := db.boltDB.Begin(false)
 		if err != nil {
 			t.Fatal(err)
 		}
-		txn := &Txn{
+		txn := &txn{
 			boltTxn: boltTxn,
 			db:      db,
 		}
@@ -120,7 +120,7 @@ func TestLangExec(t *testing.T) {
 		}
 
 		// Construct scope.
-		userRootScope, _ := db.Schema.toScope(txn)
+		userRootScope, _ := db.schema.toScope(txn)
 
 		// Get type; compare.
 		// TODO: unfortuantely this is pretty messed up.
