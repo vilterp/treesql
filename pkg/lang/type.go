@@ -80,27 +80,33 @@ func (ts *tString) substitute(TypeVarBindings) (Type, bool, error) { return ts, 
 // Record
 
 type TRecord struct {
-	Types map[string]Type
+	types map[string]Type
 }
 
 var _ Type = &TRecord{}
 
+func NewRecordType(types map[string]Type) *TRecord {
+	return &TRecord{
+		types: types,
+	}
+}
+
 func (tr TRecord) Format() pp.Doc {
 	// Sort keys
-	keys := make([]string, len(tr.Types))
+	keys := make([]string, len(tr.types))
 	idx := 0
-	for k := range tr.Types {
+	for k := range tr.types {
 		keys[idx] = k
 		idx++
 	}
 	sort.Strings(keys)
 
-	kvDocs := make([]pp.Doc, len(tr.Types))
+	kvDocs := make([]pp.Doc, len(tr.types))
 	for idx, key := range keys {
 		kvDocs[idx] = pp.Seq([]pp.Doc{
 			pp.Text(key),
 			pp.Text(": "),
-			tr.Types[key].Format(),
+			tr.types[key].Format(),
 		})
 	}
 
@@ -117,11 +123,11 @@ func (tr *TRecord) matches(other Type) (bool, TypeVarBindings) {
 	if !ok {
 		return false, nil
 	}
-	if len(otherTO.Types) != len(tr.Types) {
+	if len(otherTO.types) != len(tr.types) {
 		return false, nil
 	}
-	for name, typ := range tr.Types {
-		otherTyp, ok := otherTO.Types[name]
+	for name, typ := range tr.types {
+		otherTyp, ok := otherTO.types[name]
 		if !ok {
 			return false, nil
 		}
@@ -135,7 +141,7 @@ func (tr *TRecord) matches(other Type) (bool, TypeVarBindings) {
 func (tr *TRecord) substitute(tvb TypeVarBindings) (Type, bool, error) {
 	types := map[string]Type{}
 	isConcrete := true
-	for name, typ := range tr.Types {
+	for name, typ := range tr.types {
 		newTyp, typConcrete, err := typ.substitute(tvb)
 		if err != nil {
 			return nil, false, err
@@ -143,7 +149,7 @@ func (tr *TRecord) substitute(tvb TypeVarBindings) (Type, bool, error) {
 		types[name] = newTyp
 		isConcrete = isConcrete && typConcrete
 	}
-	return &TRecord{Types: types}, isConcrete, nil
+	return &TRecord{types: types}, isConcrete, nil
 }
 
 // Iterator
@@ -153,6 +159,12 @@ type tIterator struct {
 }
 
 var _ Type = &tIterator{}
+
+func NewTIterator(innerType Type) *tIterator {
+	return &tIterator{
+		innerType: innerType,
+	}
+}
 
 func (ti tIterator) Format() pp.Doc {
 	return pp.Seq([]pp.Doc{

@@ -11,7 +11,7 @@ func TestExprGetType(t *testing.T) {
 	scope := NewScope(BuiltinsScope)
 
 	blogPostType := &TRecord{
-		Types: map[string]Type{
+		types: map[string]Type{
 			"id": TInt,
 		},
 	}

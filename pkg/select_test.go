@@ -3,8 +3,6 @@ package treesql
 import "testing"
 
 func TestSelect(t *testing.T) {
-	t.Skip("this is not gonna work until FP is hooked up")
-
 	tsr := runSimpleTestScript(t, []simpleTestStmt{
 		// Create blog post schema.
 		{
@@ -48,53 +46,67 @@ func TestSelect(t *testing.T) {
 			ack:  "INSERT 1",
 		},
 		// Test select.
-		// TODO: sort output so we don't have indeterminant map iteration flakiness.
 		{
-			query: `
-				MANY blog_posts {
-					id,
-					title,
-					comments: MANY comments {
-						id,
-						body
-					}
-				}
-			`,
+			query: `MANY blog_posts { id, title }`,
 			initialResult: `[
   {
-    "comments": [
-      {
-        "body": "hello yourself!",
-        "id": "0"
-      }
-    ],
     "id": "0",
     "title": "hello world"
   },
   {
-    "comments": [
-      {
-        "body": "sup",
-        "id": "1"
-      },
-      {
-        "body": "so creative",
-        "id": "2"
-      }
-    ],
     "id": "1",
     "title": "hello again world"
   }
 ]`,
 		},
-		{
-			query: `MANY blog_posts WHERE id = "0" { title }`,
-			initialResult: `[
-  {
-    "title": "hello world"
-  }
-]`,
-		},
+
+		// TODO: sort output so we don't have indeterminant map iteration flakiness.
+		//		{
+		//			query: `
+		//				MANY blog_posts {
+		//					id,
+		//					title,
+		//					comments: MANY comments {
+		//						id,
+		//						body
+		//					}
+		//				}
+		//			`,
+		//			initialResult: `[
+		//  {
+		//    "comments": [
+		//      {
+		//        "body": "hello yourself!",
+		//        "id": "0"
+		//      }
+		//    ],
+		//    "id": "0",
+		//    "title": "hello world"
+		//  },
+		//  {
+		//    "comments": [
+		//      {
+		//        "body": "sup",
+		//        "id": "1"
+		//      },
+		//      {
+		//        "body": "so creative",
+		//        "id": "2"
+		//      }
+		//    ],
+		//    "id": "1",
+		//    "title": "hello again world"
+		//  }
+		//]`,
+		//		},
+		//		{
+		//			query: `MANY blog_posts WHERE id = "0" { title }`,
+		//			initialResult: `[
+		//  {
+		//    "title": "hello world"
+		//  }
+		//]`,
+		//		},
 	})
 	tsr.Close()
 }

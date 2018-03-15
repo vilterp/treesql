@@ -73,7 +73,9 @@ type QueryValidationRequest struct {
 
 func (db *Database) ValidateStatement(statement *Statement) error {
 	if statement.Select != nil {
-		return db.validateSelect(statement.Select, nil)
+		// Validates during the planning phase
+		// TODO: replace entire `ValidateStatement` with planning
+		return nil
 	}
 	if statement.Insert != nil {
 		return db.validateInsert(statement.Insert)

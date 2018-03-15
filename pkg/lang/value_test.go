@@ -39,6 +39,17 @@ func TestWriteAsJSON(t *testing.T) {
 			"",
 		},
 		{
+			&VArray{
+				innerType: TInt,
+				values: []Value{
+					NewVInt(2),
+					NewVInt(3),
+				},
+			},
+			`[2,3]`,
+			"",
+		},
+		{
 			&VIteratorRef{
 				ofType:   TInt,
 				iterator: NewArrayIterator([]Value{NewVInt(2), NewVInt(3), NewVInt(4)}),
