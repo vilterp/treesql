@@ -48,6 +48,11 @@
 			"Rev": "c12348ce28de40eed0136aa2b644d0ee0650e56c"
 		},
 		{
+			"ImportPath": "github.com/phayes/freeport",
+			"Comment": "1.0.2-7-ge27662a",
+			"Rev": "e27662a4a9d6b2083dfd7e7b5d0e30985daca925"
+		},
+		{
 			"ImportPath": "github.com/pkg/errors",
 			"Comment": "v0.8.0-11-g30136e2",
 			"Rev": "30136e27e2ac8d167177e8a583aa4c3fea5be833"
