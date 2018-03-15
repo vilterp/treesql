@@ -104,7 +104,7 @@ var rules = map[string]p.Rule{
 		func(tree *p.TraceTree) interface{} {
 			// Get param list.
 			paramIs := tree.ItemTraces[1].RefTrace.GetMapRes().([]interface{})
-			params := make(ParamList, len(paramIs))
+			params := make(paramList, len(paramIs))
 			for idx, paramI := range paramIs {
 				params[idx] = paramI.(Param)
 			}

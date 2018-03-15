@@ -7,7 +7,7 @@ func TestTypeMatches(t *testing.T) {
 		a        Type
 		b        Type
 		match    bool
-		bindings TypeVarBindings
+		bindings typeVarBindings
 	}{
 		{TInt, TInt, true, nil},
 		{TInt, TString, false, nil},
@@ -20,8 +20,8 @@ func TestTypeMatches(t *testing.T) {
 		},
 		// TODO: switching the order breaks them.
 		{
-			&tIterator{innerType: NewTVar("A")},
-			&tIterator{innerType: TInt},
+			NewTIterator(NewTVar("A")),
+			NewTIterator(TInt),
 			true,
 			map[tVar]Type{tVar("A"): TInt},
 		},
@@ -71,7 +71,7 @@ func TestTypeIsConcrete(t *testing.T) {
 	}
 
 	for idx, testCase := range cases {
-		concrete := TypeIsConcrete(testCase.typ)
+		concrete := typeIsConcrete(testCase.typ)
 		if concrete != testCase.concrete {
 			t.Errorf("case %d: expected %v; got %v", idx, testCase.concrete, concrete)
 		}

@@ -7,64 +7,64 @@ import (
 	clog "github.com/vilterp/treesql/pkg/log"
 )
 
-// LiveQueryInfo lives in a table...
-type LiveQueryInfo struct {
+// liveQueryInfo lives in a table...
+type liveQueryInfo struct {
 	// input channels
-	TableEvents              chan *TableEvent
-	RecordSubscriptionEvents chan *RecordSubscriptionEvent
-	TableSubscriptionEvents  chan *TableSubscriptionEvent
+	TableEvents              chan *tableEvent
+	RecordSubscriptionEvents chan *recordSubscriptionEvent
+	TableSubscriptionEvents  chan *tableSubscriptionEvent
 	// subscribers
 
 	mu struct {
 		sync.RWMutex
 
-		TableListeners      map[ColumnName]map[string]*ListenerList // column name => value => listener
-		WholeTableListeners *ListenerList
-		RecordListeners     map[string]*ListenerList
+		TableListeners      map[columnName]map[string]*listenerList // column name => value => listener
+		WholeTableListeners *listenerList
+		RecordListeners     map[string]*listenerList
 	}
 }
 
-func (table *TableDescriptor) NewLiveQueryInfo() *LiveQueryInfo {
-	lqi := &LiveQueryInfo{
-		TableEvents:              make(chan *TableEvent),
-		TableSubscriptionEvents:  make(chan *TableSubscriptionEvent),
-		RecordSubscriptionEvents: make(chan *RecordSubscriptionEvent),
+func (table *tableDescriptor) newLiveQueryInfo() *liveQueryInfo {
+	lqi := &liveQueryInfo{
+		TableEvents:              make(chan *tableEvent),
+		TableSubscriptionEvents:  make(chan *tableSubscriptionEvent),
+		RecordSubscriptionEvents: make(chan *recordSubscriptionEvent),
 	}
-	lqi.mu.TableListeners = make(map[ColumnName]map[string]*ListenerList)
-	lqi.mu.WholeTableListeners = table.NewListenerList()
-	lqi.mu.RecordListeners = make(map[string]*ListenerList)
+	lqi.mu.TableListeners = make(map[columnName]map[string]*listenerList)
+	lqi.mu.WholeTableListeners = table.newListenerList()
+	lqi.mu.RecordListeners = make(map[string]*listenerList)
 	return lqi
 }
 
-type TableEvent struct {
+type tableEvent struct {
 	TableName string
-	OldRecord *Record
-	NewRecord *Record
+	OldRecord *record
+	NewRecord *record
 
-	channel *Channel
+	channel *channel
 }
 
-type TableSubscriptionEvent struct {
-	QueryExecution *SelectExecution
-	QueryPath      *QueryPath
+type tableSubscriptionEvent struct {
+	QueryExecution *selectExecution
+	QueryPath      *queryPath
 	SubQuery       *Select // where we are in the query
 	// vv this and value null => subscribe to whole table w/ no filter
 	ColumnName *string
-	Value      *Value
+	Value      *value
 
-	channel *Channel
+	channel *channel
 }
 
-type RecordSubscriptionEvent struct {
-	QueryExecution *SelectExecution
-	Value          *Value
-	QueryPath      *QueryPath
+type recordSubscriptionEvent struct {
+	QueryExecution *selectExecution
+	Value          *value
+	QueryPath      *queryPath
 
-	channel *Channel
+	channel *channel
 }
 
-func (table *TableDescriptor) removeListenersForConn(id ConnectionID) {
-	liveInfo := table.LiveQueryInfo
+func (table *tableDescriptor) removeListenersForConn(id connectionID) {
+	liveInfo := table.liveQueryInfo
 	liveInfo.mu.Lock()
 	defer liveInfo.mu.Unlock()
 
@@ -81,14 +81,14 @@ func (table *TableDescriptor) removeListenersForConn(id ConnectionID) {
 	}
 }
 
-func (table *TableDescriptor) HandleEvents() {
+func (table *tableDescriptor) handleEvents() {
 	// PERF: I guess all writes and (live) reads are serialized through here
 	// that seems bad for perf
 	// you'd have to shard the channels themselves somehow... e.g. for p.k. listeners,
 	// each record has its own goroutine...
 	// TODO (safety): all these long-lived values are making me nervous
 	// Bolt may recycle the underlying memory. fuck
-	liveInfo := table.LiveQueryInfo
+	liveInfo := table.liveQueryInfo
 	for {
 		select {
 		case tableSubEvent := <-liveInfo.TableSubscriptionEvents:
@@ -103,76 +103,76 @@ func (table *TableDescriptor) HandleEvents() {
 	}
 }
 
-func (table *TableDescriptor) handleTableSub(evt *TableSubscriptionEvent) {
-	liveInfo := table.LiveQueryInfo
+func (table *tableDescriptor) handleTableSub(evt *tableSubscriptionEvent) {
+	liveInfo := table.liveQueryInfo
 	liveInfo.mu.Lock()
 	defer liveInfo.mu.Unlock()
 
 	if evt.ColumnName == nil {
 		// whole table listener
-		liveInfo.mu.WholeTableListeners.AddQueryListener(
+		liveInfo.mu.WholeTableListeners.addQueryListener(
 			evt.QueryExecution, evt.SubQuery, evt.QueryPath,
 		)
 	} else {
 		// filtered listener
-		columnName := ColumnName(*evt.ColumnName)
+		columnName := columnName(*evt.ColumnName)
 		// initialize listeners for this column (could be done at table create/load)
 		// but that would leave us open when new columns are added
 		listenersForColumn := liveInfo.mu.TableListeners[columnName]
 		if listenersForColumn == nil {
-			listenersForColumn = map[string]*ListenerList{}
+			listenersForColumn = map[string]*listenerList{}
 			liveInfo.mu.TableListeners[columnName] = listenersForColumn
 		}
 		// initialize listeners for this value in this column
-		listenersForValue := listenersForColumn[evt.Value.StringVal]
+		listenersForValue := listenersForColumn[evt.Value.stringVal]
 		if listenersForValue == nil {
-			listenersForValue = table.NewListenerList()
-			listenersForColumn[evt.Value.StringVal] = listenersForValue
+			listenersForValue = table.newListenerList()
+			listenersForColumn[evt.Value.stringVal] = listenersForValue
 		}
-		listenersForValue.AddQueryListener(
+		listenersForValue.addQueryListener(
 			evt.QueryExecution, evt.SubQuery, evt.QueryPath,
 		)
 	}
 }
 
-func (table *TableDescriptor) handleRecordSub(evt *RecordSubscriptionEvent) {
-	liveInfo := table.LiveQueryInfo
+func (table *tableDescriptor) handleRecordSub(evt *recordSubscriptionEvent) {
+	liveInfo := table.liveQueryInfo
 	liveInfo.mu.Lock()
 	defer liveInfo.mu.Unlock()
 
-	listenersForValue := liveInfo.mu.RecordListeners[evt.Value.StringVal]
+	listenersForValue := liveInfo.mu.RecordListeners[evt.Value.stringVal]
 	if listenersForValue == nil {
-		listenersForValue = table.NewListenerList()
-		liveInfo.mu.RecordListeners[evt.Value.StringVal] = listenersForValue
+		listenersForValue = table.newListenerList()
+		liveInfo.mu.RecordListeners[evt.Value.stringVal] = listenersForValue
 	}
-	listenersForValue.AddRecordListener(evt.QueryExecution, evt.QueryPath)
+	listenersForValue.addRecordListener(evt.QueryExecution, evt.QueryPath)
 }
 
-func (table *TableDescriptor) handleTableEvent(evt *TableEvent) {
+func (table *tableDescriptor) handleTableEvent(evt *tableEvent) {
 	startTime := time.Now()
-	liveInfo := table.LiveQueryInfo
+	liveInfo := table.liveQueryInfo
 	liveInfo.mu.Lock()
 	defer liveInfo.mu.Unlock()
 
 	if evt.NewRecord != nil && evt.OldRecord == nil {
 		// clog.Println(evt.channel, "pushing insert event to table listeners")
 		// whole table listeners
-		liveInfo.mu.WholeTableListeners.SendEvent(evt)
+		liveInfo.mu.WholeTableListeners.sendEvent(evt)
 		// filtered table listeners
 		for columnName, listenersForColumn := range liveInfo.mu.TableListeners {
-			valueForColumn := evt.NewRecord.GetField(string(columnName)).StringVal
+			valueForColumn := evt.NewRecord.GetField(string(columnName)).stringVal
 			listenersForValue := listenersForColumn[valueForColumn]
 			if listenersForValue != nil {
-				listenersForValue.SendEvent(evt)
+				listenersForValue.sendEvent(evt)
 			}
 		}
 	} else if evt.OldRecord != nil && evt.NewRecord != nil {
 		clog.Println(evt.channel, "pushing update event to table listeners")
 		// record listeners
-		primaryKeyValue := evt.NewRecord.GetField(table.PrimaryKey).StringVal
+		primaryKeyValue := evt.NewRecord.GetField(table.primaryKey).stringVal
 		recordListeners := liveInfo.mu.RecordListeners[primaryKeyValue]
 		if recordListeners != nil {
-			recordListeners.SendEvent(evt)
+			recordListeners.sendEvent(evt)
 		}
 	} else if evt.OldRecord != nil && evt.NewRecord == nil {
 		clog.Println(evt.channel, "TODO: handle delete events")
@@ -180,6 +180,6 @@ func (table *TableDescriptor) handleTableEvent(evt *TableEvent) {
 	endTime := time.Now()
 	duration := endTime.Sub(startTime)
 	// TODO: get metrics more directly (i.e. not through the event)
-	metrics := evt.channel.Connection.Database.Metrics
+	metrics := evt.channel.connection.database.metrics
 	metrics.liveQueryPushLatency.Observe(float64(duration.Nanoseconds()))
 }

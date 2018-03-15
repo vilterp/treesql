@@ -10,59 +10,59 @@ import (
 	"github.com/vilterp/treesql/pkg/lang"
 )
 
-type Record struct {
-	Table  *TableDescriptor
-	Values []Value
+type record struct {
+	Table  *tableDescriptor
+	Values []value
 }
 
-type Value struct {
+type value struct {
 	// tagged union plz?
-	Type      ColumnType
-	StringVal string
-	IntVal    int32
+	typ       ColumnType
+	stringVal string
+	intVal    int32
 }
 
-func (v *Value) Format() string {
-	switch v.Type {
+func (v *value) Format() string {
+	switch v.typ {
 	case TypeInt:
-		return fmt.Sprintf("%d", v.IntVal)
+		return fmt.Sprintf("%d", v.intVal)
 	case TypeString:
-		return fmt.Sprintf("%#v", v.StringVal)
+		return fmt.Sprintf("%#v", v.stringVal)
 	default:
 		return ""
 	}
 }
 
-func (table *TableDescriptor) NewRecord() *Record {
-	return &Record{
+func (table *tableDescriptor) NewRecord() *record {
+	return &record{
 		Table:  table,
-		Values: make([]Value, len(table.Columns)),
+		Values: make([]value, len(table.columns)),
 	}
 }
 
 // TODO: delete once all usages removed
-func (table *TableDescriptor) RecordFromBytes(raw []byte) *Record {
-	record := &Record{
+func (table *tableDescriptor) RecordFromBytes(raw []byte) *record {
+	record := &record{
 		Table:  table,
-		Values: make([]Value, len(table.Columns)),
+		Values: make([]value, len(table.columns)),
 	}
 	buffer := bytes.NewBuffer(raw)
-	for valueIdx := 0; valueIdx < len(table.Columns); valueIdx++ {
+	for valueIdx := 0; valueIdx < len(table.columns); valueIdx++ {
 		typeCode, _ := buffer.ReadByte()
 		switch ColumnType(typeCode) {
 		case TypeString:
 			length, _ := readInteger(buffer)
 			stringBytes := make([]byte, length)
 			buffer.Read(stringBytes)
-			record.Values[valueIdx] = Value{
-				Type:      TypeString,
-				StringVal: string(stringBytes),
+			record.Values[valueIdx] = value{
+				typ:       TypeString,
+				stringVal: string(stringBytes),
 			}
 		case TypeInt:
 			val, _ := readInteger(buffer)
-			record.Values[valueIdx] = Value{
-				Type:   TypeInt,
-				IntVal: val,
+			record.Values[valueIdx] = value{
+				typ:    TypeInt,
+				intVal: val,
 			}
 		}
 	}
@@ -79,65 +79,65 @@ func assertType(readType ColumnType, expectedType lang.Type) error {
 	return nil
 }
 
-func (table *TableDescriptor) recordFromBytes(raw []byte) (*lang.VRecord, error) {
+func (table *tableDescriptor) recordFromBytes(raw []byte) (*lang.VRecord, error) {
 	// TODO: see if there's a way to reduce memory allocation.
 	attrs := map[string]lang.Value{}
 	buffer := bytes.NewBuffer(raw)
-	for _, col := range table.Columns {
+	for _, col := range table.columns {
 		typeCode, _ := buffer.ReadByte()
-		if err := assertType(ColumnType(typeCode), col.Type); err != nil {
+		if err := assertType(ColumnType(typeCode), col.typ); err != nil {
 			return nil, err
 		}
-		switch col.Type {
+		switch col.typ {
 		case lang.TString:
 			length, _ := readInteger(buffer)
 			stringBytes := make([]byte, length)
 			buffer.Read(stringBytes)
-			attrs[col.Name] = lang.NewVString(string(stringBytes))
+			attrs[col.name] = lang.NewVString(string(stringBytes))
 		case lang.TInt:
 			val, _ := readInteger(buffer)
-			attrs[col.Name] = lang.NewVInt(int(val))
+			attrs[col.name] = lang.NewVInt(int(val))
 		}
 	}
 	return lang.NewVRecord(attrs), nil
 }
 
-func (record *Record) GetField(name string) *Value {
+func (record *record) GetField(name string) *value {
 	idx := -1
-	for curIdx, column := range record.Table.Columns {
-		if column.Name == name {
+	for curIdx, column := range record.Table.columns {
+		if column.name == name {
 			idx = curIdx
 			break
 		}
 	}
 	if idx == -1 {
-		log.Fatalln("field not found for table", record.Table.Name, ":", name)
+		log.Fatalln("field not found for table", record.Table.name, ":", name)
 	}
 	return &record.Values[idx]
 }
 
-func (record *Record) SetString(name string, value string) {
+func (record *record) setString(name string, value string) {
 	idx := record.fieldIndex(name)
 	if idx == -1 {
-		log.Fatalln("field not found for table", record.Table.Name, ":", name)
+		log.Fatalln("field not found for table", record.Table.name, ":", name)
 	}
-	record.Values[idx].Type = TypeString
-	record.Values[idx].StringVal = value
+	record.Values[idx].typ = TypeString
+	record.Values[idx].stringVal = value
 }
 
-func (record *Record) SetInt(name string, value int32) {
+func (record *record) setInt(name string, value int32) {
 	idx := record.fieldIndex(name)
 	if idx == -1 {
-		log.Fatalln("field not found for table", record.Table.Name, ":", name)
+		log.Fatalln("field not found for table", record.Table.name, ":", name)
 	}
-	record.Values[idx].Type = TypeString
-	record.Values[idx].IntVal = value
+	record.Values[idx].typ = TypeString
+	record.Values[idx].intVal = value
 }
 
-func (record *Record) fieldIndex(name string) int {
+func (record *record) fieldIndex(name string) int {
 	idx := -1
-	for curIdx, column := range record.Table.Columns {
-		if column.Name == name {
+	for curIdx, column := range record.Table.columns {
+		if column.name == name {
 			idx = curIdx
 			break
 		}
@@ -164,41 +164,41 @@ func init() {
 	}
 }
 
-func (record *Record) ToBytes() ([]byte, error) {
+func (record *record) ToBytes() ([]byte, error) {
 	buf := new(bytes.Buffer)
-	for idx, column := range record.Table.Columns {
-		code, ok := codeForType[column.Type]
+	for idx, column := range record.Table.columns {
+		code, ok := codeForType[column.typ]
 		if !ok {
 			return nil, fmt.Errorf(
-				"serialization error: cannot serialize type %s", column.Type.Format(),
+				"serialization error: cannot serialize type %s", column.typ.Format(),
 			)
 		}
 		buf.WriteByte(byte(code))
 		value := record.Values[idx]
-		switch column.Type {
+		switch column.typ {
 		case lang.TInt:
-			WriteInteger(buf, value.IntVal)
+			WriteInteger(buf, value.intVal)
 		case lang.TString:
-			WriteInteger(buf, int32(len(value.StringVal)))
-			buf.WriteString(value.StringVal)
+			WriteInteger(buf, int32(len(value.stringVal)))
+			buf.WriteString(value.stringVal)
 		}
 	}
 	return buf.Bytes(), nil
 }
 
-func (record *Record) MarshalJSON() ([]byte, error) {
+func (record *record) MarshalJSON() ([]byte, error) {
 	out := "{"
-	for idx, column := range record.Table.Columns {
+	for idx, column := range record.Table.columns {
 		if idx > 0 {
 			out += ","
 		}
-		out += fmt.Sprintf("%s:%s", strconv.Quote(column.Name), strconv.Quote(record.GetField(column.Name).StringVal))
+		out += fmt.Sprintf("%s:%s", strconv.Quote(column.name), strconv.Quote(record.GetField(column.name).stringVal))
 	}
 	out += "}"
 	return []byte(out), nil
 }
 
-func (record *Record) Clone() *Record {
+func (record *record) Clone() *record {
 	clone, err := record.ToBytes()
 	if err != nil {
 		panic(fmt.Sprintf("can't serialize record in clone: %v", err))

@@ -2,97 +2,99 @@ package treesql
 
 import "fmt"
 
-type NoSuchTable struct {
+// TODO: these aren't always used. Remove them or always use them.
+
+type noSuchTable struct {
 	TableName string
 }
 
-func (e *NoSuchTable) Error() string {
+func (e *noSuchTable) Error() string {
 	return fmt.Sprintf("no such table: %s", e.TableName)
 }
 
-type NoSuchColumn struct {
+type noSuchColumn struct {
 	TableName  string
 	ColumnName string
 }
 
-func (e *NoSuchColumn) Error() string {
+func (e *noSuchColumn) Error() string {
 	return fmt.Sprintf("no such column in table %s: %s", e.TableName, e.ColumnName)
 }
 
-type BuiltinWriteAttempt struct {
+type builtinWriteAttempt struct {
 	TableName string
 }
 
-func (e *BuiltinWriteAttempt) Error() string {
+func (e *builtinWriteAttempt) Error() string {
 	return fmt.Sprintf("attemtped to write to %s, but builtin tables are read-only", e.TableName)
 }
 
-type InsertWrongNumFields struct {
+type insertWrongNumFields struct {
 	TableName string
 	Wanted    int
 	Got       int
 }
 
-func (e *InsertWrongNumFields) Error() string {
+func (e *insertWrongNumFields) Error() string {
 	return fmt.Sprintf("table %s has %d columns, but insert statement provided %d", e.TableName, e.Wanted, e.Got)
 }
 
-type TableAlreadyExists struct {
+type tableAlreadyExists struct {
 	TableName string
 }
 
-func (e *TableAlreadyExists) Error() string {
+func (e *tableAlreadyExists) Error() string {
 	return fmt.Sprintf("table already exists: %s", e.TableName)
 }
 
-type NonexistentType struct {
+type nonexistentType struct {
 	TypeName string
 }
 
-func (e *NonexistentType) Error() string {
+func (e *nonexistentType) Error() string {
 	return fmt.Sprintf("nonexistent type: %s", e.TypeName)
 }
 
-type WrongNoPrimaryKey struct {
+type wrongNoPrimaryKey struct {
 	Count int
 }
 
-func (e *WrongNoPrimaryKey) Error() string {
+func (e *wrongNoPrimaryKey) Error() string {
 	return fmt.Sprintf("tables should have exactly one column marked \"primary key\"; given %d", e.Count)
 }
 
-type NoReferenceForJoin struct {
+type noReferenceForJoin struct {
 	FromTable string
 	ToTable   string
 }
 
-func (e *NoReferenceForJoin) Error() string {
+func (e *noReferenceForJoin) Error() string {
 	return fmt.Sprintf("query requires a column in table `%s` referencing table `%s`; none found", e.FromTable, e.ToTable)
 }
 
 // TODO: maybe just use errors.Wrap for these
 
-type ParseError struct {
+type parseError struct {
 	error error
 }
 
-func (e *ParseError) Error() string {
+func (e *parseError) Error() string {
 	return fmt.Sprintf("parse error: %s", e.error.Error())
 }
 
-type ValidationError struct {
+type validationError struct {
 	error error
 }
 
-func (e *ValidationError) Error() string {
+func (e *validationError) Error() string {
 	return fmt.Sprintf("validation error: %s", e.error.Error())
 }
 
-type RecordAlreadyExists struct {
+type recordAlreadyExists struct {
 	ColName string
 	Val     string
 }
 
-func (e *RecordAlreadyExists) Error() string {
+func (e *recordAlreadyExists) Error() string {
 	return fmt.Sprintf("record already exists with primary key %s=%s", e.ColName, e.Val)
 }

@@ -41,7 +41,7 @@ func NewServer(dataFile string, port int) *Server {
 	// Serve metrics.
 	mux.Handle(
 		"/metrics",
-		promhttp.HandlerFor(database.Metrics.registry, promhttp.HandlerOpts{}),
+		promhttp.HandlerFor(database.metrics.registry, promhttp.HandlerOpts{}),
 	)
 
 	mux.HandleFunc("/debug/pprof/", pprof.Index)
@@ -62,7 +62,7 @@ func NewServer(dataFile string, port int) *Server {
 			log.Println(err)
 			return
 		}
-		database.AddConnection(conn)
+		database.addConnection(conn)
 	})
 
 	httpServer := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: mux}

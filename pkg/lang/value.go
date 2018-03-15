@@ -204,9 +204,7 @@ func NewVIteratorRef(iterator Iterator, ofType Type) *VIteratorRef {
 }
 
 func (v *VIteratorRef) GetType() Type {
-	return &tIterator{
-		innerType: v.ofType,
-	}
+	return NewTIterator(v.ofType)
 }
 
 func (v *VIteratorRef) Format() pp.Doc {
@@ -269,7 +267,7 @@ func mustBeVIteratorRef(v Value) *VIteratorRef {
 type vFunction interface {
 	Value
 
-	GetParamList() ParamList
+	GetParamList() paramList
 	GetRetType() Type
 }
 
@@ -308,7 +306,7 @@ func (vl *vLambda) WriteAsJSON(w *bufio.Writer, _ Caller) error {
 	return fmt.Errorf("can'out write a lambda to JSON")
 }
 
-func (vl *vLambda) GetParamList() ParamList {
+func (vl *vLambda) GetParamList() paramList {
 	return vl.def.params
 }
 
@@ -320,7 +318,7 @@ func (vl *vLambda) GetRetType() Type {
 
 type VBuiltin struct {
 	Name    string
-	Params  ParamList
+	Params  paramList
 	RetType Type
 
 	// TODO: maybe give it a more restricted interface
@@ -347,7 +345,7 @@ func (vb *VBuiltin) WriteAsJSON(w *bufio.Writer, _ Caller) error {
 	return fmt.Errorf("can'out write a builtin to JSON")
 }
 
-func (vb *VBuiltin) GetParamList() ParamList {
+func (vb *VBuiltin) GetParamList() paramList {
 	return vb.Params
 }
 

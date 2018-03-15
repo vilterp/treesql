@@ -4,19 +4,19 @@ import (
 	"fmt"
 )
 
-// QueryPath is a linked list type deal
-type QueryPath struct {
+// queryPath is a linked list type deal
+type queryPath struct {
 	// only one of these should be not nil (ugh)
 	Selection       *string
 	ID              *string
-	PreviousSegment *QueryPath // up the tree
+	PreviousSegment *queryPath // up the tree
 }
 
-func (qp *QueryPath) String() string {
-	return fmt.Sprintf("%v", qp.Flatten())
+func (qp *queryPath) String() string {
+	return fmt.Sprintf("%v", qp.flatten())
 }
 
-func (qp *QueryPath) Length() int {
+func (qp *queryPath) length() int {
 	currentSegment := qp
 	length := 0
 	for currentSegment != nil {
@@ -26,10 +26,10 @@ func (qp *QueryPath) Length() int {
 	return length
 }
 
-type FlattenedQueryPath = []map[string]string
+type flattenedQueryPath = []map[string]string
 
-func (qp *QueryPath) Flatten() FlattenedQueryPath {
-	length := qp.Length()
+func (qp *queryPath) flatten() flattenedQueryPath {
+	length := qp.length()
 	array := make([]map[string]string, length)
 	currentSegment := qp
 	for i := 0; currentSegment != nil; i++ {
