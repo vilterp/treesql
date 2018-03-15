@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"sort"
 
-	pp "github.com/vilterp/treesql/pkg/pretty_print"
+	pp "github.com/vilterp/treesql/pkg/prettyprint"
 )
 
 type Type interface {

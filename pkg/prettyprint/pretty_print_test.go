@@ -1,4 +1,4 @@
-package pretty_print
+package prettyprint
 
 import "testing"
 
