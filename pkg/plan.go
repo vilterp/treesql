@@ -38,7 +38,10 @@ func (s *schema) planSelect(query *Select) (lang.Expr, error) {
 	return lang.NewFuncCall("map", []lang.Expr{
 		lang.NewMemberAccess(
 			lang.NewMemberAccess(
-				lang.NewVar(query.Table),
+				lang.NewMemberAccess(
+					lang.NewVar("tables"),
+					query.Table,
+				),
 				tableDesc.primaryKey,
 			),
 			"scan",

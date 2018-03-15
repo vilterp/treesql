@@ -15,14 +15,16 @@ type txn struct {
 func (s *schema) toScope(txn *txn) (*lang.Scope, *lang.TypeScope) {
 	newScope := lang.NewScope(lang.BuiltinsScope)
 	newTypeScope := lang.NewTypeScope(lang.BuiltinsTypeScope)
+	tables := map[string]lang.Value{}
 	for _, table := range s.tables {
 		if table.isBuiltin {
 			continue
 		}
-		tableRec := table.toVRecord(txn)
-		newScope.Add(table.name, tableRec)
-		newTypeScope.Add(fmt.Sprintf("%s_t", table.name), tableRec.GetType())
+		tables[table.name] = table.toVRecord(txn)
 	}
+	tablesRec := lang.NewVRecord(tables)
+	newScope.Add("tables", tablesRec)
+	newTypeScope.Add("tables", tablesRec.GetType())
 	return newScope, newTypeScope
 }
 
