@@ -57,7 +57,7 @@ func TestExprGetType(t *testing.T) {
 		// TODO: func call of generic func
 	}
 
-	typeScope := scope.ToTypeScope()
+	typeScope := scope.toTypeScope()
 	for idx, testCase := range testCases {
 		actual, err := testCase.in.GetType(typeScope)
 		if util.AssertError(t, idx, testCase.error, err) {

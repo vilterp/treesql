@@ -12,15 +12,15 @@ import (
 
 func (db *Database) validateCreateTable(create *CreateTable) error {
 	// does table already exist?
-	_, ok := db.Schema.Tables[create.Name]
+	_, ok := db.schema.tables[create.Name]
 	if ok {
-		return &TableAlreadyExists{TableName: create.Name}
+		return &tableAlreadyExists{TableName: create.Name}
 	}
 	// types are real
 	for _, column := range create.Columns {
 		_, err := lang.ParseType(column.TypeName)
 		if err != nil {
-			return &NonexistentType{TypeName: column.TypeName}
+			return &nonexistentType{TypeName: column.TypeName}
 		}
 	}
 	// only one primary key
@@ -31,15 +31,15 @@ func (db *Database) validateCreateTable(create *CreateTable) error {
 		}
 	}
 	if primaryKeyCount != 1 {
-		return &WrongNoPrimaryKey{Count: primaryKeyCount}
+		return &wrongNoPrimaryKey{Count: primaryKeyCount}
 	}
 	// referenced table exists
 	// TODO: column same type as primary key
 	for _, column := range create.Columns {
 		if column.References != nil {
-			_, tableExists := db.Schema.Tables[*column.References]
+			_, tableExists := db.schema.tables[*column.References]
 			if !tableExists {
-				return &NoSuchTable{TableName: *column.References}
+				return &noSuchTable{TableName: *column.References}
 			}
 		}
 	}
@@ -47,14 +47,14 @@ func (db *Database) validateCreateTable(create *CreateTable) error {
 	return nil
 }
 
-func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel) error {
-	tableDesc, err := conn.Database.buildTableDescriptor(create)
+func (conn *connection) executeCreateTable(create *CreateTable, channel *channel) error {
+	tableDesc, err := conn.database.buildTableDescriptor(create)
 	if err != nil {
 		return err
 	}
-	tableRecord := tableDesc.ToRecord(conn.Database)
-	columnRecords := make([]*Record, len(create.Columns))
-	updateErr := conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
+	tableRecord := tableDesc.toRecord(conn.database)
+	columnRecords := make([]*record, len(create.Columns))
+	updateErr := conn.database.boltDB.Update(func(tx *bolt.Tx) error {
 		// TODO: give ids to tables; create bucket from that
 		// create bucket for new table
 		tableBucket, err := tx.CreateBucket([]byte(create.Name))
@@ -63,11 +63,11 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 		}
 		// create a bucket for each index
 		// primary key, and each column that references another table
-		for _, col := range tableDesc.Columns {
-			if col.ReferencesColumn != nil || tableDesc.PrimaryKey == col.Name {
+		for _, col := range tableDesc.columns {
+			if col.referencesColumn != nil || tableDesc.primaryKey == col.name {
 				// TODO: factor this out to an encoding file
 				colIDBytes := make([]byte, 4)
-				binary.BigEndian.PutUint32(colIDBytes, uint32(col.ID))
+				binary.BigEndian.PutUint32(colIDBytes, uint32(col.id))
 				_, err := tableBucket.CreateBucket(colIDBytes)
 				if err != nil {
 					return err
@@ -84,23 +84,23 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 			return err
 		}
 		// write column descriptors to __columns__
-		for idx, columnDesc := range tableDesc.Columns {
+		for idx, columnDesc := range tableDesc.columns {
 			// serialize descriptor
-			columnRecord := columnDesc.ToRecord(create.Name, conn.Database)
+			columnRecord := columnDesc.toRecord(create.Name, conn.database)
 			value, err := columnRecord.ToBytes()
 			if err != nil {
 				return err
 			}
 			// write to bucket
 			columnsBucket := tx.Bucket([]byte("__columns__"))
-			key := []byte(fmt.Sprintf("%d", columnDesc.ID))
+			key := []byte(fmt.Sprintf("%d", columnDesc.id))
 			if err := columnsBucket.Put(key, value); err != nil {
 				return err
 			}
 			columnRecords[idx] = columnRecord
 		}
 		// write next column id sequence
-		nextColumnIDBytes := encodeInteger(int32(conn.Database.Schema.NextColumnID))
+		nextColumnIDBytes := encodeInteger(int32(conn.database.schema.nextColumnID))
 		tx.Bucket([]byte("__sequences__")).Put([]byte("__next_column_id__"), nextColumnIDBytes)
 		return nil
 	})
@@ -108,13 +108,13 @@ func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel
 		return errors.Wrap(updateErr, "creating table")
 	}
 	// add to in-memory schema
-	conn.Database.addTableDescriptor(tableDesc)
+	conn.database.addTableDescriptor(tableDesc)
 	// push live query messages
-	conn.Database.PushTableEvent(channel, "__tables__", nil, tableRecord)
+	conn.database.pushTableEvent(channel, "__tables__", nil, tableRecord)
 	for _, columnRecord := range columnRecords {
-		conn.Database.PushTableEvent(channel, "__columns__", nil, columnRecord)
+		conn.database.pushTableEvent(channel, "__columns__", nil, columnRecord)
 	}
 	clog.Println(channel, "created table", create.Name)
-	channel.WriteAckMessage("CREATE TABLE")
+	channel.writeAckMessage("CREATE TABLE")
 	return nil
 }

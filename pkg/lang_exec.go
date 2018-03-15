@@ -7,36 +7,36 @@ import (
 	"github.com/vilterp/treesql/pkg/lang"
 )
 
-type Txn struct {
+type txn struct {
 	boltTxn *bolt.Tx
 	db      *Database
 }
 
-func (s *Schema) toScope(txn *Txn) (*lang.Scope, *lang.TypeScope) {
+func (s *schema) toScope(txn *txn) (*lang.Scope, *lang.TypeScope) {
 	newScope := lang.NewScope(lang.BuiltinsScope)
 	newTypeScope := lang.NewTypeScope(lang.BuiltinsTypeScope)
-	for _, table := range s.Tables {
-		if table.IsBuiltin {
+	for _, table := range s.tables {
+		if table.isBuiltin {
 			continue
 		}
 		tableRec := table.toVRecord(txn)
-		newScope.Add(table.Name, tableRec)
-		newTypeScope.Add(fmt.Sprintf("%s_t", table.Name), tableRec.GetType())
+		newScope.Add(table.name, tableRec)
+		newTypeScope.Add(fmt.Sprintf("%s_t", table.name), tableRec.GetType())
 	}
 	return newScope, newTypeScope
 }
 
-func (table *TableDescriptor) toVRecord(txn *Txn) *lang.VRecord {
+func (table *tableDescriptor) toVRecord(txn *txn) *lang.VRecord {
 	attrs := map[string]lang.Value{}
 
-	for _, col := range table.Columns {
-		if col.Name == table.PrimaryKey {
+	for _, col := range table.columns {
+		if col.name == table.primaryKey {
 			// Get iterator.
-			iter, err := txn.getTableIterator(table, col.Name)
+			iter, err := txn.getTableIterator(table, col.name)
 			if err != nil {
 				panic(fmt.Sprintf("err getting table iterator: %v", err))
 			}
-			attrs[col.Name] = lang.NewVRecord(map[string]lang.Value{
+			attrs[col.name] = lang.NewVRecord(map[string]lang.Value{
 				"scan": lang.NewVIteratorRef(iter, table.getType()),
 				"get":  lang.NewVInt(2), // getter
 			})
@@ -50,7 +50,7 @@ func (table *TableDescriptor) toVRecord(txn *Txn) *lang.VRecord {
 // once there are also virtual table iterators
 type tableIterator struct {
 	cursor        *bolt.Cursor
-	table         *TableDescriptor
+	table         *tableDescriptor
 	seekedToFirst bool
 }
 
@@ -81,18 +81,18 @@ func (ti *tableIterator) Close() error {
 	return nil
 }
 
-func (txn *Txn) getTableIterator(table *TableDescriptor, colName string) (*tableIterator, error) {
+func (txn *txn) getTableIterator(table *tableDescriptor, colName string) (*tableIterator, error) {
 	colID, err := table.colIDForName(colName)
 	if err != nil {
 		return nil, err
 	}
-	tableBucket := txn.boltTxn.Bucket([]byte(table.Name))
+	tableBucket := txn.boltTxn.Bucket([]byte(table.name))
 	if tableBucket == nil {
-		return nil, fmt.Errorf("bucket doesn't exist: %s", table.Name)
+		return nil, fmt.Errorf("bucket doesn't exist: %s", table.name)
 	}
 	idxBucket := tableBucket.Bucket(encodeInteger(int32(colID)))
 	if idxBucket == nil {
-		return nil, fmt.Errorf("bucket doesn't exist: %s/%d", table.Name, colID)
+		return nil, fmt.Errorf("bucket doesn't exist: %s/%d", table.name, colID)
 	}
 
 	cursor := idxBucket.Cursor()
@@ -104,5 +104,5 @@ func (txn *Txn) getTableIterator(table *TableDescriptor, colName string) (*table
 }
 
 // TODO: build an vIteratorRef with the right type
-// may require using the Type type in the table descriptor
+// may require using the typ type in the table descriptor
 // which would really f*ck things up

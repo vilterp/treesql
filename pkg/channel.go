@@ -8,57 +8,57 @@ import (
 	clog "github.com/vilterp/treesql/pkg/log"
 )
 
-type ChannelID int
+type channelID int
 
-type Channel struct {
-	Connection   *Connection
-	RawStatement string
-	ID           int // unique with containing connection
+type channel struct {
+	connection   *connection
+	rawStatement string
+	id           int // unique with containing connection
 
-	Context context.Context
+	context context.Context
 }
 
-func (channel *Channel) Ctx() context.Context {
-	return channel.Context
+func (channel *channel) Ctx() context.Context {
+	return channel.context
 }
 
-func NewChannel(rawStatement string, ID int, conn *Connection) *Channel {
+func newChannel(rawStatement string, ID int, conn *connection) *channel {
 	ctx := context.WithValue(conn.Ctx(), clog.ChannelIDKey, ID)
-	channel := &Channel{
-		Connection:   conn,
-		RawStatement: rawStatement,
-		ID:           ID,
-		Context:      ctx,
+	channel := &channel{
+		connection:   conn,
+		rawStatement: rawStatement,
+		id:           ID,
+		context:      ctx,
 	}
 	return channel
 }
 
-func (channel *Channel) HandleStatement() {
-	err, done := channel.validateAndRun()
+func (channel *channel) handleStatement() {
+	done, err := channel.validateAndRun()
 	if err != nil {
 		clog.Printf(channel, err.Error())
-		channel.WriteErrorMessage(err)
+		channel.writeErrorMessage(err)
 	}
 	// Remove this channel if we're done.
 	if done {
-		channel.Connection.removeChannel(channel)
+		channel.connection.removeChannel(channel)
 	}
 }
 
 // validateAndRun returns an error if there was one, and a boolean
 // representing whether this statement is done (i.e. whether a live query
 // is still running on this channel)
-func (channel *Channel) validateAndRun() (error, bool) {
+func (channel *channel) validateAndRun() (bool, error) {
 	// Parse what was sent to us.
-	statement, err := Parse(channel.RawStatement)
+	statement, err := Parse(channel.rawStatement)
 	if err != nil {
-		return &ParseError{error: err}, true
+		return true, &parseError{error: err}
 	}
 
 	// Validate statement.
-	queryErr := channel.Connection.Database.ValidateStatement(statement)
+	queryErr := channel.connection.database.validateStatement(statement)
 	if queryErr != nil {
-		return &ValidationError{error: queryErr}, true
+		return true, &validationError{error: queryErr}
 	}
 	return channel.run(statement)
 }
@@ -66,32 +66,32 @@ func (channel *Channel) validateAndRun() (error, bool) {
 // run runs the statement, returning and error if there was one
 // and a boolean indicating whether the statement is "done"
 // (only false if this is a live query)
-func (channel *Channel) run(statement *Statement) (error, bool) {
-	conn := channel.Connection
-	// TODO: maybe move all these methods onto Channel?
+func (channel *channel) run(statement *Statement) (bool, error) {
+	conn := channel.connection
+	// TODO: maybe move all these methods onto channel?
 	if statement.Select != nil {
-		return conn.ExecuteTopLevelQuery(statement.Select, channel), !statement.Select.Live
+		return !statement.Select.Live, conn.executeTopLevelQuery(statement.Select, channel)
 	}
 	if statement.Insert != nil {
-		return conn.ExecuteInsert(statement.Insert, channel), true
+		return true, conn.executeInsert(statement.Insert, channel)
 	}
 	if statement.CreateTable != nil {
-		return conn.ExecuteCreateTable(statement.CreateTable, channel), true
+		return true, conn.executeCreateTable(statement.CreateTable, channel)
 	}
 	if statement.Update != nil {
-		return conn.ExecuteUpdate(statement.Update, channel), true
+		return true, conn.executeUpdate(statement.Update, channel)
 	}
 	panic(fmt.Sprintf("unknown statement type %v", statement))
 }
 
 type ChannelMessage struct {
-	// TODO: change this to ChannelID, as well as usages in JS
+	// TODO: change this to channelID, as well as usages in JS
 	StatementID int
 	Message     *MessageToClient
 }
 
 // TODO: this is pretty ugly. Maybe it should be embedded in the value?
-func (cm *ChannelMessage) GetCaller() lang.Caller {
+func (cm *ChannelMessage) getCaller() lang.Caller {
 	if cm.Message.InitialResultMessage != nil {
 		return cm.Message.InitialResultMessage.Caller
 	}
@@ -104,7 +104,7 @@ func (cm *ChannelMessage) GetCaller() lang.Caller {
 	panic(fmt.Sprintf("can't get caller for %+v", cm.Message))
 }
 
-func (cm *ChannelMessage) ToVal() lang.Value {
+func (cm *ChannelMessage) toVal() lang.Value {
 	return lang.NewVRecord(map[string]lang.Value{
 		"StatementID": lang.NewVInt(cm.StatementID),
 		"Message":     cm.Message.ToVal(),
@@ -178,10 +178,10 @@ func (mtc *MessageToClient) ToVal() lang.Value {
 		vals["initial_result"] = mtc.InitialResultMessage.ToVal()
 	}
 	if mtc.RecordUpdateMessage != nil {
-		vals["record_update"] = mtc.RecordUpdateMessage.ToVal()
+		vals["record_update"] = mtc.RecordUpdateMessage.toVal()
 	}
 	if mtc.TableUpdateMessage != nil {
-		vals["table_update"] = mtc.TableUpdateMessage.ToVal()
+		vals["table_update"] = mtc.TableUpdateMessage.toVal()
 	}
 	return lang.NewVRecord(vals)
 }
@@ -194,31 +194,31 @@ type InitialResult struct {
 
 func (ir *InitialResult) ToVal() lang.Value {
 	return lang.NewVRecord(map[string]lang.Value{
-		// TODO: send Type in a structured format, not pretty-prim
-		"Type":  lang.NewVString(ir.Value.GetType().Format().String()),
+		// TODO: send typ in a structured format, not pretty-prim
+		"typ":   lang.NewVString(ir.Value.GetType().Format().String()),
 		"Value": ir.Value,
 	})
 }
 
 type TableUpdate struct {
 	Selection lang.Value
-	QueryPath FlattenedQueryPath
+	QueryPath flattenedQueryPath
 }
 
-func (tu *TableUpdate) ToVal() lang.Value {
+func (tu *TableUpdate) toVal() lang.Value {
 	panic("unimplemented")
 }
 
 type RecordUpdate struct {
-	TableEvent *TableEvent
-	QueryPath  FlattenedQueryPath
+	TableEvent *tableEvent
+	QueryPath  flattenedQueryPath
 }
 
-func (ru *RecordUpdate) ToVal() lang.Value {
+func (ru *RecordUpdate) toVal() lang.Value {
 	panic("unimplemented")
 }
 
-func (channel *Channel) WriteErrorMessage(err error) {
+func (channel *channel) writeErrorMessage(err error) {
 	errStr := err.Error()
 	channel.writeMessage(&MessageToClient{
 		Type:         ErrorMessage,
@@ -226,40 +226,40 @@ func (channel *Channel) WriteErrorMessage(err error) {
 	})
 }
 
-func (channel *Channel) WriteAckMessage(message string) {
+func (channel *channel) writeAckMessage(message string) {
 	channel.writeMessage(&MessageToClient{
 		Type:       AckMessage,
 		AckMessage: &message,
 	})
 }
 
-func (channel *Channel) WriteInitialResult(result *InitialResult) {
+func (channel *channel) writeInitialResult(result *InitialResult) {
 	channel.writeMessage(&MessageToClient{
 		Type:                 InitialResultMessage,
 		InitialResultMessage: result,
 	})
 }
 
-func (channel *Channel) WriteTableUpdate(update *TableUpdate) {
+func (channel *channel) writeTableUpdate(update *TableUpdate) {
 	channel.writeMessage(&MessageToClient{
 		Type:               TableUpdateMessage,
 		TableUpdateMessage: update,
 	})
 }
 
-func (channel *Channel) WriteRecordUpdate(update *TableEvent, queryPath *QueryPath) {
+func (channel *channel) writeRecordUpdate(update *tableEvent, queryPath *queryPath) {
 	channel.writeMessage(&MessageToClient{
 		Type: RecordUpdateMessage,
 		RecordUpdateMessage: &RecordUpdate{
-			QueryPath:  queryPath.Flatten(),
+			QueryPath:  queryPath.flatten(),
 			TableEvent: update,
 		},
 	})
 }
 
-func (channel *Channel) writeMessage(message *MessageToClient) {
-	channel.Connection.Messages <- &ChannelMessage{
-		StatementID: channel.ID,
+func (channel *channel) writeMessage(message *MessageToClient) {
+	channel.connection.messages <- &ChannelMessage{
+		StatementID: channel.id,
 		Message:     message,
 	}
 }

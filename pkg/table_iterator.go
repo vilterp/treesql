@@ -10,43 +10,43 @@ import (
 // TODO: just make a common arrayIterator for internal tables
 
 type TableIterator interface {
-	Next() *Record
-	Get(key string) (*Record, error)
+	Next() *record
+	Get(key string) (*record, error)
 	Close()
 }
 
-func (ex *SelectExecution) getTableIterator(tableName string) (TableIterator, error) {
+func (ex *selectExecution) getTableIterator(tableName string) (TableIterator, error) {
 	if tableName == "__tables__" {
-		return newTablesIterator(ex.Channel.Connection.Database)
+		return newTablesIterator(ex.Channel.connection.database)
 	}
 	if tableName == "__columns__" {
-		return newColumnsIterator(ex.Channel.Connection.Database)
+		return newColumnsIterator(ex.Channel.connection.database)
 	}
 	if tableName == "__record_listeners__" {
-		return newRecordListenersIterator(ex.Channel.Connection.Database)
+		return newRecordListenersIterator(ex.Channel.connection.database)
 	}
 	return newBoltIterator(ex, tableName)
 }
 
 // bolt iterator
 
-type BoltIterator struct {
+type boltIterator struct {
 	cursor        *bolt.Cursor
 	seekedToFirst bool
-	table         *TableDescriptor
+	table         *tableDescriptor
 }
 
-func newBoltIterator(ex *SelectExecution, tableName string) (*BoltIterator, error) {
-	tableSchema := ex.Channel.Connection.Database.Schema.Tables[tableName]
+func newBoltIterator(ex *selectExecution, tableName string) (*boltIterator, error) {
+	tableSchema := ex.Channel.connection.database.schema.tables[tableName]
 	cursor := ex.Transaction.Bucket([]byte(tableName)).Cursor()
-	return &BoltIterator{
+	return &boltIterator{
 		table:         tableSchema,
 		seekedToFirst: false,
 		cursor:        cursor,
 	}, nil
 }
 
-func (it *BoltIterator) Next() *Record {
+func (it *boltIterator) Next() *record {
 	var key []byte
 	var rawRecord []byte
 	if !it.seekedToFirst {
@@ -62,12 +62,12 @@ func (it *BoltIterator) Next() *Record {
 	return record
 }
 
-func (it *BoltIterator) Get(key string) (*Record, error) {
+func (it *boltIterator) Get(key string) (*record, error) {
 	_, rawRecord := it.cursor.Seek([]byte(key))
 	return it.table.RecordFromBytes(rawRecord), nil
 }
 
-func (it *BoltIterator) Close() {
+func (it *boltIterator) Close() {
 	// I guess closing this is not a thing
 }
 
@@ -75,66 +75,66 @@ func (it *BoltIterator) Close() {
 
 // oof, what if these change out from underneath the iterators?
 // how do I clone the tables?
-type SchemaTablesIterator struct {
+type schemaTablesIterator struct {
 	db          *Database
-	tablesArray []*TableDescriptor
+	tablesArray []*tableDescriptor
 	idx         int
 }
 
-func newTablesIterator(db *Database) (*SchemaTablesIterator, error) {
-	tables := make([]*TableDescriptor, len(db.Schema.Tables))
+func newTablesIterator(db *Database) (*schemaTablesIterator, error) {
+	tables := make([]*tableDescriptor, len(db.schema.tables))
 	i := 0
-	for _, table := range db.Schema.Tables {
+	for _, table := range db.schema.tables {
 		tables[i] = table
 		i++
 	}
-	return &SchemaTablesIterator{
+	return &schemaTablesIterator{
 		db:          db,
 		tablesArray: tables,
 		idx:         0,
 	}, nil
 }
 
-func (it *SchemaTablesIterator) Next() *Record {
+func (it *schemaTablesIterator) Next() *record {
 	if it.idx == len(it.tablesArray) {
 		return nil
 	}
 	table := it.tablesArray[it.idx]
 	it.idx++
-	return table.ToRecord(it.db)
+	return table.toRecord(it.db)
 }
 
-func (it *SchemaTablesIterator) Get(key string) (*Record, error) {
-	table := it.db.Schema.Tables[key]
-	return table.ToRecord(it.db), nil
+func (it *schemaTablesIterator) Get(key string) (*record, error) {
+	table := it.db.schema.tables[key]
+	return table.toRecord(it.db), nil
 }
 
-func (it *SchemaTablesIterator) Close() {}
+func (it *schemaTablesIterator) Close() {}
 
 // schema columns iterator
 
-type SchemaColumnsIterator struct {
+type schemaColumnsIterator struct {
 	db      *Database
-	columns []*Record
+	columns []*record
 	idx     int
 }
 
-func newColumnsIterator(db *Database) (*SchemaColumnsIterator, error) {
-	columns := make([]*Record, 0)
-	for _, table := range db.Schema.Tables {
-		for _, column := range table.Columns {
-			columnDoc := column.ToRecord(table.Name, db)
+func newColumnsIterator(db *Database) (*schemaColumnsIterator, error) {
+	columns := make([]*record, 0)
+	for _, table := range db.schema.tables {
+		for _, column := range table.columns {
+			columnDoc := column.toRecord(table.name, db)
 			columns = append(columns, columnDoc)
 		}
 	}
-	return &SchemaColumnsIterator{
+	return &schemaColumnsIterator{
 		db:      db,
 		columns: columns,
 		idx:     0,
 	}, nil
 }
 
-func (it *SchemaColumnsIterator) Next() *Record {
+func (it *schemaColumnsIterator) Next() *record {
 	if it.idx == len(it.columns) {
 		return nil
 	}
@@ -143,7 +143,7 @@ func (it *SchemaColumnsIterator) Next() *Record {
 	return columnDoc
 }
 
-func (it *SchemaColumnsIterator) Get(key string) (*Record, error) {
+func (it *schemaColumnsIterator) Get(key string) (*record, error) {
 	// BUG: this is not stable if columns are dropped
 	// need real OIDs
 	// need sequences as a first-class DB object O_o
@@ -154,35 +154,35 @@ func (it *SchemaColumnsIterator) Get(key string) (*Record, error) {
 	return it.columns[idx], nil
 }
 
-func (it *SchemaColumnsIterator) Close() {}
+func (it *schemaColumnsIterator) Close() {}
 
 // record listeners iterator
 
-type RecordListenersIterator struct {
+type recordListenersIterator struct {
 	db        *Database
-	listeners []*Record
+	listeners []*record
 	idx       int
 }
 
-func newRecordListenersIterator(db *Database) (*RecordListenersIterator, error) {
-	listenersTable := db.Schema.Tables["__record_listeners__"]
-	listeners := make([]*Record, 0)
+func newRecordListenersIterator(db *Database) (*recordListenersIterator, error) {
+	listenersTable := db.schema.tables["__record_listeners__"]
+	listeners := make([]*record, 0)
 	i := 0
-	for _, table := range db.Schema.Tables {
-		table.LiveQueryInfo.mu.RLock()
-		defer table.LiveQueryInfo.mu.RUnlock()
+	for _, table := range db.schema.tables {
+		table.liveQueryInfo.mu.RLock()
+		defer table.liveQueryInfo.mu.RUnlock()
 
-		for pkVal, listenerList := range table.LiveQueryInfo.mu.RecordListeners {
+		for pkVal, listenerList := range table.liveQueryInfo.mu.RecordListeners {
 			for connID, listenersForConn := range listenerList.Listeners {
 				for statementID, listenersForStatement := range listenersForConn {
 					for _, listener := range listenersForStatement {
 						record := listenersTable.NewRecord()
-						record.SetString("id", fmt.Sprintf("%d", i)) // uh yeah these are not stable
-						record.SetString("connection_id", fmt.Sprintf("%d", connID))
-						record.SetString("channel_id", fmt.Sprintf("%d", statementID))
-						record.SetString("table_name", table.Name)
-						record.SetString("pk_value", pkVal)
-						record.SetString("query_path", listener.QueryPath.String())
+						record.setString("id", fmt.Sprintf("%d", i)) // uh yeah these are not stable
+						record.setString("connection_id", fmt.Sprintf("%d", connID))
+						record.setString("channel_id", fmt.Sprintf("%d", statementID))
+						record.setString("table_name", table.name)
+						record.setString("pk_value", pkVal)
+						record.setString("query_path", listener.QueryPath.String())
 						listeners = append(listeners, record)
 						i++
 					}
@@ -190,14 +190,14 @@ func newRecordListenersIterator(db *Database) (*RecordListenersIterator, error) 
 			}
 		}
 	}
-	return &RecordListenersIterator{
+	return &recordListenersIterator{
 		db:        db,
 		listeners: listeners,
 		idx:       0,
 	}, nil
 }
 
-func (it *RecordListenersIterator) Next() *Record {
+func (it *recordListenersIterator) Next() *record {
 	if it.idx == len(it.listeners) {
 		return nil
 	}
@@ -206,7 +206,7 @@ func (it *RecordListenersIterator) Next() *Record {
 	return columnDoc
 }
 
-func (it *RecordListenersIterator) Get(key string) (*Record, error) {
+func (it *recordListenersIterator) Get(key string) (*record, error) {
 	// BUG: this is not stable if columns are dropped
 	// need real OIDs
 	// need sequences as a first-class DB object O_o
@@ -217,6 +217,6 @@ func (it *RecordListenersIterator) Get(key string) (*Record, error) {
 	return it.listeners[idx], nil
 }
 
-func (it *RecordListenersIterator) Close() {}
+func (it *recordListenersIterator) Close() {}
 
 // records iterator

@@ -50,26 +50,26 @@ func TestLiveQueries(t *testing.T) {
 	//go func() {
 	//	msg2 := <-lqChan.Updates
 	//	t.Log("received table listener update")
-	//	if msg2.Type != TableUpdateMessage {
-	//		t.Fatalf("expected %v but got %v", TableUpdateMessage, msg2.Type)
+	//	if msg2.typ != TableUpdateMessage {
+	//		t.Fatalf("expected %v but got %v", TableUpdateMessage, msg2.typ)
 	//	}
 	//
 	//	msg3 := <-lqChan.Updates
 	//	t.Log("received record listener update")
-	//	if msg3.Type != RecordUpdateMessage {
-	//		t.Fatalf("expected %v but got %v", RecordUpdateMessage, msg3.Type)
+	//	if msg3.typ != RecordUpdateMessage {
+	//		t.Fatalf("expected %v but got %v", RecordUpdateMessage, msg3.typ)
 	//	}
 	//
 	//	msg4 := <-lqChan.Updates
 	//	t.Log("received nested table listener update")
-	//	if msg4.Type != TableUpdateMessage {
-	//		t.Fatalf("expected %v but got %v", TableUpdateMessage, msg4.Type)
+	//	if msg4.typ != TableUpdateMessage {
+	//		t.Fatalf("expected %v but got %v", TableUpdateMessage, msg4.typ)
 	//	}
 	//
 	//	msg5 := <-lqChan.Updates
 	//	t.Log("received nested record listener update")
-	//	if msg5.Type != RecordUpdateMessage {
-	//		t.Fatalf("expected %v but got %v", RecordUpdateMessage, msg5.Type)
+	//	if msg5.typ != RecordUpdateMessage {
+	//		t.Fatalf("expected %v but got %v", RecordUpdateMessage, msg5.typ)
 	//	}
 	//
 	//	done <- true

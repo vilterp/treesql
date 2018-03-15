@@ -10,13 +10,13 @@ import (
 	clog "github.com/vilterp/treesql/pkg/log"
 )
 
-// TODO: maybe these should be on Channel, not Connection
-func (conn *Connection) ExecuteTopLevelQuery(query *Select, channel *Channel) error {
+// TODO: maybe these should be on channel, not connection
+func (conn *connection) executeTopLevelQuery(query *Select, channel *channel) error {
 	result, caller, _, selectErr := conn.executeQuery(query, channel)
 	if selectErr != nil {
 		return errors.Wrap(selectErr, "query error")
 	}
-	channel.WriteInitialResult(&InitialResult{
+	channel.writeInitialResult(&InitialResult{
 		Value:  result,
 		Caller: caller,
 		Type:   result.GetType(),
@@ -24,8 +24,8 @@ func (conn *Connection) ExecuteTopLevelQuery(query *Select, channel *Channel) er
 	return nil
 }
 
-func (conn *Connection) ExecuteQueryForTableListener(
-	query *Select, statementID int, channel *Channel,
+func (conn *connection) executeQueryForTableListener(
+	query *Select, statementID int, channel *channel,
 ) (lang.Value, error) {
 	result, _, _, selectErr := conn.executeQuery(query, channel)
 	//clog.Println(
@@ -37,16 +37,16 @@ func (conn *Connection) ExecuteQueryForTableListener(
 // can be from a live query or a top-level query
 // TODO: add live query stuff back in
 // TODO: add timing back somewhere else
-func (conn *Connection) executeQuery(
+func (conn *connection) executeQuery(
 	query *Select,
-	channel *Channel,
+	channel *channel,
 ) (lang.Value, lang.Caller, *time.Duration, error) {
 	startTime := time.Now()
-	tx, _ := conn.Database.BoltDB.Begin(false)
-	// ctx := context.WithValue(conn.Context, clog.ChannelIDKey, channel.ID)
+	tx, _ := conn.database.boltDB.Begin(false)
+	// ctx := context.WithValue(conn.context, clog.ChannelIDKey, channel.id)
 
 	// Plan the query.
-	expr, err := conn.Database.Schema.planSelect(query)
+	expr, err := conn.database.schema.planSelect(query)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -54,11 +54,11 @@ func (conn *Connection) executeQuery(
 	clog.Println(conn, "QUERY PLAN:", expr.Format())
 
 	// Make transaction and scope.
-	txn := &Txn{
-		db:      conn.Database,
+	txn := &txn{
+		db:      conn.database,
 		boltTxn: tx,
 	}
-	scope, _ := conn.Database.Schema.toScope(txn)
+	scope, _ := conn.database.schema.toScope(txn)
 
 	// Interpret the expr.
 	interp := lang.NewInterpreter(scope, expr)
@@ -75,42 +75,42 @@ func (conn *Connection) executeQuery(
 }
 
 // maybe this should be called transaction? idk
-type SelectExecution struct {
-	ID          ChannelID
-	Channel     *Channel
+type selectExecution struct {
+	ID          channelID
+	Channel     *channel
 	Query       *Select
 	Transaction *bolt.Tx
 	Context     context.Context
 }
 
-func (ex *SelectExecution) Ctx() context.Context {
+func (ex *selectExecution) Ctx() context.Context {
 	return ex.Context
 }
 
-type Scope struct {
-	table         *TableDescriptor
-	document      *Record
-	pathSoFar     *QueryPath
+type scope struct {
+	table         *tableDescriptor
+	document      *record
+	pathSoFar     *queryPath
 	selectionName string
 }
 
-type FilterCondition struct {
+type filterCondition struct {
 	InnerColumnName string
 	OuterColumnName string
 }
 
-func (ex *SelectExecution) subscribeToRecord(scope *Scope, record *Record, table *TableDescriptor) {
-	var previousQueryPath *QueryPath
+func (ex *selectExecution) subscribeToRecord(scope *scope, record *record, table *tableDescriptor) {
+	var previousQueryPath *queryPath
 	if scope != nil {
 		previousQueryPath = scope.pathSoFar
 	}
-	queryPathWithPkVal := &QueryPath{
-		ID:              &record.GetField(table.PrimaryKey).StringVal,
+	queryPathWithPkVal := &queryPath{
+		ID:              &record.GetField(table.primaryKey).stringVal,
 		PreviousSegment: previousQueryPath,
 	}
-	tableEventsChannel := table.LiveQueryInfo.RecordSubscriptionEvents
-	tableEventsChannel <- &RecordSubscriptionEvent{
-		Value:          record.GetField(table.PrimaryKey),
+	tableEventsChannel := table.liveQueryInfo.RecordSubscriptionEvents
+	tableEventsChannel <- &recordSubscriptionEvent{
+		Value:          record.GetField(table.primaryKey),
 		QueryExecution: ex,
 		QueryPath:      queryPathWithPkVal,
 	}

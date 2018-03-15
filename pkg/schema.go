@@ -9,110 +9,102 @@ import (
 	"github.com/vilterp/treesql/pkg/lang"
 )
 
-type Schema struct {
-	Tables       map[string]*TableDescriptor
-	NextColumnID int
+type schema struct {
+	tables       map[string]*tableDescriptor
+	nextColumnID int
 }
 
 // TODO: better name, or refactor. not just a descriptor, since
 // it also holds live query info.
-type TableDescriptor struct {
-	Name          string
-	Columns       []*ColumnDescriptor
-	PrimaryKey    string
-	LiveQueryInfo *LiveQueryInfo
-	IsBuiltin     bool
+type tableDescriptor struct {
+	name          string
+	columns       []*columnDescriptor
+	primaryKey    string
+	liveQueryInfo *liveQueryInfo
+	isBuiltin     bool
 }
 
-func (table *TableDescriptor) getType() *lang.TRecord {
+func (table *tableDescriptor) getType() *lang.TRecord {
 	types := map[string]lang.Type{}
-	for _, col := range table.Columns {
-		types[col.Name] = col.Type
+	for _, col := range table.columns {
+		types[col.name] = col.typ
 	}
 	return lang.NewRecordType(types)
 }
 
-func (table *TableDescriptor) colIDForName(name string) (int, error) {
+func (table *tableDescriptor) colIDForName(name string) (int, error) {
 	desc, err := table.getColDesc(name)
 	if err != nil {
 		return 0, err
 	}
-	return desc.ID, nil
+	return desc.id, nil
 }
 
-func (table *TableDescriptor) getColDesc(name string) (*ColumnDescriptor, error) {
-	for _, col := range table.Columns {
-		if col.Name == name {
+func (table *tableDescriptor) getColDesc(name string) (*columnDescriptor, error) {
+	for _, col := range table.columns {
+		if col.name == name {
 			return col, nil
 		}
 	}
 	return nil, fmt.Errorf("col not found: %s", name)
 }
 
-type ColumnName string
-type ColumnDescriptor struct {
-	ID               int
-	Name             string
-	Type             lang.Type
-	ReferencesColumn *ColumnReference
+type columnName string
+type columnDescriptor struct {
+	id               int
+	name             string
+	typ              lang.Type
+	referencesColumn *columnReference
 }
 
-type ColumnReference struct {
-	TableName string // we're gonna assume for now that you can only reference the primary key
+type columnReference struct {
+	tableName string // we're gonna assume for now that you can only reference the primary key
 }
 
-func (column *ColumnDescriptor) ToRecord(tableName string, db *Database) *Record {
-	columnsTable := db.Schema.Tables["__columns__"]
+func (column *columnDescriptor) toRecord(tableName string, db *Database) *record {
+	columnsTable := db.schema.tables["__columns__"]
 	record := columnsTable.NewRecord()
-	record.SetString("id", fmt.Sprintf("%d", column.ID))
-	record.SetString("name", column.Name)
-	record.SetString("table_name", tableName)
-	record.SetString("type", column.Type.Format().String())
-	if column.ReferencesColumn != nil {
-		record.SetString("references", column.ReferencesColumn.TableName)
+	record.setString("id", fmt.Sprintf("%d", column.id))
+	record.setString("name", column.name)
+	record.setString("table_name", tableName)
+	record.setString("type", column.typ.Format().String())
+	if column.referencesColumn != nil {
+		record.setString("references", column.referencesColumn.tableName)
 	}
 	return record
 }
 
-func ColumnFromRecord(record *Record) *ColumnDescriptor {
-	idInt, _ := strconv.Atoi(record.GetField("id").StringVal)
-	references := record.GetField("references").StringVal
-	var columnReference *ColumnReference
+func columnFromRecord(record *record) *columnDescriptor {
+	idInt, _ := strconv.Atoi(record.GetField("id").stringVal)
+	references := record.GetField("references").stringVal
+	var colRef *columnReference
 	if len(references) > 0 { // should things be nullable? idk
-		columnReference = &ColumnReference{
-			TableName: references,
+		colRef = &columnReference{
+			tableName: references,
 		}
 	}
-	typ, err := lang.ParseType(record.GetField("type").StringVal)
+	typ, err := lang.ParseType(record.GetField("type").stringVal)
 	if err != nil {
 		// TODO: something other than panic
 		panic(fmt.Sprintf("error parsing type: %v", err))
 	}
-	return &ColumnDescriptor{
-		ID:               idInt,
-		Name:             record.GetField("name").StringVal,
-		Type:             typ,
-		ReferencesColumn: columnReference,
+	return &columnDescriptor{
+		id:               idInt,
+		name:             record.GetField("name").stringVal,
+		typ:              typ,
+		referencesColumn: colRef,
 	}
 }
 
-func (table *TableDescriptor) ToRecord(db *Database) *Record {
-	record := db.Schema.Tables["__tables__"].NewRecord()
-	record.SetString("name", table.Name)
-	record.SetString("primary_key", table.PrimaryKey)
+func (table *tableDescriptor) toRecord(db *Database) *record {
+	record := db.schema.tables["__tables__"].NewRecord()
+	record.setString("name", table.name)
+	record.setString("primary_key", table.primaryKey)
 	return record
 }
 
-func TableFromRecord(record *Record) *TableDescriptor {
-	return &TableDescriptor{
-		Columns:    make([]*ColumnDescriptor, 0),
-		Name:       record.GetField("name").StringVal,
-		PrimaryKey: record.GetField("primary_key").StringVal,
-	}
-}
-
-func (db *Database) EnsureBuiltinSchema() {
-	db.BoltDB.Update(func(tx *bolt.Tx) error {
+func (db *Database) ensureBuiltinSchema() {
+	db.boltDB.Update(func(tx *bolt.Tx) error {
 		tx.CreateBucketIfNotExists([]byte("__tables__"))
 		tx.CreateBucketIfNotExists([]byte("__columns__"))
 		sequencesBucket, _ := tx.CreateBucketIfNotExists([]byte("__sequences__"))
@@ -121,31 +113,31 @@ func (db *Database) EnsureBuiltinSchema() {
 		if nextColumnIDBytes == nil {
 			// write it
 			nextColumnIDBytes = make([]byte, 4)
-			binary.BigEndian.PutUint32(nextColumnIDBytes, uint32(db.Schema.NextColumnID))
+			binary.BigEndian.PutUint32(nextColumnIDBytes, uint32(db.schema.nextColumnID))
 			sequencesBucket.Put([]byte("__next_column_id__"), nextColumnIDBytes)
 		} else {
 			// read it
 			nextColumnID := binary.BigEndian.Uint32(nextColumnIDBytes)
-			db.Schema.NextColumnID = int(nextColumnID)
+			db.schema.nextColumnID = int(nextColumnID)
 		}
 		return nil
 	})
 }
 
-func (db *Database) LoadUserSchema() {
-	tablesTable := db.Schema.Tables["__tables__"]
-	columnsTable := db.Schema.Tables["__columns__"]
-	db.BoltDB.View(func(tx *bolt.Tx) error {
-		tablesDescs := map[string]*TableDescriptor{}
+func (db *Database) loadUserSchema() {
+	tablesTable := db.schema.tables["__tables__"]
+	columnsTable := db.schema.tables["__columns__"]
+	db.boltDB.View(func(tx *bolt.Tx) error {
+		tablesDescs := map[string]*tableDescriptor{}
 		// Load all table descriptors.
 		if err := tx.Bucket([]byte("__tables__")).ForEach(func(_ []byte, tableBytes []byte) error {
 			tableRecord := tablesTable.RecordFromBytes(tableBytes)
-			tableDesc := &TableDescriptor{
-				Name:       tableRecord.GetField("name").StringVal,
-				PrimaryKey: tableRecord.GetField("primary_key").StringVal,
-				Columns:    make([]*ColumnDescriptor, 0),
+			tableDesc := &tableDescriptor{
+				name:       tableRecord.GetField("name").stringVal,
+				primaryKey: tableRecord.GetField("primary_key").stringVal,
+				columns:    make([]*columnDescriptor, 0),
 			}
-			tablesDescs[tableDesc.Name] = tableDesc
+			tablesDescs[tableDesc.name] = tableDesc
 			return nil
 		}); err != nil {
 			return err
@@ -153,9 +145,9 @@ func (db *Database) LoadUserSchema() {
 		// Load all column descriptors; stick them on table descriptors.
 		if err := tx.Bucket([]byte("__columns__")).ForEach(func(key []byte, columnBytes []byte) error {
 			columnRecord := columnsTable.RecordFromBytes(columnBytes)
-			columnSpec := ColumnFromRecord(columnRecord)
-			tableDesc := tablesDescs[columnRecord.GetField("table_name").StringVal]
-			tableDesc.Columns = append(tableDesc.Columns, columnSpec)
+			columnSpec := columnFromRecord(columnRecord)
+			tableDesc := tablesDescs[columnRecord.GetField("table_name").stringVal]
+			tableDesc.columns = append(tableDesc.columns, columnSpec)
 			return nil
 		}); err != nil {
 			return err
@@ -169,9 +161,9 @@ func (db *Database) LoadUserSchema() {
 }
 
 // TODO: move to schema? idk
-// buildTableDescriptor converts a CREATE TABLE AST node into a TableDescriptor.
+// buildTableDescriptor converts a CREATE TABLE AST node into a tableDescriptor.
 // It also assigns column ids.
-func (db *Database) buildTableDescriptor(create *CreateTable) (*TableDescriptor, error) {
+func (db *Database) buildTableDescriptor(create *CreateTable) (*tableDescriptor, error) {
 	// find primary key
 	var primaryKey string
 	for _, column := range create.Columns {
@@ -181,18 +173,18 @@ func (db *Database) buildTableDescriptor(create *CreateTable) (*TableDescriptor,
 		}
 	}
 	// Create table descriptor
-	tableDesc := &TableDescriptor{
-		Name:       create.Name,
-		PrimaryKey: primaryKey,
-		Columns:    make([]*ColumnDescriptor, len(create.Columns)),
+	tableDesc := &tableDescriptor{
+		name:       create.Name,
+		primaryKey: primaryKey,
+		columns:    make([]*columnDescriptor, len(create.Columns)),
 	}
 	// Create column descriptors
 	for idx, parsedColumn := range create.Columns {
 		// extract reference
-		var reference *ColumnReference
+		var reference *columnReference
 		if parsedColumn.References != nil {
-			reference = &ColumnReference{
-				TableName: *parsedColumn.References,
+			reference = &columnReference{
+				tableName: *parsedColumn.References,
 			}
 		}
 		// parse type
@@ -201,31 +193,31 @@ func (db *Database) buildTableDescriptor(create *CreateTable) (*TableDescriptor,
 			return nil, fmt.Errorf("error parsing type: %v", err)
 		}
 		// build column spec
-		columnSpec := &ColumnDescriptor{
-			ID:               db.Schema.NextColumnID,
-			Name:             parsedColumn.Name,
-			ReferencesColumn: reference,
-			Type:             typ,
+		columnSpec := &columnDescriptor{
+			id:               db.schema.nextColumnID,
+			name:             parsedColumn.Name,
+			referencesColumn: reference,
+			typ:              typ,
 		}
 		// TODO: synchronize access to this
-		db.Schema.NextColumnID++
-		tableDesc.Columns[idx] = columnSpec
+		db.schema.nextColumnID++
+		tableDesc.columns[idx] = columnSpec
 	}
 
 	return tableDesc, nil
 }
 
-// addTableDescriptor initializes the table's LiveQueryInfo
+// addTableDescriptor initializes the table's liveQueryInfo
 // and adds it to the schema.
-func (db *Database) addTableDescriptor(table *TableDescriptor) {
-	table.LiveQueryInfo = table.NewLiveQueryInfo() // def something weird about this
-	go table.HandleEvents()
+func (db *Database) addTableDescriptor(table *tableDescriptor) {
+	table.liveQueryInfo = table.newLiveQueryInfo() // def something weird about this
+	go table.handleEvents()
 	// TODO: synchronize access to this
-	db.Schema.Tables[table.Name] = table
+	db.schema.tables[table.name] = table
 }
 
-func EmptySchema() *Schema {
-	return &Schema{
-		Tables: map[string]*TableDescriptor{},
+func emptySchema() *schema {
+	return &schema{
+		tables: map[string]*tableDescriptor{},
 	}
 }

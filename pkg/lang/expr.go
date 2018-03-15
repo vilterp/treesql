@@ -176,7 +176,7 @@ type Param struct {
 }
 
 type ELambda struct {
-	params  ParamList
+	params  paramList
 	body    Expr
 	retType Type
 }
@@ -184,7 +184,7 @@ type ELambda struct {
 var _ Expr = &ELambda{}
 
 func (l *ELambda) Evaluate(interp *interpreter) (Value, error) {
-	parentTypeScope := interp.stackTop.scope.ToTypeScope()
+	parentTypeScope := interp.stackTop.scope.toTypeScope()
 	newTypeScope := l.params.createTypeScope(parentTypeScope)
 	typ, err := l.body.GetType(newTypeScope)
 	if err != nil {
@@ -224,7 +224,7 @@ func (l *ELambda) GetType(s *TypeScope) (Type, error) {
 	}, nil
 }
 
-func NewELambda(params ParamList, body Expr, retType Type) *ELambda {
+func NewELambda(params paramList, body Expr, retType Type) *ELambda {
 	return &ELambda{
 		params:  params,
 		body:    body,
@@ -308,7 +308,7 @@ func (fc *EFuncCall) GetType(scope *TypeScope) (Type, error) {
 	}
 	// Check arg types match.
 	params := tFunc.params
-	bindings := make(TypeVarBindings)
+	bindings := make(typeVarBindings)
 	for idx, argExpr := range fc.args {
 		param := params[idx]
 		argType, err := argExpr.GetType(scope)

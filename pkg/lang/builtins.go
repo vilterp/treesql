@@ -18,13 +18,13 @@ func init() {
 	BuiltinsScope.Add("map", &VBuiltin{
 		Name: "map",
 		Params: []Param{
-			{"iter", &tIterator{innerType: NewTVar("A")}},
+			{"iter", NewTIterator(NewTVar("A"))},
 			{"func", &tFunction{
 				params:  []Param{{"x", NewTVar("A")}},
 				retType: NewTVar("B"),
 			}},
 		},
-		RetType: &tIterator{innerType: NewTVar("B")},
+		RetType: NewTIterator(NewTVar("B")),
 		Impl: func(c Caller, args []Value) (Value, error) {
 			f := mustBeVFunction(args[1])
 			return &VIteratorRef{
@@ -37,7 +37,7 @@ func init() {
 		},
 	})
 
-	BuiltinsTypeScope = BuiltinsScope.ToTypeScope()
+	BuiltinsTypeScope = BuiltinsScope.toTypeScope()
 }
 
 // TODO:

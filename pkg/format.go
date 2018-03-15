@@ -5,6 +5,8 @@ import (
 	"fmt"
 )
 
+// TODO: rewrite with pretty printer lib
+
 type NodeFormatter interface {
 	Format() string
 }
