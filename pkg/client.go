@@ -109,7 +109,7 @@ func (conn *Client) LiveQuery(query string) (*InitialResult, *ClientChannel, err
 	} else if update.InitialResultMessage != nil {
 		return update.InitialResultMessage, channel, nil
 	}
-	return nil, nil, errors.New("Query result neither error or initial result.")
+	return nil, nil, errors.New("query result neither error nor initial result")
 }
 
 func (conn *Client) Query(query string) (*InitialResult, error) {
@@ -120,7 +120,7 @@ func (conn *Client) Query(query string) (*InitialResult, error) {
 	} else if update.InitialResultMessage != nil {
 		return update.InitialResultMessage, nil
 	}
-	return nil, errors.New("Query result neither error or initial result.")
+	return nil, errors.New("query result neither error nor initial result")
 }
 
 func (conn *Client) Exec(statement string) (string, error) {
@@ -131,5 +131,5 @@ func (conn *Client) Exec(statement string) (string, error) {
 	} else if update.AckMessage != nil {
 		return *update.AckMessage, nil
 	}
-	return "", errors.New("Exec result neither error nor ack.")
+	return "", errors.New("exec result neither error nor ack")
 }

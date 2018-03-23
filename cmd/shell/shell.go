@@ -31,7 +31,7 @@ func main() {
 	isInputTty := isatty.Check(os.Stdin.Fd())
 
 	if isInputTty {
-		fmt.Println("TreeSQL client")
+		fmt.Println("TreeSQL shell")
 		fmt.Println("\\h for help")
 	}
 
@@ -59,7 +59,7 @@ func main() {
 			os.Exit(0)
 		}
 
-		// TODO: factor these out into a commands struct or something
+		// TODO: factor these out into a commands dict or something
 		if line == `\h` {
 			fmt.Println(`\h	help`)
 			fmt.Println(`\d	describe schema`)
