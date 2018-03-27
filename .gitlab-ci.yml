@@ -1,0 +1,14 @@
+image: golang:1.9
+before_script:
+  - make deps
+stages:
+  - build
+  - test
+build_job:
+  stage: build
+  script:
+    - make
+test:
+  stage: test
+  script:
+    - make test
