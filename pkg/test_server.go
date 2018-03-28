@@ -77,8 +77,6 @@ func runSimpleTestScript(t *testing.T, cases []simpleTestStmt) *testServerRef {
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Close()
-	defer server.close()
 
 	for idx, testCase := range cases {
 		// Run a statement.
