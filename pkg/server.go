@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"log"
 	"net/http"
-
 	"net/http/pprof"
 
 	"github.com/gorilla/websocket"
@@ -16,14 +15,26 @@ type Server struct {
 	httpServer *http.Server
 }
 
-func NewServer(dataFile string, port int) *Server {
-	// open storage layer
+func NewServer(dataFile string, host string, port int) *Server {
+	database, handler := newServerInternal(dataFile)
+
+	httpServer := &http.Server{Addr: fmt.Sprintf("%s:%d", host, port), Handler: handler}
+
+	return &Server{
+		db:         database,
+		httpServer: httpServer,
+	}
+}
+
+func newServerInternal(dataFile string) (*Database, http.Handler) {
+	// open database
 	database, err := NewDatabase(dataFile)
 	if err != nil {
 		log.Fatalln("failed to open database:", err)
 	}
 	log.Printf("opened data file: %s\n", dataFile)
 
+	// set up HTTP server
 	mux := http.NewServeMux()
 
 	// Serve static files for web console.
@@ -65,12 +76,7 @@ func NewServer(dataFile string, port int) *Server {
 		database.AddConnection(conn)
 	})
 
-	httpServer := &http.Server{Addr: fmt.Sprintf(":%d", port), Handler: mux}
-
-	return &Server{
-		db:         database,
-		httpServer: httpServer,
-	}
+	return database, mux
 }
 
 func (s *Server) ListenAndServe() error {

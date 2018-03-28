@@ -4,35 +4,46 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"net/http"
+	"net/http/httptest"
 	"os"
 	"testing"
 )
 
-func NewTestServer() (*Server, *Client, error) {
+type testServer struct {
+	db         *Database
+	testServer *httptest.Server
+}
+
+func (ts *testServer) close() error {
+	if err := ts.db.Close(); err != nil {
+		return err
+	}
+	ts.testServer.Close()
+	return nil
+}
+
+func NewTestServer() (*testServer, *Client, error) {
 	dir, err := ioutil.TempDir("", "")
 	if err != nil {
 		return nil, nil, err
 	}
 	defer os.RemoveAll(dir)
 
-	port := 35595
+	db, handler := newServerInternal(dir + "/test.data")
+	httpServer := httptest.NewServer(handler)
 
-	server := NewServer(dir+"/test.data", port)
-	go func() {
-		err := server.ListenAndServe()
-		if err != nil && err != http.ErrServerClosed {
-			panic(err)
-		}
-	}()
-
-	url := fmt.Sprintf("ws://localhost:%d/ws", port)
+	url := fmt.Sprintf("ws://%s/ws", httpServer.Listener.Addr().String())
 	client, err := NewClient(url)
 	if err != nil {
 		return nil, nil, err
 	}
 
-	return server, client, nil
+	tsServer := &testServer{
+		testServer: httpServer,
+		db:         db,
+	}
+
+	return tsServer, client, nil
 }
 
 // define stmt => define error or ack
@@ -55,7 +66,7 @@ func runSimpleTestScript(t *testing.T, cases []simpleTestStmt) {
 		t.Fatal(err)
 	}
 	defer client.Close()
-	defer server.Close()
+	defer server.close()
 
 	for idx, testCase := range cases {
 		// Run a statement.
