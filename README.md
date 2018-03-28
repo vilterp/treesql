@@ -3,7 +3,7 @@
 ![logo](logo.svg)
 
 A proof of concept of a database which:
-- Is relational (tables with typed columns and foreign keys)
+- Is relational (has tables with typed columns and foreign keys)
 - Has a tree-structured query language
 - Returns tree-structured results
 - Can push live updates to those result trees
