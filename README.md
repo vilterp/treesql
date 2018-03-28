@@ -55,7 +55,7 @@ See `test_script.treesql` for more.
 
 Use [the docker version](https://hub.docker.com/r/vilterp/treesql/), or:
 
-- Go 1.8
+- Go 1.10
 - Node 6.9 & NPM 3.10
 - [`godep`](https://github.com/tools/godep) (install with `go get github.com/tools/godep`)
 
