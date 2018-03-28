@@ -49,8 +49,6 @@ localhost:9000> MANY blog_posts { id, title, body, comments: MANY comments { id,
 localhost:9000>
 ```
 
-See `test_script.treesql` for more.
-
 ## Requirements
 
 Use [the docker version](https://hub.docker.com/r/vilterp/treesql/), or:
