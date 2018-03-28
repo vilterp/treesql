@@ -1,6 +1,6 @@
 {
 	"ImportPath": "github.com/vilterp/treesql",
-	"GoVersion": "go1.9",
+	"GoVersion": "go1.10",
 	"GodepVersion": "v79",
 	"Packages": [
 		"./..."
@@ -46,11 +46,6 @@
 			"ImportPath": "github.com/matttproud/golang_protobuf_extensions/pbutil",
 			"Comment": "v1.0.0-2-gc12348c",
 			"Rev": "c12348ce28de40eed0136aa2b644d0ee0650e56c"
-		},
-		{
-			"ImportPath": "github.com/phayes/freeport",
-			"Comment": "1.0.2-7-ge27662a",
-			"Rev": "e27662a4a9d6b2083dfd7e7b5d0e30985daca925"
 		},
 		{
 			"ImportPath": "github.com/pkg/errors",
@@ -102,7 +97,7 @@
 		},
 		{
 			"ImportPath": "golang.org/x/sys/unix",
-			"Rev": "9ccfe848b9db8435a24c424abbc07a921adf1df5"
+			"Rev": "f6cff0780e542efa0c8e864dc8fa522808f6a598"
 		}
 	]
 }
