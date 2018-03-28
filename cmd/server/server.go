@@ -11,15 +11,17 @@ import (
 	"github.com/vilterp/treesql/pkg"
 )
 
-func main() {
-	fmt.Println("TreeSQL server")
+var port = flag.Int("port", 9000, "port to listen on")
+var host = flag.String("host", "0.0.0.0", "host to listen on")
+var dataFile = flag.String("data-file", "treesql.data", "data file")
 
+func main() {
 	// get cmdline flags
-	var port = flag.Int("port", 9000, "port to listen for connections on")
-	var dataFile = flag.String("data-file", "treesql.data", "data file")
 	flag.Parse()
 
-	server := treesql.NewServer(*dataFile, *port)
+	fmt.Println("TreeSQL server")
+
+	server := treesql.NewServer(*dataFile, *host, *port)
 
 	// graceful shutdown on Ctrl-C
 	ctrlCChan := make(chan os.Signal, 1)

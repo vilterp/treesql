@@ -8,7 +8,7 @@ func TestLiveQueries(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer client.Close()
-	defer server.Close()
+	defer server.close()
 
 	if _, err := client.Exec(`
 		CREATETABLE blog_posts (
