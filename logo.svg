@@ -1,0 +1,42 @@
+<svg width="188" height="186" viewBox="0 0 188 186" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <title>Logo</title>
+    <desc>Created using Figma</desc>
+    <g id="Canvas" transform="translate(94 296)">
+        <g id="Logo">
+            <g id="Rectangle">
+                <use xlink:href="#path0_fill" transform="translate(-94 -296)" fill="#FFFFFF"/>
+                <mask id="mask0_outline_ins">
+                    <use xlink:href="#path0_fill" fill="white" transform="translate(-94 -296)"/>
+                </mask>
+                <g mask="url(#mask0_outline_ins)">
+                    <use xlink:href="#path1_stroke_2x" transform="translate(-94 -296)"/>
+                </g>
+            </g>
+            <g id="Group">
+                <g id="Rectangle 2">
+                    <use xlink:href="#path2_fill" transform="translate(-78 -279)" fill="#6CD100"/>
+                </g>
+                <g id="Rectangle 2.1">
+                    <use xlink:href="#path2_fill" transform="translate(-78 -253)"/>
+                </g>
+                <g id="Rectangle 2.2">
+                    <use xlink:href="#path2_fill" transform="translate(-57 -228)"/>
+                </g>
+                <g id="Rectangle 2.3">
+                    <use xlink:href="#path2_fill" transform="translate(-57 -202)" fill="#C5000E"/>
+                </g>
+                <g id="Rectangle 2.4">
+                    <use xlink:href="#path2_fill" transform="translate(-78 -176)"/>
+                </g>
+                <g id="Rectangle 2.5">
+                    <use xlink:href="#path2_fill" transform="translate(-57 -149)" fill="#3878DE"/>
+                </g>
+            </g>
+        </g>
+    </g>
+    <defs>
+        <path id="path0_fill" d="M 0 0L 188 0L 188 186L 0 186L 0 0Z"/>
+        <path id="path1_stroke_2x" d="M 0 0L 0 -3L -3 -3L -3 0L 0 0ZM 188 0L 191 0L 191 -3L 188 -3L 188 0ZM 188 186L 188 189L 191 189L 191 186L 188 186ZM 0 186L -3 186L -3 189L 0 189L 0 186ZM 0 3L 188 3L 188 -3L 0 -3L 0 3ZM 185 0L 185 186L 191 186L 191 0L 185 0ZM 188 183L 0 183L 0 189L 188 189L 188 183ZM 3 186L 3 0L -3 0L -3 186L 3 186Z"/>
+        <path id="path2_fill" d="M 0 9.5C 0 4.2533 4.25329 0 9.5 0L 82.5 0C 87.7467 0 92 4.2533 92 9.5L 92 9.5C 92 14.7467 87.7467 19 82.5 19L 9.5 19C 4.2533 19 0 14.7467 0 9.5L 0 9.5Z"/>
+    </defs>
+</svg>

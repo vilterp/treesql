@@ -1,6 +1,6 @@
 # TreeSQL [![Build Status](https://travis-ci.org/vilterp/treesql.svg?branch=master)](https://travis-ci.org/vilterp/treesql)
 
-![logo](logo.png)
+![logo](logo.svg)
 
 A proof of concept of a database which:
 - Is relational (tables with typed columns and foreign keys)
