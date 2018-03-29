@@ -70,6 +70,10 @@ func TestSelect(t *testing.T) {
   }
 ]`,
 		},
+		{
+			query:         "MANY blog_posts { id, comments: MANY comments { id } }",
+			initialResult: `[]`,
+		},
 		// TODO: test validation errors
 
 		// TODO: sort output so we don't have indeterminant map iteration flakiness.

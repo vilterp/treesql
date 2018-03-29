@@ -36,11 +36,20 @@ func typeIsConcrete(t Type) bool {
 
 type typeVarBindings map[tVar]Type
 
-func (tvb typeVarBindings) extend(other typeVarBindings) {
-	// TODO: error out if overwriting one that doesn't match
+func (tvb typeVarBindings) extend(other typeVarBindings) error {
 	for name, typ := range other {
+		currentTyp, ok := tvb[name]
+		if ok {
+			if matches, _ := currentTyp.matches(typ); !matches {
+				return fmt.Errorf(
+					"can't extend type scope: currently %s is %s; tried to extend with %s",
+					name, currentTyp.Format(), typ.Format(),
+				)
+			}
+		}
 		tvb[name] = typ
 	}
+	return nil
 }
 
 // Int
@@ -102,7 +111,7 @@ type TRecord struct {
 
 var _ Type = &TRecord{}
 
-func NewRecordType(types map[string]Type) *TRecord {
+func NewTRecord(types map[string]Type) *TRecord {
 	return &TRecord{
 		types: types,
 	}
@@ -171,41 +180,41 @@ func (tr *TRecord) substitute(tvb typeVarBindings) (Type, bool, error) {
 
 // Iterator
 
-type tIterator struct {
-	innerType Type
+type TIterator struct {
+	InnerType Type
 }
 
-var _ Type = &tIterator{}
+var _ Type = &TIterator{}
 
-func NewTIterator(innerType Type) *tIterator {
-	return &tIterator{
-		innerType: innerType,
+func NewTIterator(innerType Type) *TIterator {
+	return &TIterator{
+		InnerType: innerType,
 	}
 }
 
-func (ti tIterator) Format() pp.Doc {
+func (ti TIterator) Format() pp.Doc {
 	return pp.Seq([]pp.Doc{
 		pp.Text("Iterator<"),
-		ti.innerType.Format(),
+		ti.InnerType.Format(),
 		pp.Text(">"),
 	})
 }
 
-func (ti tIterator) matches(other Type) (bool, typeVarBindings) {
-	oti, ok := other.(*tIterator)
+func (ti TIterator) matches(other Type) (bool, typeVarBindings) {
+	oti, ok := other.(*TIterator)
 	if !ok {
 		return false, nil
 	}
-	return ti.innerType.matches(oti.innerType)
+	return ti.InnerType.matches(oti.InnerType)
 }
 
-func (ti *tIterator) substitute(tvb typeVarBindings) (Type, bool, error) {
-	innerTyp, innerConcrete, err := ti.innerType.substitute(tvb)
+func (ti *TIterator) substitute(tvb typeVarBindings) (Type, bool, error) {
+	innerTyp, innerConcrete, err := ti.InnerType.substitute(tvb)
 	if err != nil {
 		return nil, false, err
 	}
-	return &tIterator{
-		innerType: innerTyp,
+	return &TIterator{
+		InnerType: innerTyp,
 	}, innerConcrete, nil
 }
 
