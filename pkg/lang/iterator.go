@@ -30,6 +30,46 @@ func (mi *mapIterator) Close() error {
 	return mi.innerIterator.Close()
 }
 
+// Filter iterator
+
+type filterIterator struct {
+	innerIterator Iterator
+	f             vFunction
+}
+
+func (fi *filterIterator) Next(c Caller) (Value, error) {
+	for {
+		// Get the next value.
+		next, err := fi.innerIterator.Next(c)
+		var isEOE bool
+		switch err.(type) {
+		case *endOfIteration:
+			isEOE = true
+		default:
+			if err != nil {
+				return nil, err
+			}
+		}
+		// Check for end of iteration.
+		if isEOE {
+			return nil, EndOfIteration
+		}
+		// Call the func.
+		res, err := c.Call(fi.f, []Value{next})
+		if err != nil {
+			return nil, err
+		}
+		// Return the val if true.
+		if *mustBeVBool(res) {
+			return next, nil
+		}
+	}
+}
+
+func (fi *filterIterator) Close() error {
+	return fi.innerIterator.Close()
+}
+
 // Array iterator
 
 type arrayIterator struct {

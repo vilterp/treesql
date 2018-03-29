@@ -50,13 +50,13 @@ func (conn *connection) writeMessagesToSocket() {
 		bufWriter := bufio.NewWriter(writer)
 
 		if err := msg.toVal().WriteAsJSON(bufWriter, msg.getCaller()); err != nil {
-			clog.Println(conn, "error writing msg to conn:", err)
+			clog.Println(conn, "error writing msg to conn: writing value: ", err)
 		}
 		if err := bufWriter.Flush(); err != nil {
-			clog.Println(conn, "error writing msg to conn:", err)
+			clog.Println(conn, "error writing msg to conn: flusing buffer: ", err)
 		}
 		if err := writer.Close(); err != nil {
-			clog.Println(conn, "error writing msg to conn:", err)
+			clog.Println(conn, "error writing msg to conn: closing writer: ", err)
 		}
 	}
 }
