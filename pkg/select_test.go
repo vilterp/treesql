@@ -45,14 +45,9 @@ func TestSelect(t *testing.T) {
 			stmt: `INSERT INTO comments VALUES ("2", "1", "so creative")`,
 			ack:  "INSERT 1",
 		},
-		{
-			stmt: `CREATETABLE map (id string PRIMARYKEY)`,
-			ack:  "CREATE TABLE",
-		},
-		{
-			stmt: `INSERT INTO map VALUES ("1")`,
-			ack:  "INSERT 1",
-		},
+		//{
+		//	stmt: `CREATE TABLE empty (id string PRIMARYKEY)`
+		//}
 		// Test select.
 		{
 			query: `MANY blog_posts { id, title }`,
@@ -68,10 +63,10 @@ func TestSelect(t *testing.T) {
 ]`,
 		},
 		{
-			query: `MANY map { id }`,
+			query: "MANY blog_posts WHERE id = '1' { title }",
 			initialResult: `[
   {
-    "id": "1"
+    "title": "hello again world"
   }
 ]`,
 		},

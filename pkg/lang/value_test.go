@@ -58,6 +58,14 @@ func TestWriteAsJSON(t *testing.T) {
 			"",
 		},
 		{
+			&VIteratorRef{
+				ofType:   TInt,
+				iterator: NewArrayIterator([]Value{}),
+			},
+			"[]",
+			"",
+		},
+		{
 			NewVBool(true),
 			"true",
 			"",
