@@ -58,6 +58,19 @@ func TestWriteAsJSON(t *testing.T) {
 			"",
 		},
 		{
+			&VIteratorRef{
+				ofType:   TInt,
+				iterator: NewArrayIterator([]Value{}),
+			},
+			"[]",
+			"",
+		},
+		{
+			NewVBool(true),
+			"true",
+			"",
+		},
+		{
 			&VBuiltin{},
 			"",
 			"can'out write a builtin to JSON",

@@ -60,6 +60,23 @@ func (tInt) matches(other Type) (bool, typeVarBindings) {
 
 func (ti *tInt) substitute(typeVarBindings) (Type, bool, error) { return ti, true, nil }
 
+// Bool
+
+type tBool struct{}
+
+var TBool = &tBool{}
+var _ Type = TBool
+
+func (tBool) Format() pp.Doc {
+	return pp.Text("bool")
+}
+
+func (tBool) matches(other Type) (bool, typeVarBindings) {
+	return other == TBool, nil
+}
+
+func (tb *tBool) substitute(typeVarBindings) (Type, bool, error) { return tb, true, nil }
+
 // String
 
 type tString struct{}

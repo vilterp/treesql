@@ -7,13 +7,42 @@ import (
 )
 
 func (s *schema) planSelect(query *Select) (lang.Expr, error) {
-	if query.Where != nil {
-		return nil, fmt.Errorf("don't know how to plan queries with WHERE yet")
-	}
-
 	tableDesc, ok := s.tables[query.Table]
 	if !ok {
 		return nil, fmt.Errorf("no such table: %s", query.Table)
+	}
+
+	// Scan the table.
+	var innermostExpr lang.Expr
+	innermostExpr = lang.NewMemberAccess(
+		lang.NewMemberAccess(
+			lang.NewMemberAccess(
+				lang.NewVar("tables"),
+				query.Table,
+			),
+			tableDesc.primaryKey,
+		),
+		"scan",
+	)
+
+	if query.Where != nil {
+		innermostExpr = lang.NewFuncCall("filter", []lang.Expr{
+			innermostExpr,
+			lang.NewELambda(
+				[]lang.Param{
+					{
+						Name: "row",
+						Typ:  tableDesc.getType(),
+					},
+				},
+				// TODO: use intEq if it's not a string...
+				lang.NewFuncCall("strEq", []lang.Expr{
+					lang.NewMemberAccess(lang.NewVar("row"), query.Where.ColumnName),
+					lang.NewStringLit(query.Where.Value),
+				}),
+				lang.TBool,
+			),
+		})
 	}
 
 	// Get types and expressions for selectinos.
@@ -36,16 +65,7 @@ func (s *schema) planSelect(query *Select) (lang.Expr, error) {
 
 	// Build expression: a scan on the primary key.
 	return lang.NewFuncCall("map", []lang.Expr{
-		lang.NewMemberAccess(
-			lang.NewMemberAccess(
-				lang.NewMemberAccess(
-					lang.NewVar("tables"),
-					query.Table,
-				),
-				tableDesc.primaryKey,
-			),
-			"scan",
-		),
+		innermostExpr,
 		lang.NewELambda(
 			[]lang.Param{
 				{

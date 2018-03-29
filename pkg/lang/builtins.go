@@ -36,6 +36,47 @@ func init() {
 			}, nil
 		},
 	})
+	BuiltinsScope.Add("filter", &VBuiltin{
+		Name: "filter",
+		Params: []Param{
+			{"iter", NewTIterator(NewTVar("A"))},
+			{"func", &tFunction{
+				params:  []Param{{"x", NewTVar("A")}},
+				retType: TBool,
+			}},
+		},
+		RetType: NewTIterator(NewTVar("A")),
+		Impl: func(interp Caller, args []Value) (Value, error) {
+			f := mustBeVFunction(args[1])
+			return &VIteratorRef{
+				iterator: &filterIterator{
+					innerIterator: mustBeVIteratorRef(args[0]).iterator,
+					f:             f,
+				},
+				ofType: f.GetRetType(),
+			}, nil
+		},
+	})
+	BuiltinsScope.Add("strEq", &VBuiltin{
+		Name:    "strEq",
+		Params:  []Param{{"a", TString}, {"b", TString}},
+		RetType: TBool,
+		Impl: func(interp Caller, args []Value) (Value, error) {
+			left := mustBeVString(args[0])
+			right := mustBeVString(args[1])
+			return NewVBool(left == right), nil
+		},
+	})
+	BuiltinsScope.Add("intEq", &VBuiltin{
+		Name:    "intEq",
+		Params:  []Param{{"a", TInt}, {"b", TInt}},
+		RetType: TBool,
+		Impl: func(interp Caller, args []Value) (Value, error) {
+			left := mustBeVInt(args[0])
+			right := mustBeVInt(args[1])
+			return NewVBool(left == right), nil
+		},
+	})
 
 	BuiltinsTypeScope = BuiltinsScope.toTypeScope()
 }
