@@ -360,7 +360,9 @@ func (ma *EMemberAccess) Evaluate(interp *interpreter) (Value, error) {
 		}
 		return val, nil
 	default:
-		return nil, fmt.Errorf("member access on a non-record: %s", ma.Format())
+		return nil, fmt.Errorf(
+			"member access on a non-record: %s value: %s", ma.Format(), recVal,
+		)
 	}
 }
 

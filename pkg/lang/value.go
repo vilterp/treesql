@@ -78,6 +78,14 @@ func (v *VBool) WriteAsJSON(w *bufio.Writer, _ Caller) error {
 	return err
 }
 
+func mustBeVBool(v Value) *VBool {
+	b, ok := v.(*VBool)
+	if !ok {
+		panic(fmt.Sprintf("not a bool: %s", v.Format()))
+	}
+	return b
+}
+
 // String
 
 type VString string
@@ -170,7 +178,9 @@ func (v *VRecord) WriteAsJSON(w *bufio.Writer, c Caller) error {
 			w.WriteString(",")
 		}
 		w.WriteString(fmt.Sprintf("%#v:", name))
-		val.WriteAsJSON(w, c)
+		if err := val.WriteAsJSON(w, c); err != nil {
+			return err
+		}
 		idx++
 	}
 	w.WriteString("}")

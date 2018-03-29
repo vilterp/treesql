@@ -4,7 +4,10 @@ package treesql
 // this should pretty much be the same API as TreeSQLClient.js
 
 import (
+	"fmt"
 	"log"
+
+	"encoding/json"
 
 	"github.com/gorilla/websocket"
 	"github.com/pkg/errors"
@@ -100,10 +103,11 @@ func (conn *Client) handleIncoming() {
 	defer conn.webSocketConn.Close()
 	for {
 		parsedMessage := &BasicChannelMessage{}
-		err := conn.webSocketConn.ReadJSON(&parsedMessage)
+		_, rawMsg, err := conn.webSocketConn.ReadMessage()
+		json.Unmarshal(rawMsg, parsedMessage)
 
 		if err != nil {
-			log.Println("error in handleIncoming:", err)
+			log.Println("error in handleIncoming: ReadJSON:", err)
 			close(conn.incomingMessages)
 			conn.ServerClosed <- true
 			return
@@ -140,19 +144,22 @@ func (conn *Client) LiveQuery(query string) (*basicInitialResult, *ClientChannel
 	if update.InitialResultMessage != nil {
 		return update.InitialResultMessage, channel, nil
 	}
-	return nil, nil, errors.New("query result neither error nor initial result")
+	return nil, nil, fmt.Errorf("query result neither error nor initial result")
 }
 
 func (conn *Client) Query(query string) (*basicInitialResult, error) {
 	resultChan := conn.RunStatement(query)
 	update := <-resultChan.Updates
+	if update == nil {
+		return nil, fmt.Errorf("update is nil")
+	}
 	if update.ErrorMessage != nil {
 		return nil, errors.New(*update.ErrorMessage)
 	}
 	if update.InitialResultMessage != nil {
 		return update.InitialResultMessage, nil
 	}
-	return nil, errors.New("query result neither error nor initial result")
+	return nil, fmt.Errorf("query result neither error nor initial result")
 }
 
 func (conn *Client) Exec(statement string) (string, error) {
@@ -163,5 +170,5 @@ func (conn *Client) Exec(statement string) (string, error) {
 	} else if update.AckMessage != nil {
 		return *update.AckMessage, nil
 	}
-	return "", errors.New("exec result neither error nor ack")
+	return "", fmt.Errorf("exec result neither error nor ack")
 }
