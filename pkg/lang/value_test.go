@@ -58,6 +58,11 @@ func TestWriteAsJSON(t *testing.T) {
 			"",
 		},
 		{
+			NewVBool(true),
+			"true",
+			"",
+		},
+		{
 			&VBuiltin{},
 			"",
 			"can'out write a builtin to JSON",
