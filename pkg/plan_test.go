@@ -37,15 +37,25 @@ func TestPlan(t *testing.T) {
 	}{
 		{
 			`MANY blog_posts { id }`,
-			`map(tables.blog_posts.id.scan, (row) => {
-  id: row.id
+			`map(tables.blog_posts.id.scan, (row1) => {
+  id: row1.id
 })`,
 			"",
 		},
 		{
 			`MANY blog_posts WHERE id = 'foo' { id }`,
-			`map(filter(tables.blog_posts.id.scan, (row) => strEq(row.id, "foo")), (row) => {
-  id: row.id
+			`map(filter(tables.blog_posts.id.scan, (row1) => strEq(row1.id, "foo")), (row1) => {
+  id: row1.id
+})`,
+			"",
+		},
+		{
+			`MANY blog_posts { id, comments: MANY comments { id, blog_post_id } }`,
+			`map(tables.blog_posts.id.scan, (row1) => {
+  comments: map(filter(tables.comments.id.scan, (row2) => strEq(row2.id, row1.blog_post_id)), (row2) => {
+    id: row2.id
+  }),
+  id: row1.id
 })`,
 			"",
 		},
@@ -58,14 +68,26 @@ func TestPlan(t *testing.T) {
 			continue
 		}
 
-		expr, err := tsr.server.db.schema.planSelect(parsedQuery.Select)
+		db := tsr.server.db
+		boltTxn, err := db.boltDB.Begin(false)
+		if err != nil {
+			t.Fatal(err)
+		}
+		txn := &txn{
+			boltTxn: boltTxn,
+			db:      db,
+		}
+
+		_, typeScope := db.schema.toScope(txn)
+
+		expr, err := tsr.server.db.schema.planSelect(parsedQuery.Select, typeScope)
 		if util.AssertError(t, idx, testCase.err, err) {
 			continue
 		}
 
 		formatted := expr.Format().String()
 		if formatted != testCase.out {
-			t.Errorf("expected:\n\n%s\n\ngot:\n\n%s\n", testCase.out, formatted)
+			t.Errorf("case %d: expected:\n\n%s\n\ngot:\n\n%s\n", idx, testCase.out, formatted)
 		}
 	}
 }

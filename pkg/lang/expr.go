@@ -379,11 +379,11 @@ func (ma *EMemberAccess) GetType(scope *TypeScope) (Type, error) {
 	case *TRecord:
 		typ, ok := tTyp.types[ma.member]
 		if !ok {
-			return nil, fmt.Errorf("nonexistent member: %s", ma.member)
+			return nil, fmt.Errorf("for expr %s: nonexistent member of type %s: %s", ma.Format(), recTyp.Format(), ma.member)
 		}
 		return typ, nil
 	default:
-		return nil, fmt.Errorf("member access on a non-record: %s %T", ma.Format(), recTyp)
+		return nil, fmt.Errorf("member access on a non-record type: %s %T %s", ma.Format(), recTyp, scope.Format())
 	}
 }
 

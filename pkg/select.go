@@ -45,20 +45,20 @@ func (conn *connection) executeQuery(
 	tx, _ := conn.database.boltDB.Begin(false)
 	// ctx := context.WithValue(conn.context, clog.ChannelIDKey, channel.id)
 
-	// Plan the query.
-	expr, err := conn.database.schema.planSelect(query)
-	if err != nil {
-		return nil, nil, nil, err
-	}
-
-	clog.Println(conn, "QUERY PLAN:", expr.Format())
-
 	// Make transaction and scope.
 	txn := &txn{
 		db:      conn.database,
 		boltTxn: tx,
 	}
-	scope, _ := conn.database.schema.toScope(txn)
+	scope, typeScope := conn.database.schema.toScope(txn)
+
+	// Plan the query.
+	expr, err := conn.database.schema.planSelect(query, typeScope)
+	if err != nil {
+		return nil, nil, nil, err
+	}
+
+	clog.Println(conn, "QUERY PLAN:", expr.Format())
 
 	// Interpret the expr.
 	interp := lang.NewInterpreter(scope, expr)
