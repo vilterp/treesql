@@ -51,6 +51,33 @@ func mustBeVInt(v Value) *VInt {
 	return i
 }
 
+// Bool
+
+type VBool bool
+
+var _ Value = NewVBool(false)
+
+func NewVBool(b bool) *VBool {
+	val := VBool(b)
+	return &val
+}
+
+func (v *VBool) Format() pp.Doc {
+	if *v {
+		return pp.Text("true")
+	}
+	return pp.Text("false")
+}
+
+func (v *VBool) GetType() Type {
+	return TBool
+}
+
+func (v *VBool) WriteAsJSON(w *bufio.Writer, _ Caller) error {
+	_, err := w.WriteString(v.Format().String())
+	return err
+}
+
 // String
 
 type VString string

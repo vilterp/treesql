@@ -108,6 +108,29 @@ func TestInterpreter(t *testing.T) {
 			typ: TInt,
 			val: "7",
 		},
+		// Equality functions
+		{
+			expr: &EFuncCall{
+				funcName: "strEq",
+				args: []Expr{
+					NewStringLit("foo"),
+					NewStringLit("foo"),
+				},
+			},
+			typ: TBool,
+			val: "true",
+		},
+		{
+			expr: &EFuncCall{
+				funcName: "intEq",
+				args: []Expr{
+					NewIntLit(4),
+					NewIntLit(5),
+				},
+			},
+			typ: TBool,
+			val: "false",
+		},
 	}
 
 	typeScope := userRootScope.toTypeScope()
