@@ -36,6 +36,26 @@ func init() {
 			}, nil
 		},
 	})
+	BuiltinsScope.Add("strEq", &VBuiltin{
+		Name:    "strEq",
+		Params:  []Param{{"a", TString}, {"b", TString}},
+		RetType: TBool,
+		Impl: func(interp Caller, args []Value) (Value, error) {
+			left := mustBeVString(args[0])
+			right := mustBeVString(args[1])
+			return NewVBool(left == right), nil
+		},
+	})
+	BuiltinsScope.Add("intEq", &VBuiltin{
+		Name:    "intEq",
+		Params:  []Param{{"a", TInt}, {"b", TInt}},
+		RetType: TBool,
+		Impl: func(interp Caller, args []Value) (Value, error) {
+			left := mustBeVInt(args[0])
+			right := mustBeVInt(args[1])
+			return NewVBool(left == right), nil
+		},
+	})
 
 	BuiltinsTypeScope = BuiltinsScope.toTypeScope()
 }
