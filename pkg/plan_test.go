@@ -42,6 +42,13 @@ func TestPlan(t *testing.T) {
 })`,
 			"",
 		},
+		{
+			`MANY blog_posts WHERE id = 'foo' { id }`,
+			`map(filter(tables.blog_posts.id.scan, (row) => strEq(row.id, "foo")), (row) => {
+  id: row.id
+})`,
+			"",
+		},
 	}
 
 	for idx, testCase := range cases {
