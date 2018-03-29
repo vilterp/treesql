@@ -29,7 +29,7 @@ func (table *tableDescriptor) getType() *lang.TRecord {
 	for _, col := range table.columns {
 		types[col.name] = col.typ
 	}
-	return lang.NewRecordType(types)
+	return lang.NewTRecord(types)
 }
 
 func (table *tableDescriptor) colIDForName(name string) (int, error) {
@@ -38,6 +38,15 @@ func (table *tableDescriptor) colIDForName(name string) (int, error) {
 		return 0, err
 	}
 	return desc.id, nil
+}
+
+func (table *tableDescriptor) colReferencingTable(otherName string) *string {
+	for _, col := range table.columns {
+		if col.referencesColumn != nil && col.referencesColumn.tableName == otherName {
+			return &col.name
+		}
+	}
+	return nil
 }
 
 func (table *tableDescriptor) getColDesc(name string) (*columnDescriptor, error) {

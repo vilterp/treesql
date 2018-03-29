@@ -12,7 +12,8 @@ func TestExprGetType(t *testing.T) {
 
 	blogPostType := &TRecord{
 		types: map[string]Type{
-			"id": TInt,
+			"id":    TInt,
+			"title": TString,
 		},
 	}
 
@@ -51,10 +52,72 @@ func TestExprGetType(t *testing.T) {
 				),
 			}),
 			"lambda declared as returning string; body is of type int",
-			"Iterator<int>",
+			"",
 		},
-		// TODO: func call
-		// TODO: func call of generic func
+		{
+			NewFuncCall("map", []Expr{
+				NewVar("blog_posts"),
+				NewELambda(
+					[]Param{{"post", blogPostType}},
+					NewRecordLit(map[string]Expr{
+						"id": NewMemberAccess(NewVar("post"), "id"),
+					}),
+					NewTRecord(map[string]Type{
+						"id": TInt,
+					}),
+				),
+			}),
+			"",
+			`Iterator<{
+  id: int,
+}>`,
+		},
+		{
+			NewFuncCall("filter", []Expr{
+				NewVar("blog_posts"),
+				NewELambda(
+					[]Param{{"post", blogPostType}},
+					NewFuncCall("intEq", []Expr{
+						NewMemberAccess(NewVar("post"), "id"),
+						NewIntLit(5),
+					}),
+					TBool,
+				),
+			}),
+			"",
+			`Iterator<{
+  id: int,
+  title: string,
+}>`,
+		},
+		{
+			NewFuncCall("filter", []Expr{
+				NewFuncCall("map", []Expr{
+					NewVar("blog_posts"),
+					NewELambda(
+						[]Param{{"post", blogPostType}},
+						NewRecordLit(map[string]Expr{
+							"id": NewMemberAccess(NewVar("post"), "id"),
+						}),
+						NewTRecord(map[string]Type{
+							"id": TInt,
+						}),
+					),
+				}),
+				NewELambda(
+					[]Param{{"post", blogPostType}},
+					NewFuncCall("intEq", []Expr{
+						NewMemberAccess(NewVar("post"), "id"),
+						NewIntLit(5),
+					}),
+					TBool,
+				),
+			}),
+			"",
+			`Iterator<{
+  id: int,
+}>`,
+		},
 	}
 
 	typeScope := scope.toTypeScope()
@@ -64,7 +127,7 @@ func TestExprGetType(t *testing.T) {
 			continue
 		}
 		if actual.Format().String() != testCase.out {
-			t.Errorf("case %d: expected type %s; got %s", idx, testCase.out, actual.Format())
+			t.Errorf("case %d: expected:\n\n%s\n\ngot:\n\n%s", idx, testCase.out, actual.Format())
 		}
 	}
 }

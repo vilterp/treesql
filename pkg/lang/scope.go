@@ -132,7 +132,7 @@ func (ts *TypeScope) Format() pp.Doc {
 	}
 
 	return pp.Seq([]pp.Doc{
-		pp.Text("Scope{"), pp.Newline,
+		pp.Text("TypeScope{"), pp.Newline,
 		pp.Nest(2, pp.Seq([]pp.Doc{
 			pp.Text("vals: {"), pp.Newline,
 			pp.Nest(2, pp.Seq([]pp.Doc{
