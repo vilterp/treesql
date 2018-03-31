@@ -40,12 +40,16 @@ func (s *Scope) toTypeScope() *TypeScope {
 	if s.parent != nil {
 		parentScope = s.parent.toTypeScope()
 	}
-	ts := NewTypeScope(parentScope)
+	ts := parentScope.NewChildScope()
 	for name, val := range s.vals {
 		typ := val.GetType()
 		ts.Add(name, typ)
 	}
 	return ts
+}
+
+func (s *Scope) NewChildScope() *Scope {
+	return NewScope(s)
 }
 
 func (s *Scope) Format() pp.Doc {
@@ -109,6 +113,10 @@ func (ts *TypeScope) find(name string) (Type, error) {
 		return nil, fmt.Errorf("not in type scope: %s", name)
 	}
 	return val, nil
+}
+
+func (ts *TypeScope) NewChildScope() *TypeScope {
+	return NewTypeScope(ts)
 }
 
 func (ts *TypeScope) Format() pp.Doc {
@@ -195,7 +203,7 @@ func (pl paramList) substitute(tvb typeVarBindings) (paramList, bool, error) {
 }
 
 func (pl paramList) createTypeScope(parentScope *TypeScope) *TypeScope {
-	newTS := NewTypeScope(parentScope)
+	newTS := parentScope.NewChildScope()
 	for _, param := range pl {
 		newTS.Add(param.Name, param.Typ)
 	}

@@ -44,7 +44,7 @@ func (i *interpreter) popFrame() *stackFrame {
 
 func (i *interpreter) Call(vFunc vFunction, argVals []Value) (Value, error) {
 	// Make new scope.
-	newScope := NewScope(i.stackTop.scope)
+	newScope := i.stackTop.scope.NewChildScope()
 	params := vFunc.GetParamList()
 	if len(params) != len(argVals) {
 		panic("wrong number of args; should have been caught by type checker")
