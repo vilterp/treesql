@@ -8,7 +8,7 @@ import (
 
 func TestExprGetType(t *testing.T) {
 	// Create scope.
-	scope := NewScope(BuiltinsScope)
+	scope := BuiltinsScope.NewChildScope()
 
 	blogPostType := &TRecord{
 		types: map[string]Type{

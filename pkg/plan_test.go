@@ -52,7 +52,8 @@ func TestPlan(t *testing.T) {
 		{
 			`MANY blog_posts { id, comments: MANY comments { id, blog_post_id } }`,
 			`map(tables.blog_posts.id.scan, (row1) => {
-  comments: map(filter(tables.comments.id.scan, (row2) => strEq(row2.id, row1.blog_post_id)), (row2) => {
+  comments: map(filter(tables.comments.id.scan, (row2) => strEq(row2.blog_post_id, row1.id)), (row2) => {
+    blog_post_id: row2.blog_post_id,
     id: row2.id
   }),
   id: row1.id

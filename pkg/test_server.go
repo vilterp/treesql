@@ -98,7 +98,7 @@ func runSimpleTestScript(t *testing.T, cases []simpleTestStmt) *testServerRef {
 			}
 			indented, _ := json.MarshalIndent(res.Value, "", "  ")
 			if string(indented) != testCase.initialResult {
-				t.Fatalf("expected:\n\n%s\n\ngot:\n\n%s", testCase.initialResult, indented)
+				t.Fatalf("case %d: expected:\n\n%s\n\ngot:\n\n%s", idx, testCase.initialResult, indented)
 			}
 		}
 	}
