@@ -71,8 +71,33 @@ func TestSelect(t *testing.T) {
 ]`,
 		},
 		{
-			query:         "MANY blog_posts { id, comments: MANY comments { id } }",
-			initialResult: `[]`,
+			query: "MANY blog_posts { id, title, comments: MANY comments { id, body } }",
+			initialResult: `[
+  {
+    "comments": [
+      {
+        "body": "hello yourself!",
+        "id": "0"
+      }
+    ],
+    "id": "0",
+    "title": "hello world"
+  },
+  {
+    "comments": [
+      {
+        "body": "sup",
+        "id": "1"
+      },
+      {
+        "body": "so creative",
+        "id": "2"
+      }
+    ],
+    "id": "1",
+    "title": "hello again world"
+  }
+]`,
 		},
 		// TODO: test validation errors
 

@@ -13,8 +13,8 @@ type txn struct {
 }
 
 func (s *schema) toScope(txn *txn) (*lang.Scope, *lang.TypeScope) {
-	newScope := lang.NewScope(lang.BuiltinsScope)
-	newTypeScope := lang.NewTypeScope(lang.BuiltinsTypeScope)
+	newScope := lang.BuiltinsScope.NewChildScope()
+	newTypeScope := lang.BuiltinsTypeScope.NewChildScope()
 	tables := map[string]lang.Value{}
 	for _, table := range s.tables {
 		if table.isBuiltin {
