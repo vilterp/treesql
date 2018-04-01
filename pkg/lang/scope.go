@@ -35,6 +35,12 @@ func (s *Scope) Add(name string, value Value) {
 	s.vals[name] = value
 }
 
+func (s *Scope) AddMap(vals map[string]Value) {
+	for name, val := range vals {
+		s.Add(name, val)
+	}
+}
+
 func (s *Scope) toTypeScope() *TypeScope {
 	var parentScope *TypeScope
 	if s.parent != nil {

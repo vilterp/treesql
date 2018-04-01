@@ -247,7 +247,7 @@ func (v *VIteratorRef) GetType() Type {
 func (v *VIteratorRef) Format() pp.Doc {
 	// TODO: some memory address or something to make them distinct?
 	return pp.Seq([]pp.Doc{
-		pp.Text("<Iterator"),
+		pp.Text("Iterator<"),
 		v.ofType.Format(),
 		pp.Text(">"),
 	})
@@ -299,13 +299,56 @@ func mustBeVIteratorRef(v Value) *VIteratorRef {
 	return ir
 }
 
+// Index
+
+type VIndex struct {
+	innerType Type
+	// TODO: include the colName in the closure somehow :/
+	colName         string
+	getScanIterator func(colName string) (Iterator, error)
+}
+
+var _ Value = &VIndex{}
+
+func NewVIndex(innerType Type, colName string, getScanIterator func(colName string) (Iterator, error)) *VIndex {
+	return &VIndex{
+		innerType:       innerType,
+		colName:         colName,
+		getScanIterator: getScanIterator,
+	}
+}
+
+func (v *VIndex) GetType() Type {
+	return NewTIndex(v.innerType)
+}
+
+func (v *VIndex) Format() pp.Doc {
+	return pp.Seq([]pp.Doc{
+		pp.Text("Index<"),
+		v.innerType.Format(),
+		pp.Text(">"),
+	})
+}
+
+func (v *VIndex) WriteAsJSON(*bufio.Writer, Caller) error {
+	return fmt.Errorf("can't write an Index as JSON")
+}
+
+func mustBeVIndex(v Value) *VIndex {
+	i, ok := v.(*VIndex)
+	if !ok {
+		panic("not a VIndex")
+	}
+	return i
+}
+
 // Function
 
 type vFunction interface {
 	Value
 
-	GetParamList() paramList
-	GetRetType() Type
+	getParamList() paramList
+	getRetType() Type
 }
 
 func mustBeVFunction(v Value) vFunction {
@@ -343,11 +386,11 @@ func (vl *vLambda) WriteAsJSON(w *bufio.Writer, _ Caller) error {
 	return fmt.Errorf("can'out write a lambda to JSON")
 }
 
-func (vl *vLambda) GetParamList() paramList {
+func (vl *vLambda) getParamList() paramList {
 	return vl.def.params
 }
 
-func (vl *vLambda) GetRetType() Type {
+func (vl *vLambda) getRetType() Type {
 	return vl.def.retType
 }
 
@@ -382,11 +425,11 @@ func (vb *VBuiltin) WriteAsJSON(w *bufio.Writer, _ Caller) error {
 	return fmt.Errorf("can'out write a builtin to JSON")
 }
 
-func (vb *VBuiltin) GetParamList() paramList {
+func (vb *VBuiltin) getParamList() paramList {
 	return vb.Params
 }
 
-func (vb *VBuiltin) GetRetType() Type {
+func (vb *VBuiltin) getRetType() Type {
 	return vb.RetType
 }
 
