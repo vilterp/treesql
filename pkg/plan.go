@@ -22,15 +22,17 @@ func (s *schema) planSelectInternal(
 
 	// Scan the table.
 	var innermostExpr lang.Expr
-	innermostExpr = lang.NewMemberAccess(
-		lang.NewMemberAccess(
-			lang.NewMemberAccess(
-				lang.NewVar("tables"),
-				query.Table,
-			),
-			tableDesc.primaryKey,
-		),
+	innermostExpr = lang.NewFuncCall(
 		"scan",
+		[]lang.Expr{
+			lang.NewMemberAccess(
+				lang.NewMemberAccess(
+					lang.NewVar("tables"),
+					query.Table,
+				),
+				tableDesc.primaryKey,
+			),
+		},
 	)
 
 	if filterLambda != nil {

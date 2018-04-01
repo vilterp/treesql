@@ -45,7 +45,7 @@ func (i *interpreter) popFrame() *stackFrame {
 func (i *interpreter) Call(vFunc vFunction, argVals []Value) (Value, error) {
 	// Make new scope.
 	newScope := i.stackTop.scope.NewChildScope()
-	params := vFunc.GetParamList()
+	params := vFunc.getParamList()
 	if len(params) != len(argVals) {
 		panic("wrong number of args; should have been caught by type checker")
 	}
@@ -69,6 +69,9 @@ func (i *interpreter) Call(vFunc vFunction, argVals []Value) (Value, error) {
 		return val, err
 	case *VBuiltin:
 		val, err = tVFunc.Impl(i, argVals)
+		if err != nil {
+			return nil, err
+		}
 		if matches, _ := tVFunc.RetType.matches(val.GetType()); !matches {
 			return nil, fmt.Errorf(
 				"builtin %s supposed to return %s; returned %s",

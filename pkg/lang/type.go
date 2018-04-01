@@ -117,7 +117,7 @@ func NewTRecord(types map[string]Type) *TRecord {
 	}
 }
 
-func (tr TRecord) Format() pp.Doc {
+func (tr *TRecord) Format() pp.Doc {
 	// Sort keys
 	keys := make([]string, len(tr.types))
 	idx := 0
@@ -181,40 +181,80 @@ func (tr *TRecord) substitute(tvb typeVarBindings) (Type, bool, error) {
 // Iterator
 
 type TIterator struct {
-	InnerType Type
+	innerType Type
 }
 
 var _ Type = &TIterator{}
 
 func NewTIterator(innerType Type) *TIterator {
 	return &TIterator{
-		InnerType: innerType,
+		innerType: innerType,
 	}
 }
 
-func (ti TIterator) Format() pp.Doc {
+func (ti *TIterator) Format() pp.Doc {
 	return pp.Seq([]pp.Doc{
 		pp.Text("Iterator<"),
-		ti.InnerType.Format(),
+		ti.innerType.Format(),
 		pp.Text(">"),
 	})
 }
 
-func (ti TIterator) matches(other Type) (bool, typeVarBindings) {
+func (ti *TIterator) matches(other Type) (bool, typeVarBindings) {
 	oti, ok := other.(*TIterator)
 	if !ok {
 		return false, nil
 	}
-	return ti.InnerType.matches(oti.InnerType)
+	return ti.innerType.matches(oti.innerType)
 }
 
 func (ti *TIterator) substitute(tvb typeVarBindings) (Type, bool, error) {
-	innerTyp, innerConcrete, err := ti.InnerType.substitute(tvb)
+	innerTyp, innerConcrete, err := ti.innerType.substitute(tvb)
 	if err != nil {
 		return nil, false, err
 	}
 	return &TIterator{
-		InnerType: innerTyp,
+		innerType: innerTyp,
+	}, innerConcrete, nil
+}
+
+// Index
+
+type TIndex struct {
+	innerType Type
+}
+
+var _ Type = &TIndex{}
+
+func NewTIndex(innerType Type) *TIndex {
+	return &TIndex{
+		innerType: innerType,
+	}
+}
+
+func (ti *TIndex) Format() pp.Doc {
+	return pp.Seq([]pp.Doc{
+		pp.Text("Index<"),
+		ti.innerType.Format(),
+		pp.Text(">"),
+	})
+}
+
+func (ti *TIndex) matches(other Type) (bool, typeVarBindings) {
+	oti, ok := other.(*TIndex)
+	if !ok {
+		return false, nil
+	}
+	return ti.innerType.matches(oti.innerType)
+}
+
+func (ti *TIndex) substitute(tvb typeVarBindings) (Type, bool, error) {
+	innerTyp, innerConcrete, err := ti.innerType.substitute(tvb)
+	if err != nil {
+		return nil, false, err
+	}
+	return &TIndex{
+		innerType: innerTyp,
 	}, innerConcrete, nil
 }
 
