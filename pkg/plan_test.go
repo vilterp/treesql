@@ -37,22 +37,22 @@ func TestPlan(t *testing.T) {
 	}{
 		{
 			`MANY blog_posts { id }`,
-			`map(tables.blog_posts.id.scan, (row1) => {
+			`map(scan(tables.blog_posts.id), (row1) => {
   id: row1.id
 })`,
 			"",
 		},
 		{
 			`MANY blog_posts WHERE id = 'foo' { id }`,
-			`map(filter(tables.blog_posts.id.scan, (row1) => strEq(row1.id, "foo")), (row1) => {
+			`map(filter(scan(tables.blog_posts.id), (row1) => strEq(row1.id, "foo")), (row1) => {
   id: row1.id
 })`,
 			"",
 		},
 		{
 			`MANY blog_posts { id, comments: MANY comments { id, blog_post_id } }`,
-			`map(tables.blog_posts.id.scan, (row1) => {
-  comments: map(filter(tables.comments.id.scan, (row2) => strEq(row2.blog_post_id, row1.id)), (row2) => {
+			`map(scan(tables.blog_posts.id), (row1) => {
+  comments: map(filter(scan(tables.comments.id), (row2) => strEq(row2.blog_post_id, row1.id)), (row2) => {
     blog_post_id: row2.blog_post_id,
     id: row2.id
   }),
