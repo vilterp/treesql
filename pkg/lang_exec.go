@@ -85,8 +85,6 @@ func (ti *tableIterator) Close() error {
 func (txn *txn) getTableIterator(table *tableDescriptor, colName string) (*tableIterator, error) {
 	colID, err := table.colIDForName(colName)
 
-	fmt.Println("getTableIterator: col id for", table.name, ".", colName, ":", colID)
-
 	if err != nil {
 		return nil, err
 	}

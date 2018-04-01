@@ -63,17 +63,13 @@ func (conn *connection) executeCreateTable(create *CreateTable, channel *channel
 		// create a bucket for each index
 		// primary key, and each column that references another table
 		for _, col := range tableDesc.columns {
-			fmt.Println("col", create.Name, col.name, col.id)
 			if col.referencesColumn != nil || tableDesc.primaryKey == col.name {
 				// TODO: factor this out to an encoding file
 				// TODO: non-unique indexes for foreign key columns
-				fmt.Println("\tcreating bucket")
 				_, err := tableBucket.CreateBucket(encodeInteger(int32(col.id)))
 				if err != nil {
 					return err
 				}
-			} else {
-				fmt.Println("\tnot creating bucket")
 			}
 		}
 		// write record to __tables__
