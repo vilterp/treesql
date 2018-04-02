@@ -172,7 +172,7 @@ func newRecordListenersIterator(db *Database) (*recordListenersIterator, error) 
 		table.liveQueryInfo.mu.RLock()
 		defer table.liveQueryInfo.mu.RUnlock()
 
-		for pkVal, listenerList := range table.liveQueryInfo.mu.RecordListeners {
+		for pkVal, listenerList := range table.liveQueryInfo.mu.recordListeners {
 			for connID, listenersForConn := range listenerList.Listeners {
 				for statementID, listenersForStatement := range listenersForConn {
 					for _, listener := range listenersForStatement {

@@ -108,7 +108,7 @@ func (ex *selectExecution) subscribeToRecord(scope *scope, record *record, table
 		ID:              &record.GetField(table.primaryKey).stringVal,
 		PreviousSegment: previousQueryPath,
 	}
-	tableEventsChannel := table.liveQueryInfo.RecordSubscriptionEvents
+	tableEventsChannel := table.liveQueryInfo.recordSubscriptionEvents
 	tableEventsChannel <- &recordSubscriptionEvent{
 		Value:          record.GetField(table.primaryKey),
 		QueryExecution: ex,

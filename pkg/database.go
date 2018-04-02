@@ -87,7 +87,7 @@ func (db *Database) pushTableEvent(
 	oldRecord *record,
 	newRecord *record,
 ) {
-	db.schema.tables[tableName].liveQueryInfo.TableEvents <- &tableEvent{
+	db.schema.tables[tableName].liveQueryInfo.tableEvents <- &tableEvent{
 		TableName: tableName,
 		OldRecord: oldRecord,
 		NewRecord: newRecord,

@@ -77,7 +77,7 @@ func newMetrics(db *Database) *metrics {
 					table.liveQueryInfo.mu.RLock()
 					defer table.liveQueryInfo.mu.RUnlock()
 
-					for _, listenerList := range table.liveQueryInfo.mu.RecordListeners {
+					for _, listenerList := range table.liveQueryInfo.mu.recordListeners {
 						count += listenerList.numListeners
 					}
 				}
@@ -96,7 +96,7 @@ func newMetrics(db *Database) *metrics {
 					table.liveQueryInfo.mu.RLock()
 					defer table.liveQueryInfo.mu.RUnlock()
 
-					for _, listenersForCol := range table.liveQueryInfo.mu.TableListeners {
+					for _, listenersForCol := range table.liveQueryInfo.mu.tableListeners {
 						for _, listeners := range listenersForCol {
 							count += listeners.getNumListeners()
 						}
@@ -117,7 +117,7 @@ func newMetrics(db *Database) *metrics {
 					table.liveQueryInfo.mu.RLock()
 					defer table.liveQueryInfo.mu.RUnlock()
 
-					count += table.liveQueryInfo.mu.WholeTableListeners.getNumListeners()
+					count += table.liveQueryInfo.mu.wholeTableListeners.getNumListeners()
 				}
 				return float64(count)
 			},
