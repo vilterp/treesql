@@ -27,3 +27,6 @@ clean:
 
 test:
 	go test ./... -timeout 10s
+
+loc:
+	cloc pkg
