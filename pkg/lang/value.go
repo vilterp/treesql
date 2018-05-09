@@ -17,6 +17,12 @@ type Value interface {
 	WriteAsJSON(*bufio.Writer, Caller) error
 }
 
+type EncodableValue interface {
+	Value
+
+	Encode() []byte
+}
+
 // TODO: bool
 
 // Int
