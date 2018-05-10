@@ -12,8 +12,16 @@ import (
 )
 
 type testServer struct {
-	db         *Database
-	testServer *httptest.Server
+	db           *Database
+	dataFilePath string
+	testServer   *httptest.Server
+}
+
+type testServerArgs struct {
+	// by default (if this field is ""), a temp file will be created.
+	dataFilePath string
+	// if true, leave the data file for future test runs.
+	preserveWhenDone bool
 }
 
 func (ts *testServer) close() error {
@@ -24,14 +32,20 @@ func (ts *testServer) close() error {
 	return nil
 }
 
-func NewTestServer() (*testServer, *Client, error) {
-	dir, err := ioutil.TempDir("", "")
-	if err != nil {
-		return nil, nil, err
+func NewTestServer(args testServerArgs) (*testServer, *Client, error) {
+	dataFilePath := args.dataFilePath
+	if dataFilePath == "" {
+		dir, err := ioutil.TempDir("", "")
+		if err != nil {
+			return nil, nil, err
+		}
+		dataFilePath = dir + "/test.data"
 	}
-	defer os.RemoveAll(dir)
+	if !args.preserveWhenDone {
+		defer os.RemoveAll(dataFilePath)
+	}
 
-	db, handler := newServerInternal(dir + "/test.data")
+	db, handler := newServerInternal(dataFilePath)
 	httpServer := httptest.NewServer(handler)
 
 	url := fmt.Sprintf("ws://%s/ws", httpServer.Listener.Addr().String())
@@ -41,8 +55,9 @@ func NewTestServer() (*testServer, *Client, error) {
 	}
 
 	tsServer := &testServer{
-		testServer: httpServer,
-		db:         db,
+		testServer:   httpServer,
+		dataFilePath: dataFilePath,
+		db:           db,
 	}
 
 	return tsServer, client, nil
@@ -73,7 +88,7 @@ func (tsr *testServerRef) Close() {
 // checking each result. It doesn't support live queries; only initial results
 // are checked.
 func runSimpleTestScript(t *testing.T, cases []simpleTestStmt) *testServerRef {
-	server, client, err := NewTestServer()
+	server, client, err := NewTestServer(testServerArgs{})
 	if err != nil {
 		t.Fatal(err)
 	}

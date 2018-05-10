@@ -3,10 +3,9 @@ package treesql
 import (
 	"time"
 
-	"encoding/binary"
-
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
+	"github.com/vilterp/treesql/pkg/lang"
 )
 
 func (db *Database) validateInsert(insert *Insert) error {
@@ -32,39 +31,34 @@ func (conn *connection) executeInsert(insert *Insert, channel *channel) error {
 	startTime := time.Now()
 	table := conn.database.schema.tables[insert.Table]
 
-	// Create record.
-	record := table.NewRecord()
+	// Create VRecord
+	// TODO: move this to planner
+	values := make(map[string]lang.Value)
 	for idx, value := range insert.Values {
-		record.setString(table.columns[idx].name, value)
+		col := table.columns[idx]
+		values[col.name] = lang.NewVString(value)
 	}
-	key := record.GetField(table.primaryKey).stringVal
-
-	// Find id of PK column.
-	var pkID int
-	for _, col := range table.columns {
-		if col.name == table.primaryKey {
-			pkID = col.id
-			break
-		}
-	}
+	record := lang.NewVRecord(values)
+	key := values[table.primaryKey]
 
 	// Write to table.
 	err := conn.database.boltDB.Update(func(tx *bolt.Tx) error {
 		tableBucket := tx.Bucket([]byte(insert.Table))
+		primaryIndexBucket := tableBucket.Bucket(table.pkBucketKey())
 
-		// TODO: factor this out to an encoding file
-		pkIDBytes := make([]byte, 4)
-		binary.BigEndian.PutUint32(pkIDBytes, uint32(pkID))
-
-		primaryIndexBucket := tableBucket.Bucket(pkIDBytes)
-		if current := primaryIndexBucket.Get([]byte(key)); current != nil {
-			return &recordAlreadyExists{ColName: table.primaryKey, Val: key}
-		}
-		recordBytes, err := record.ToBytes()
+		keyBytes, err := lang.Encode(key)
 		if err != nil {
 			return err
 		}
-		return primaryIndexBucket.Put([]byte(key), recordBytes)
+
+		if current := primaryIndexBucket.Get(keyBytes); current != nil {
+			return &recordAlreadyExists{ColName: table.primaryKey, Val: key}
+		}
+		recordBytes, err := lang.Encode(record)
+		if err != nil {
+			return err
+		}
+		return primaryIndexBucket.Put(keyBytes, recordBytes)
 	})
 	if err != nil {
 		return errors.Wrap(err, "executing insert")

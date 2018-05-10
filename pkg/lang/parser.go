@@ -159,7 +159,8 @@ var rules = map[string]p.Rule{
 	"string_lit": p.Map(
 		p.StringLit,
 		func(tree *p.TraceTree) interface{} {
-			return NewStringLit(tree.RegexMatch)
+			// Strip the quotes. This should be in the stdlib.
+			return NewStringLit(tree.RegexMatch[1 : len(tree.RegexMatch)-1])
 		},
 	),
 	"signed_int_lit": p.Map(

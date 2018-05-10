@@ -23,8 +23,6 @@ type EncodableValue interface {
 	Encode() []byte
 }
 
-// TODO: bool
-
 // Int
 
 type VInt int
@@ -47,6 +45,10 @@ func (v *VInt) GetType() Type {
 func (v *VInt) WriteAsJSON(w *bufio.Writer, _ Caller) error {
 	_, err := w.WriteString(v.Format().String())
 	return err
+}
+
+func (v *VInt) Encode() []byte {
+	return []byte(v.Format().String())
 }
 
 func mustBeVInt(v Value) *VInt {
@@ -84,6 +86,10 @@ func (v *VBool) WriteAsJSON(w *bufio.Writer, _ Caller) error {
 	return err
 }
 
+func (v *VBool) Encode() []byte {
+	return []byte(v.Format().String())
+}
+
 func mustBeVBool(v Value) *VBool {
 	b, ok := v.(*VBool)
 	if !ok {
@@ -115,6 +121,10 @@ func (v *VString) GetType() Type {
 func (v *VString) WriteAsJSON(w *bufio.Writer, _ Caller) error {
 	_, err := w.WriteString(fmt.Sprintf("%#v", *v))
 	return err
+}
+
+func (v *VString) Encode() []byte {
+	return []byte(v.Format().String())
 }
 
 func mustBeVString(v Value) string {
@@ -193,6 +203,27 @@ func (v *VRecord) WriteAsJSON(w *bufio.Writer, c Caller) error {
 	return nil
 }
 
+func (v *VRecord) Encode() []byte {
+	return []byte(v.Format().String())
+}
+
+func (v *VRecord) GetValue(key string) Value {
+	return v.vals[key]
+}
+
+// Update returns a copy with key set to newVal.
+func (v *VRecord) Update(updateKey string, newVal Value) *VRecord {
+	newVals := map[string]Value{}
+	for curKey, val := range v.vals {
+		if curKey == updateKey {
+			newVals[curKey] = newVal
+		} else {
+			newVals[curKey] = val
+		}
+	}
+	return NewVRecord(newVals)
+}
+
 // Array
 
 type VArray struct {
@@ -226,6 +257,10 @@ func (v *VArray) WriteAsJSON(w *bufio.Writer, c Caller) error {
 	}
 	w.WriteString("]")
 	return nil
+}
+
+func (v *VArray) Encode() []byte {
+	return []byte(v.Format().String())
 }
 
 // Iterator

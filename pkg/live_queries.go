@@ -4,6 +4,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/vilterp/treesql/pkg/lang"
 	clog "github.com/vilterp/treesql/pkg/log"
 )
 
@@ -38,8 +39,8 @@ func (table *tableDescriptor) newLiveQueryInfo() *liveQueryInfo {
 
 type tableEvent struct {
 	TableName string
-	OldRecord *record
-	NewRecord *record
+	OldRecord *lang.VRecord
+	NewRecord *lang.VRecord
 
 	channel *channel
 }
@@ -160,8 +161,8 @@ func (table *tableDescriptor) handleTableEvent(evt *tableEvent) {
 		liveInfo.mu.wholeTableListeners.sendEvent(evt)
 		// filtered table listeners
 		for columnName, listenersForColumn := range liveInfo.mu.tableListeners {
-			valueForColumn := evt.NewRecord.GetField(string(columnName)).stringVal
-			listenersForValue := listenersForColumn[valueForColumn]
+			valueForColumn := evt.NewRecord.GetValue(string(columnName))
+			listenersForValue := listenersForColumn[string(lang.MustEncode(valueForColumn))]
 			if listenersForValue != nil {
 				listenersForValue.sendEvent(evt)
 			}
@@ -169,8 +170,8 @@ func (table *tableDescriptor) handleTableEvent(evt *tableEvent) {
 	} else if evt.OldRecord != nil && evt.NewRecord != nil {
 		clog.Println(evt.channel, "pushing update event to table listeners")
 		// record listeners
-		primaryKeyValue := evt.NewRecord.GetField(table.primaryKey).stringVal
-		recordListeners := liveInfo.mu.recordListeners[primaryKeyValue]
+		primaryKeyValue := evt.NewRecord.GetValue(table.primaryKey)
+		recordListeners := liveInfo.mu.recordListeners[string(lang.MustEncode(primaryKeyValue))]
 		if recordListeners != nil {
 			recordListeners.sendEvent(evt)
 		}

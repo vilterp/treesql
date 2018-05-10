@@ -145,3 +145,18 @@ func TestValueGetType(t *testing.T) {
 		}
 	}
 }
+
+func TestRecordUpdate(t *testing.T) {
+	rec := NewVRecord(map[string]Value{
+		"id":   NewVString("foo"),
+		"body": NewVInt(42),
+	})
+	updated := rec.Update("body", NewVInt(55))
+	expected := `{
+  body: 55,
+  id: "foo",
+}`
+	if updated.Format().String() != expected {
+		t.Fatalf("expected %s; got %s", expected, updated.Format().String())
+	}
+}

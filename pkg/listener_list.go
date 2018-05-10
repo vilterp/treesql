@@ -2,6 +2,10 @@ package treesql
 
 import (
 	"log"
+
+	"fmt"
+
+	"github.com/vilterp/treesql/pkg/lang"
 )
 
 type listenerList struct {
@@ -80,6 +84,14 @@ func (list *listenerList) sendEvent(event *tableEvent) {
 					conn := listener.QueryExecution.Channel.connection
 					// want to just be like "clone this, with this different..."
 					// like object spread operator in JS (also Elixir, Elm)
+					// TODO: change this to be an FP expression
+
+					whereVal := event.NewRecord.GetValue(list.Table.primaryKey)
+					whereValString, err := valueMustBeString(whereVal)
+					if err != nil {
+						log.Println("can't do live query on non-string value:", whereVal.Format())
+					}
+
 					newQuery := &Select{
 						Live:       true,
 						Many:       listener.Query.Many,
@@ -88,7 +100,7 @@ func (list *listenerList) sendEvent(event *tableEvent) {
 						Table:      listener.Query.Table,
 						Where: &Where{
 							ColumnName: list.Table.primaryKey,
-							Value:      event.NewRecord.GetField(list.Table.primaryKey).stringVal,
+							Value:      whereValString,
 						}, // TODO: doesn't work if there was already a query... need AND support
 					}
 					go func() {
@@ -110,4 +122,12 @@ func (list *listenerList) sendEvent(event *tableEvent) {
 			}
 		}
 	}
+}
+
+func valueMustBeString(val lang.Value) (string, error) {
+	vString, ok := val.(*lang.VString)
+	if !ok {
+		return "", fmt.Errorf("value in listener where clause must be string")
+	}
+	return string(*vString), nil
 }

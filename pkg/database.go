@@ -6,6 +6,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/gorilla/websocket"
+	"github.com/vilterp/treesql/pkg/lang"
 )
 
 type Database struct {
@@ -84,8 +85,8 @@ func (db *Database) validateStatement(statement *Statement) error {
 func (db *Database) pushTableEvent(
 	channel *channel, // originating channel
 	tableName string,
-	oldRecord *record,
-	newRecord *record,
+	oldRecord *lang.VRecord,
+	newRecord *lang.VRecord,
 ) {
 	db.schema.tables[tableName].liveQueryInfo.tableEvents <- &tableEvent{
 		TableName: tableName,

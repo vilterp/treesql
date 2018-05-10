@@ -3,9 +3,9 @@ package treesql
 import "testing"
 
 func TestLiveQueries(t *testing.T) {
-	t.Skip("this is not gonna work until FP is hooked up")
+	//t.Skip("this is not gonna work until FP is hooked up")
 
-	server, client, err := NewTestServer()
+	server, client, err := NewTestServer(testServerArgs{})
 	if err != nil {
 		t.Fatal(err)
 	}

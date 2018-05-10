@@ -6,6 +6,7 @@ import (
 
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
+	"github.com/vilterp/treesql/pkg/lang"
 	clog "github.com/vilterp/treesql/pkg/log"
 )
 
@@ -55,32 +56,49 @@ func (db *Database) validateUpdate(update *Update) error {
 func (conn *connection) executeUpdate(update *Update, channel *channel) error {
 	startTime := time.Now()
 
-	// Write to table.
 	table := conn.database.schema.tables[update.Table]
+
+	// Write to table.
 	rowsUpdated := 0
 	updateErr := conn.database.boltDB.Update(func(tx *bolt.Tx) error {
-		bucket := tx.Bucket([]byte(update.Table))
-		bucket.ForEach(func(key []byte, value []byte) error {
-			record := table.RecordFromBytes(value)
-			if record.GetField(update.WhereColumnName).stringVal == update.EqualsValue {
-				// Clone and update old record.
-				clonedOldRecord := record.Clone()
-				record.setString(update.ColumnName, update.Value)
-				// Clone new record
-				recordBytes, err := record.ToBytes()
+		// TODO: plan and execute this in FP...
+		bucket := tx.Bucket([]byte(update.Table)).Bucket(table.pkBucketKey())
+		err := bucket.ForEach(func(keyBytes []byte, valBytes []byte) error {
+			// Parse record
+			value, err := lang.Decode(valBytes)
+			if err != nil {
+				return fmt.Errorf(`couldn't decode "%s": %v`, string(valBytes), err)
+			}
+			record, ok := value.(*lang.VRecord)
+			if !ok {
+				return fmt.Errorf("decoded value not record: %v", value.Format())
+			}
+			// Check that it's in our update set
+			colVal := record.GetValue(update.WhereColumnName)
+			colValStr, ok := colVal.(*lang.VString)
+			if !ok {
+				return fmt.Errorf("can't do comparison on non-string value: %v", colVal)
+			}
+
+			if string(*colValStr) == update.EqualsValue {
+				updated := record.Update(update.ColumnName, lang.NewVString(update.Value))
+				updatedBytes, err := lang.Encode(updated)
 				if err != nil {
 					return err
 				}
-				if err := bucket.Put(key, recordBytes); err != nil {
+				if err := bucket.Put(keyBytes, updatedBytes); err != nil {
 					return err
 				}
 				// Send live query updates.
-				clonedNewRecord := record.Clone()
-				conn.database.pushTableEvent(channel, update.Table, clonedOldRecord, clonedNewRecord)
+				conn.database.pushTableEvent(channel, update.Table, record, updated)
 				rowsUpdated++
 			}
 			return nil
 		})
+		if err != nil {
+			return err
+		}
+
 		return nil
 	})
 	if updateErr != nil {

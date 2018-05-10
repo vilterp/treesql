@@ -22,7 +22,7 @@ func ParseType(name string) (Type, error) {
 	case "int":
 		return TInt, nil
 	default:
-		return nil, fmt.Errorf("can't parse type %s", name)
+		return nil, fmt.Errorf(`can't parse type "%s"`, name)
 	}
 }
 

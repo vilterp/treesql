@@ -52,7 +52,7 @@ func (conn *connection) executeCreateTable(create *CreateTable, channel *channel
 		return err
 	}
 	tableRecord := tableDesc.toRecord(conn.database)
-	columnRecords := make([]*record, len(create.Columns))
+	columnRecords := make([]*lang.VRecord, len(create.Columns))
 	updateErr := conn.database.boltDB.Update(func(tx *bolt.Tx) error {
 		// TODO: give ids to tables; create bucket from that
 		// create bucket for new table
@@ -74,7 +74,7 @@ func (conn *connection) executeCreateTable(create *CreateTable, channel *channel
 		}
 		// write record to __tables__
 		tablesBucket := tx.Bucket([]byte("__tables__"))
-		tableBytes, err := tableRecord.ToBytes()
+		tableBytes, err := lang.Encode(tableRecord)
 		if err != nil {
 			return err
 		}
@@ -85,7 +85,7 @@ func (conn *connection) executeCreateTable(create *CreateTable, channel *channel
 		for idx, columnDesc := range tableDesc.columns {
 			// serialize descriptor
 			columnRecord := columnDesc.toRecord(create.Name, conn.database)
-			value, err := columnRecord.ToBytes()
+			value, err := lang.Encode(columnRecord)
 			if err != nil {
 				return err
 			}

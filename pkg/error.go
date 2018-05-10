@@ -1,6 +1,10 @@
 package treesql
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/vilterp/treesql/pkg/lang"
+)
 
 // TODO: these aren't always used. Remove them or always use them.
 
@@ -92,9 +96,9 @@ func (e *validationError) Error() string {
 
 type recordAlreadyExists struct {
 	ColName string
-	Val     string
+	Val     lang.Value
 }
 
 func (e *recordAlreadyExists) Error() string {
-	return fmt.Sprintf("record already exists with primary key %s=%s", e.ColName, e.Val)
+	return fmt.Sprintf("record already exists with primary key %s=%s", e.ColName, e.Val.Format())
 }

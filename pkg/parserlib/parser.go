@@ -108,7 +108,7 @@ func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 				return trace, nil
 			}
 		}
-		return trace, frame.Errorf(nil, `no match for rule "%s"`, rule.String())
+		return trace, frame.Errorf(nil, "no match for rule `%s`", rule.String())
 	case *sequence:
 		trace := &TraceTree{
 			grammar:    ps.grammar,
@@ -154,7 +154,7 @@ func (ps *ParserState) runRule() (*TraceTree, *ParseError) {
 		minimalTrace.RefTrace = refTrace
 		minimalTrace.EndPos = refTrace.EndPos
 		if err != nil {
-			return minimalTrace, frame.Errorf(err, `no match for rule "%s"`, tRule.name)
+			return minimalTrace, frame.Errorf(err, "no match for rule `%s`", tRule.name)
 		}
 		return &TraceTree{
 			grammar:  ps.grammar,

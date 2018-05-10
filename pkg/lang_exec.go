@@ -69,12 +69,11 @@ func (ti *tableIterator) Next(_ lang.Caller) (lang.Value, error) {
 	if key == nil {
 		return nil, lang.EndOfIteration
 	}
-	// TODO: actually deserialize
-	obj, err := ti.table.recordFromBytes(value)
+	record, err := lang.Decode(value)
 	if err != nil {
 		return nil, err
 	}
-	return obj, nil
+	return record, nil
 }
 
 func (ti *tableIterator) Close() error {

@@ -15,7 +15,7 @@ func TestInsert(t *testing.T) {
 		// Verify that primary key uniqueness violations are checked.
 		{
 			stmt:  `INSERT INTO blog_posts VALUES ("0", "another hello world")`,
-			error: "executing insert: record already exists with primary key id=0",
+			error: `executing insert: record already exists with primary key id="0"`,
 		},
 		// Verify that number of columns is checked.
 		{

@@ -3,7 +3,6 @@ package treesql
 import (
 	"encoding/binary"
 	"fmt"
-	"strconv"
 
 	"github.com/boltdb/bolt"
 	"github.com/vilterp/treesql/pkg/lang"
@@ -58,6 +57,23 @@ func (table *tableDescriptor) getColDesc(name string) (*columnDescriptor, error)
 	return nil, fmt.Errorf("col not found: %s", name)
 }
 
+func (table *tableDescriptor) pkBucketKey() []byte {
+	// Find id of PK column.
+	var pkID int
+	for _, col := range table.columns {
+		if col.name == table.primaryKey {
+			pkID = col.id
+			break
+		}
+	}
+
+	// TODO: factor this out to an "encoding" or "keys" file
+	pkIDBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(pkIDBytes, uint32(pkID))
+
+	return pkIDBytes
+}
+
 type columnName string
 type columnDescriptor struct {
 	id               int
@@ -70,46 +86,54 @@ type columnReference struct {
 	tableName string // we're gonna assume for now that you can only reference the primary key
 }
 
-func (column *columnDescriptor) toRecord(tableName string, db *Database) *record {
-	columnsTable := db.schema.tables["__columns__"]
-	record := columnsTable.NewRecord()
-	record.setString("id", fmt.Sprintf("%d", column.id))
-	record.setString("name", column.name)
-	record.setString("table_name", tableName)
-	record.setString("type", column.typ.Format().String())
-	if column.referencesColumn != nil {
-		record.setString("references", column.referencesColumn.tableName)
+func (column *columnDescriptor) toRecord(tableName string, db *Database) *lang.VRecord {
+	values := map[string]lang.Value{
+		"id":         lang.NewVInt(column.id),
+		"name":       lang.NewVString(column.name),
+		"table_name": lang.NewVString(tableName),
+		"type":       lang.NewVString(column.typ.Format().String()),
 	}
-	return record
+
+	if column.referencesColumn != nil {
+		values["references"] = lang.NewVString(column.referencesColumn.tableName)
+	}
+	return lang.NewVRecord(values)
 }
 
-func columnFromRecord(record *record) *columnDescriptor {
-	idInt, _ := strconv.Atoi(record.GetField("id").stringVal)
-	references := record.GetField("references").stringVal
+func columnFromVal(record *lang.VRecord) (*columnDescriptor, error) {
+	idInt := record.GetValue("id").(*lang.VInt)
+	name := record.GetValue("name").(*lang.VString)
+
+	maybeReferences := record.GetValue("references")
+	var references *lang.VString
+	if maybeReferences != nil {
+		references = maybeReferences.(*lang.VString)
+	}
+
 	var colRef *columnReference
-	if len(references) > 0 { // should things be nullable? idk
+	if references != nil {
 		colRef = &columnReference{
-			tableName: references,
+			tableName: string(*references),
 		}
 	}
-	typ, err := lang.ParseType(record.GetField("type").stringVal)
+	typStr := record.GetValue("type").(*lang.VString)
+	typ, err := lang.ParseType(string(*typStr))
 	if err != nil {
-		// TODO: something other than panic
-		panic(fmt.Sprintf("error parsing type: %v", err))
+		return nil, fmt.Errorf("error parsing type: %v", err)
 	}
 	return &columnDescriptor{
-		id:               idInt,
-		name:             record.GetField("name").stringVal,
+		id:               int(*idInt),
+		name:             string(*name),
 		typ:              typ,
 		referencesColumn: colRef,
-	}
+	}, nil
 }
 
-func (table *tableDescriptor) toRecord(db *Database) *record {
-	record := db.schema.tables["__tables__"].NewRecord()
-	record.setString("name", table.name)
-	record.setString("primary_key", table.primaryKey)
-	return record
+func (table *tableDescriptor) toRecord(db *Database) *lang.VRecord {
+	return lang.NewVRecord(map[string]lang.Value{
+		"name":        lang.NewVString(table.name),
+		"primary_key": lang.NewVString(table.primaryKey),
+	})
 }
 
 func (db *Database) ensureBuiltinSchema() {
@@ -134,16 +158,26 @@ func (db *Database) ensureBuiltinSchema() {
 }
 
 func (db *Database) loadUserSchema() {
-	tablesTable := db.schema.tables["__tables__"]
-	columnsTable := db.schema.tables["__columns__"]
 	db.boltDB.View(func(tx *bolt.Tx) error {
 		tablesDescs := map[string]*tableDescriptor{}
 		// Load all table descriptors.
 		if err := tx.Bucket([]byte("__tables__")).ForEach(func(_ []byte, tableBytes []byte) error {
-			tableRecord := tablesTable.RecordFromBytes(tableBytes)
+			// Parse table record.
+			tableVal, err := lang.Decode(tableBytes)
+			if err != nil {
+				return err
+			}
+			tableRecord, ok := tableVal.(*lang.VRecord)
+			if !ok {
+				return fmt.Errorf("table descriptor not a record but a %T", tableVal)
+			}
+			// Parse its fields.
+			name := tableRecord.GetValue("name").(*lang.VString)
+			primaryKey := tableRecord.GetValue("primary_key").(*lang.VString)
+
 			tableDesc := &tableDescriptor{
-				name:       tableRecord.GetField("name").stringVal,
-				primaryKey: tableRecord.GetField("primary_key").stringVal,
+				name:       string(*name),
+				primaryKey: string(*primaryKey),
 				columns:    make([]*columnDescriptor, 0),
 			}
 			tablesDescs[tableDesc.name] = tableDesc
@@ -153,9 +187,21 @@ func (db *Database) loadUserSchema() {
 		}
 		// Load all column descriptors; stick them on table descriptors.
 		if err := tx.Bucket([]byte("__columns__")).ForEach(func(key []byte, columnBytes []byte) error {
-			columnRecord := columnsTable.RecordFromBytes(columnBytes)
-			columnSpec := columnFromRecord(columnRecord)
-			tableDesc := tablesDescs[columnRecord.GetField("table_name").stringVal]
+			columnVal, err := lang.Decode(columnBytes)
+			if err != nil {
+				return err
+			}
+			columnRecord, ok := columnVal.(*lang.VRecord)
+			if !ok {
+				return fmt.Errorf("column descriptor not a record but a %T", columnVal)
+			}
+
+			columnSpec, err := columnFromVal(columnRecord)
+			if err != nil {
+				return err
+			}
+			tableName := columnRecord.GetValue("table_name").(*lang.VString)
+			tableDesc := tablesDescs[string(*tableName)]
 			tableDesc.columns = append(tableDesc.columns, columnSpec)
 			return nil
 		}); err != nil {
