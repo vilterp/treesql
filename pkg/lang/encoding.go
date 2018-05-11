@@ -1,6 +1,7 @@
 package lang
 
 import (
+	"encoding/binary"
 	"fmt"
 )
 
@@ -32,4 +33,10 @@ func Decode(b []byte) (Value, error) {
 	}
 	interp := NewInterpreter(NewScope(nil), expr)
 	return interp.Interpret()
+}
+
+func EncodeInteger(val int32) []byte {
+	intBytes := make([]byte, 4)
+	binary.BigEndian.PutUint32(intBytes, uint32(val))
+	return intBytes
 }

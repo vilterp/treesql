@@ -51,14 +51,14 @@ type tableSubscriptionEvent struct {
 	SubQuery       *Select // where we are in the query
 	// vv this and value null => subscribe to whole table w/ no filter
 	ColumnName *string
-	Value      *value
+	Value      lang.Value
 
 	channel *channel
 }
 
 type recordSubscriptionEvent struct {
 	QueryExecution *selectExecution
-	Value          *value
+	Value          lang.Value
 	QueryPath      *queryPath
 
 	channel *channel
@@ -125,10 +125,10 @@ func (table *tableDescriptor) handleTableSub(evt *tableSubscriptionEvent) {
 			liveInfo.mu.tableListeners[columnName] = listenersForColumn
 		}
 		// initialize listeners for this value in this column
-		listenersForValue := listenersForColumn[evt.Value.stringVal]
+		listenersForValue := listenersForColumn[string(lang.MustEncode(evt.Value))]
 		if listenersForValue == nil {
 			listenersForValue = table.newListenerList()
-			listenersForColumn[evt.Value.stringVal] = listenersForValue
+			listenersForColumn[string(lang.MustEncode(evt.Value))] = listenersForValue
 		}
 		listenersForValue.addQueryListener(
 			evt.QueryExecution, evt.SubQuery, evt.QueryPath,
@@ -141,10 +141,10 @@ func (table *tableDescriptor) handleRecordSub(evt *recordSubscriptionEvent) {
 	liveInfo.mu.Lock()
 	defer liveInfo.mu.Unlock()
 
-	listenersForValue := liveInfo.mu.recordListeners[evt.Value.stringVal]
+	listenersForValue := liveInfo.mu.recordListeners[string(lang.MustEncode(evt.Value))]
 	if listenersForValue == nil {
 		listenersForValue = table.newListenerList()
-		liveInfo.mu.recordListeners[evt.Value.stringVal] = listenersForValue
+		liveInfo.mu.recordListeners[string(lang.MustEncode(evt.Value))] = listenersForValue
 	}
 	listenersForValue.addRecordListener(evt.QueryExecution, evt.QueryPath)
 }

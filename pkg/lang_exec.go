@@ -91,7 +91,7 @@ func (txn *txn) getTableIterator(table *tableDescriptor, colName string) (*table
 	if tableBucket == nil {
 		return nil, fmt.Errorf("bucket doesn't exist: %s", table.name)
 	}
-	idxBucket := tableBucket.Bucket(encodeInteger(int32(colID)))
+	idxBucket := tableBucket.Bucket(lang.EncodeInteger(int32(colID)))
 	if idxBucket == nil {
 		return nil, fmt.Errorf("bucket doesn't exist: %s/%d", table.name, colID)
 	}

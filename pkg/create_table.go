@@ -66,7 +66,7 @@ func (conn *connection) executeCreateTable(create *CreateTable, channel *channel
 			if col.referencesColumn != nil || tableDesc.primaryKey == col.name {
 				// TODO: factor this out to an encoding file
 				// TODO: non-unique indexes for foreign key columns
-				_, err := tableBucket.CreateBucket(encodeInteger(int32(col.id)))
+				_, err := tableBucket.CreateBucket(lang.EncodeInteger(int32(col.id)))
 				if err != nil {
 					return err
 				}
@@ -98,7 +98,7 @@ func (conn *connection) executeCreateTable(create *CreateTable, channel *channel
 			columnRecords[idx] = columnRecord
 		}
 		// write next column id sequence
-		nextColumnIDBytes := encodeInteger(int32(conn.database.schema.nextColumnID))
+		nextColumnIDBytes := lang.EncodeInteger(int32(conn.database.schema.nextColumnID))
 		tx.Bucket([]byte("__sequences__")).Put([]byte("__next_column_id__"), nextColumnIDBytes)
 		return nil
 	})

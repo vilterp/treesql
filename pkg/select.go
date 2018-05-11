@@ -86,32 +86,3 @@ type selectExecution struct {
 func (ex *selectExecution) Ctx() context.Context {
 	return ex.Context
 }
-
-type scope struct {
-	table         *tableDescriptor
-	document      *record
-	pathSoFar     *queryPath
-	selectionName string
-}
-
-type filterCondition struct {
-	InnerColumnName string
-	OuterColumnName string
-}
-
-func (ex *selectExecution) subscribeToRecord(scope *scope, record *record, table *tableDescriptor) {
-	var previousQueryPath *queryPath
-	if scope != nil {
-		previousQueryPath = scope.pathSoFar
-	}
-	queryPathWithPkVal := &queryPath{
-		ID:              &record.GetField(table.primaryKey).stringVal,
-		PreviousSegment: previousQueryPath,
-	}
-	tableEventsChannel := table.liveQueryInfo.recordSubscriptionEvents
-	tableEventsChannel <- &recordSubscriptionEvent{
-		Value:          record.GetField(table.primaryKey),
-		QueryExecution: ex,
-		QueryPath:      queryPathWithPkVal,
-	}
-}
