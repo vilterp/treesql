@@ -44,23 +44,23 @@ func (s *text) Debug() string {
 	return fmt.Sprintf("Text(%#v)", s.str)
 }
 
-// Nest
+// Indent
 
-type nest struct {
-	doc    Doc
-	nestBy int
+type indent struct {
+	doc      Doc
+	indentBy int
 }
 
-func Nest(by int, d Doc) Doc {
-	return &nest{
-		doc:    d,
-		nestBy: by,
+func Indent(by int, d Doc) Doc {
+	return &indent{
+		doc:      d,
+		indentBy: by,
 	}
 }
 
-func (n *nest) String() string {
-	indent := strings.Repeat(" ", n.nestBy)
-	lines := strings.Split(n.doc.String(), "\n")
+func (i *indent) String() string {
+	indent := strings.Repeat(" ", i.indentBy)
+	lines := strings.Split(i.doc.String(), "\n")
 	buf := bytes.NewBufferString("")
 	for idx, line := range lines {
 		if idx > 0 {
@@ -72,8 +72,8 @@ func (n *nest) String() string {
 	return buf.String()
 }
 
-func (n *nest) Debug() string {
-	return fmt.Sprintf("Nest(%d, %s)", n.nestBy, n.doc.String())
+func (i *indent) Debug() string {
+	return fmt.Sprintf("Indent(%d, %s)", i.indentBy, i.doc.String())
 }
 
 // Empty

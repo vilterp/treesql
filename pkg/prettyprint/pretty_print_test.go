@@ -12,7 +12,7 @@ func TestPrettyPrint(t *testing.T) {
 			`foo bar`,
 		},
 		{
-			Seq([]Doc{Text("foo"), Text("["), Newline, Nest(2, Text("bar")), Newline, Text("]")}),
+			Seq([]Doc{Text("foo"), Text("["), Newline, Indent(2, Text("bar")), Newline, Text("]")}),
 			`foo[
   bar
 ]`,
@@ -20,7 +20,7 @@ func TestPrettyPrint(t *testing.T) {
 		{
 			Seq([]Doc{
 				Text("["), Newline,
-				Nest(2, Join([]Doc{
+				Indent(2, Join([]Doc{
 					Text("foo: bar,"),
 					Text("baz: bin,"),
 				}, Newline)),

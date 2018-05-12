@@ -38,7 +38,7 @@ func (tt *TraceTree) Format() pp.Doc {
 		return pp.Seq([]pp.Doc{
 			pp.Textf("CHOICE(%d, ", tt.ChoiceIdx),
 			pp.Newline,
-			pp.Nest(2, tt.ChoiceTrace.Format()),
+			pp.Indent(2, tt.ChoiceTrace.Format()),
 			pp.Newline,
 			pp.Text(")"),
 		})
@@ -50,7 +50,7 @@ func (tt *TraceTree) Format() pp.Doc {
 		return pp.Seq([]pp.Doc{
 			pp.Text("SEQUENCE("),
 			pp.Newline,
-			pp.Nest(2, pp.Join(seqDocs, pp.CommaNewline)),
+			pp.Indent(2, pp.Join(seqDocs, pp.CommaNewline)),
 			pp.Newline,
 			pp.Text(")"),
 		})
@@ -62,7 +62,7 @@ func (tt *TraceTree) Format() pp.Doc {
 		return pp.Seq([]pp.Doc{
 			pp.Textf("REF(%s,", tRule.name),
 			pp.Newline,
-			pp.Nest(2, tt.RefTrace.Format()),
+			pp.Indent(2, tt.RefTrace.Format()),
 			pp.Newline,
 			pp.Text(")"),
 		})
@@ -72,7 +72,7 @@ func (tt *TraceTree) Format() pp.Doc {
 		return pp.Seq([]pp.Doc{
 			pp.Text("MAP("),
 			pp.Newline,
-			pp.Nest(2, tt.InnerTrace.Format()),
+			pp.Indent(2, tt.InnerTrace.Format()),
 			pp.Newline,
 			pp.Text(")"),
 		})

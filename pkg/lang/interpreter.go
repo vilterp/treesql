@@ -92,14 +92,10 @@ type stackFrame struct {
 
 	// if it's a function stack frame
 	vFunc vFunction
-	// if it's a record key stack frame
-	recKey string
-	// if it's a record stack frame
-	primaryKey Value
 }
 
 // TODO: stack frame and stuff
-// keep the func name in there
+// keep the func Name in there
 // also keep a query path of some kind in there,
 // so we can go back up the stack and install live query
 // listeners.

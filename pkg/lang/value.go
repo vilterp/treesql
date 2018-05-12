@@ -180,7 +180,7 @@ func (v *VRecord) Format() pp.Doc {
 
 	return pp.Seq([]pp.Doc{
 		pp.Text("{"), pp.Newline,
-		pp.Nest(2, pp.Join(kvDocs, pp.CommaNewline)),
+		pp.Indent(2, pp.Join(kvDocs, pp.CommaNewline)),
 		pp.CommaNewline,
 		pp.Text("}"),
 	})
@@ -351,7 +351,9 @@ type VIndex struct {
 
 var _ Value = &VIndex{}
 
-func NewVIndex(innerType Type, colName string, getScanIterator func(colName string) (Iterator, error)) *VIndex {
+func NewVIndex(
+	innerType Type, colName string, getScanIterator func(colName string) (Iterator, error),
+) *VIndex {
 	return &VIndex{
 		innerType:       innerType,
 		colName:         colName,

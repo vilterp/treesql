@@ -12,9 +12,78 @@ type txn struct {
 	db      *Database
 }
 
+var builtinsScope *lang.Scope
+var builtinsTypeScope *lang.TypeScope
+
+func init() {
+	builtinsScope = lang.BuiltinsScope.NewChildScope()
+
+	// TODO: how are these gonna get access to the DB to add listeners?
+	builtinsScope.AddMap(map[string]lang.Value{
+		"addFilteredTableListener": &lang.VBuiltin{
+			Name:    "addFilteredTableListener",
+			RetType: lang.TInt,
+			Params: []lang.Param{
+				{
+					Name: "table",
+					Typ:  lang.TString,
+				},
+				{
+					Name: "column",
+					Typ:  lang.TString,
+				},
+				{
+					Name: "value",
+					Typ:  lang.NewTVar("V"),
+				},
+			},
+			Impl: func(interp lang.Caller, args []lang.Value) (lang.Value, error) {
+				fmt.Println("addFilteredTableListener", args)
+				return lang.NewVInt(42), nil
+			},
+		},
+		"addWholeTableListener": &lang.VBuiltin{
+			Name: "addWholeTableListener",
+			Params: []lang.Param{
+				{
+					Name: "table",
+					Typ:  lang.TString,
+				},
+				// TODO: expr
+			},
+			RetType: lang.TInt,
+			Impl: func(interp lang.Caller, args []lang.Value) (lang.Value, error) {
+				fmt.Println("addWholeTableListener", args)
+				return lang.NewVInt(42), nil
+			},
+		},
+		"addRecordListener": &lang.VBuiltin{
+			Name: "addRecordListener",
+			Params: []lang.Param{
+				{
+					Name: "table",
+					Typ:  lang.TString,
+				},
+				{
+					Name: "pk",
+					Typ:  lang.NewTVar("V"),
+				},
+			},
+			RetType: lang.TInt,
+			Impl: func(interp lang.Caller, args []lang.Value) (lang.Value, error) {
+				return lang.NewVInt(42), nil
+			},
+		},
+	})
+
+	builtinsTypeScope = builtinsScope.ToTypeScope()
+}
+
 func (s *schema) toScope(txn *txn) (*lang.Scope, *lang.TypeScope) {
-	newScope := lang.BuiltinsScope.NewChildScope()
-	newTypeScope := lang.BuiltinsTypeScope.NewChildScope()
+	// TODO: grab schema mutex here
+	// also, only do this when the schema changes
+	newScope := builtinsScope.NewChildScope()
+	newTypeScope := builtinsTypeScope.NewChildScope()
 	tables := map[string]lang.Value{}
 	for _, table := range s.tables {
 		if table.isBuiltin {
@@ -25,6 +94,7 @@ func (s *schema) toScope(txn *txn) (*lang.Scope, *lang.TypeScope) {
 	tablesRec := lang.NewVRecord(tables)
 	newScope.Add("tables", tablesRec)
 	newTypeScope.Add("tables", tablesRec.GetType())
+
 	return newScope, newTypeScope
 }
 
@@ -103,7 +173,3 @@ func (txn *txn) getTableIterator(table *tableDescriptor, colName string) (*table
 		cursor: cursor,
 	}, nil
 }
-
-// TODO: build an vIteratorRef with the right type
-// may require using the typ type in the table descriptor
-// which would really f*ck things up

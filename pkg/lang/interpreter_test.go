@@ -133,7 +133,7 @@ func TestInterpreter(t *testing.T) {
 		},
 	}
 
-	typeScope := userRootScope.toTypeScope()
+	typeScope := userRootScope.ToTypeScope()
 
 	// lord this error checking code is tedious
 	for idx, testCase := range cases {

@@ -146,7 +146,7 @@ func (rl *ERecordLit) Format() pp.Doc {
 
 	return pp.Seq([]pp.Doc{
 		pp.Text("{"), pp.Newline,
-		pp.Nest(2, pp.Join(kvDocs, pp.CommaNewline)),
+		pp.Indent(2, pp.Join(kvDocs, pp.CommaNewline)),
 		pp.Newline,
 		pp.Text("}"),
 	})
@@ -184,7 +184,7 @@ type ELambda struct {
 var _ Expr = &ELambda{}
 
 func (l *ELambda) Evaluate(interp *interpreter) (Value, error) {
-	parentTypeScope := interp.stackTop.scope.toTypeScope()
+	parentTypeScope := interp.stackTop.scope.ToTypeScope()
 	newTypeScope := l.params.createTypeScope(parentTypeScope)
 	typ, err := l.body.GetType(newTypeScope)
 	if err != nil {
@@ -337,9 +337,6 @@ type EMemberAccess struct {
 
 var _ Expr = &EMemberAccess{}
 
-// TODO: idk how I feel about all these constructors
-// other packages wouldn't need to construct AST nodes if there
-// was a parser for this language.
 func NewMemberAccess(record Expr, member string) *EMemberAccess {
 	return &EMemberAccess{
 		record: record,
@@ -379,7 +376,7 @@ func (ma *EMemberAccess) GetType(scope *TypeScope) (Type, error) {
 	case *TRecord:
 		typ, ok := tTyp.types[ma.member]
 		if !ok {
-			return nil, fmt.Errorf("for expr %s: nonexistent member of type %s: %s", ma.Format(), recTyp.Format(), ma.member)
+			return nil, fmt.Errorf("for Expr %s: nonexistent member of type %s: %s", ma.Format(), recTyp.Format(), ma.member)
 		}
 		return typ, nil
 	default:
@@ -387,6 +384,72 @@ func (ma *EMemberAccess) GetType(scope *TypeScope) (Type, error) {
 	}
 }
 
-// TODO: Let binding
+// Do block
+
+type DoBinding struct {
+	Name string
+	Expr Expr
+}
+
+type EDoBlock struct {
+	doBindings []DoBinding
+	lastExpr   Expr
+}
+
+var _ Expr = &EDoBlock{}
+
+func NewDoBlock(bindings []DoBinding, lastExpr Expr) *EDoBlock {
+	return &EDoBlock{
+		doBindings: bindings,
+		lastExpr:   lastExpr,
+	}
+}
+
+func (db *EDoBlock) Evaluate(interp *interpreter) (Value, error) {
+	scope := NewScope(interp.stackTop.scope)
+	interp.pushFrame(&stackFrame{
+		expr:  db,
+		scope: scope,
+	})
+	for _, binding := range db.doBindings {
+		binding.Expr.Evaluate(interp)
+	}
+	res, err := db.lastExpr.Evaluate(interp)
+	interp.popFrame()
+	return res, err
+}
+
+func (db *EDoBlock) Format() pp.Doc {
+	docs := make([]pp.Doc, len(db.doBindings)+1)
+	for idx, binding := range db.doBindings {
+		docs[idx] = pp.Seq([]pp.Doc{
+			pp.Text(binding.Name),
+			pp.Text(" = "),
+			binding.Expr.Format(),
+		})
+	}
+	docs[len(db.doBindings)] = db.lastExpr.Format()
+
+	return pp.Seq([]pp.Doc{
+		pp.Text("do {"),
+		pp.Newline,
+		pp.Indent(2, pp.Join(docs, pp.Newline)),
+		pp.Newline,
+		pp.Text("}"),
+	})
+}
+
+func (db *EDoBlock) GetType(scope *TypeScope) (Type, error) {
+	ts := NewTypeScope(scope)
+	for _, binding := range db.doBindings {
+		typ, err := binding.Expr.GetType(ts)
+		if err != nil {
+			return nil, err
+		}
+		ts.Add(binding.Name, typ)
+	}
+	return db.lastExpr.GetType(ts)
+}
+
 // TODO: if
 // TODO: case (ayyyy)

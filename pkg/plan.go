@@ -11,7 +11,7 @@ func (s *schema) planSelect(query *Select, typeScope *lang.TypeScope) (lang.Expr
 }
 
 func (s *schema) planSelectInternal(
-	query *Select, typeScope *lang.TypeScope, depth int, filterLambda lang.Expr,
+	query *Select, typeScope *lang.TypeScope, depth int, joinEquality *equality,
 ) (lang.Expr, error) {
 	tableDesc, ok := s.tables[query.Table]
 	if !ok {
@@ -35,10 +35,10 @@ func (s *schema) planSelectInternal(
 		},
 	)
 
-	if filterLambda != nil {
+	if joinEquality != nil {
 		innermostExpr = lang.NewFuncCall("filter", []lang.Expr{
 			innermostExpr,
-			filterLambda,
+			getLambdaFilter(*joinEquality),
 		})
 	}
 
@@ -62,7 +62,7 @@ func (s *schema) planSelectInternal(
 		})
 	}
 
-	// Get types and expressions for selectinos.
+	// Get types and expressions for selections.
 	types := map[string]lang.Type{}
 	exprs := map[string]lang.Expr{}
 
@@ -90,8 +90,7 @@ func (s *schema) planSelectInternal(
 		types[selection.Name] = selectionType
 	}
 
-	// Build expression: a scan on the primary key.
-	return lang.NewFuncCall("map", []lang.Expr{
+	lastExpr := lang.NewFuncCall("map", []lang.Expr{
 		innermostExpr,
 		lang.NewELambda(
 			[]lang.Param{
@@ -100,10 +99,46 @@ func (s *schema) planSelectInternal(
 					Name: rowVarName,
 				},
 			},
-			lang.NewRecordLit(exprs),
+			lang.NewDoBlock(
+				[]lang.DoBinding{
+					{
+						Name: "_",
+						Expr: lang.NewFuncCall(
+							"addRecordListener",
+							[]lang.Expr{
+								lang.NewStringLit(tableDesc.name),
+								lang.NewMemberAccess(lang.NewVar(rowVarName), tableDesc.primaryKey),
+							},
+						),
+					},
+				},
+				lang.NewRecordLit(exprs),
+			),
 			lang.NewTRecord(types),
 		),
-	}), nil
+	})
+
+	if query.Where != nil {
+		return lang.NewDoBlock([]lang.DoBinding{
+			{
+				Name: "_",
+				Expr: lang.NewFuncCall("addFilteredTableListener", []lang.Expr{
+					lang.NewStringLit(tableDesc.name),
+					lang.NewStringLit(query.Where.ColumnName),
+					lang.NewStringLit(query.Where.Value),
+				}),
+			},
+		}, lastExpr), nil
+	}
+
+	return lang.NewDoBlock([]lang.DoBinding{
+		{
+			Name: "_",
+			Expr: lang.NewFuncCall("addWholeTableListener", []lang.Expr{
+				lang.NewStringLit(tableDesc.name),
+			}),
+		},
+	}, lastExpr), nil
 }
 
 func (s *schema) getSubSelect(
@@ -123,27 +158,19 @@ func (s *schema) getSubSelect(
 		)
 	}
 	// Build filter
-	filterLambdaBody := lang.NewFuncCall("strEq", []lang.Expr{
-		lang.NewMemberAccess(lang.NewVar(innerRowVarName), *colReferencingThis),
-		lang.NewMemberAccess(lang.NewVar(rowVarName), tableDesc.primaryKey),
-	})
+	equality := equality{
+		left:  lang.NewMemberAccess(lang.NewVar(innerRowVarName), *colReferencingThis),
+		right: lang.NewMemberAccess(lang.NewVar(rowVarName), tableDesc.primaryKey),
 
-	innerFilterLambda := lang.NewELambda(
-		[]lang.Param{
-			{
-				Name: innerRowVarName,
-				Typ:  innerTableDesc.getType(), // TODO: ???
-			},
-		},
-		filterLambdaBody,
-		lang.TBool,
-	)
+		varName:    innerRowVarName,
+		descriptor: innerTableDesc,
+	}
 
 	innerTypeScope := typeScope.NewChildScope()
 	innerTypeScope.Add(rowVarName, tableDesc.getType())
 
 	subSelectExpr, err := s.planSelectInternal(
-		selection.SubSelect, innerTypeScope, depth+1, innerFilterLambda,
+		selection.SubSelect, innerTypeScope, depth+1, &equality,
 	)
 	if err != nil {
 		return nil, nil, err
@@ -158,4 +185,34 @@ func (s *schema) getSubSelect(
 	}
 
 	return subSelectExpr, subSelectExprType, nil
+}
+
+type equality struct {
+	left  lang.Expr
+	right lang.Expr
+
+	varName    string
+	descriptor *tableDescriptor
+}
+
+func getLambdaFilter(eq equality) lang.Expr {
+	// TODO: equality for things other than strings
+	// maybe generic equality function
+	filterLambdaBody := lang.NewFuncCall("strEq", []lang.Expr{
+		eq.left,
+		eq.right,
+	})
+
+	innerFilterLambda := lang.NewELambda(
+		[]lang.Param{
+			{
+				Name: eq.varName,
+				Typ:  eq.descriptor.getType(), // TODO: ???
+			},
+		},
+		filterLambdaBody,
+		lang.TBool,
+	)
+
+	return innerFilterLambda
 }

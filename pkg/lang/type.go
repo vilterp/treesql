@@ -138,7 +138,7 @@ func (tr *TRecord) Format() pp.Doc {
 
 	return pp.Seq([]pp.Doc{
 		pp.Text("{"), pp.Newline,
-		pp.Nest(2, pp.Join(kvDocs, pp.CommaNewline)),
+		pp.Indent(2, pp.Join(kvDocs, pp.CommaNewline)),
 		pp.CommaNewline,
 		pp.Text("}"),
 	})

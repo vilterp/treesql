@@ -41,10 +41,10 @@ func (s *Scope) AddMap(vals map[string]Value) {
 	}
 }
 
-func (s *Scope) toTypeScope() *TypeScope {
+func (s *Scope) ToTypeScope() *TypeScope {
 	var parentScope *TypeScope
 	if s.parent != nil {
-		parentScope = s.parent.toTypeScope()
+		parentScope = s.parent.ToTypeScope()
 	}
 	ts := parentScope.NewChildScope()
 	for name, val := range s.vals {
@@ -79,9 +79,9 @@ func (s *Scope) Format() pp.Doc {
 
 	return pp.Seq([]pp.Doc{
 		pp.Text("Scope{"), pp.Newline,
-		pp.Nest(2, pp.Seq([]pp.Doc{
+		pp.Indent(2, pp.Seq([]pp.Doc{
 			pp.Text("vals: {"), pp.Newline,
-			pp.Nest(2, pp.Seq([]pp.Doc{
+			pp.Indent(2, pp.Seq([]pp.Doc{
 				pp.Join(docs, pp.CommaNewline),
 			})),
 			pp.Newline, pp.Text("},"), pp.Newline,
@@ -147,9 +147,9 @@ func (ts *TypeScope) Format() pp.Doc {
 
 	return pp.Seq([]pp.Doc{
 		pp.Text("TypeScope{"), pp.Newline,
-		pp.Nest(2, pp.Seq([]pp.Doc{
+		pp.Indent(2, pp.Seq([]pp.Doc{
 			pp.Text("vals: {"), pp.Newline,
-			pp.Nest(2, pp.Seq([]pp.Doc{
+			pp.Indent(2, pp.Seq([]pp.Doc{
 				pp.Join(docs, pp.CommaNewline),
 			})),
 			pp.Newline, pp.Text("},"), pp.Newline,
