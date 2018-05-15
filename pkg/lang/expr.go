@@ -430,6 +430,7 @@ func (db *EDoBlock) Format() pp.Doc {
 	}
 	docs[len(db.doBindings)] = db.lastExpr.Format()
 
+	// TODO: maybe add `in` between bindings and expression
 	return pp.Seq([]pp.Doc{
 		pp.Text("do {"),
 		pp.Newline,

@@ -35,6 +35,11 @@ func (s *schema) planSelectInternal(
 		},
 	)
 
+	if joinEquality != nil && query.Where != nil {
+		// TODO: ability to AND stuff
+		return nil, fmt.Errorf("WHERE clauses in sub-selects not supported yet")
+	}
+
 	if joinEquality != nil {
 		innermostExpr = lang.NewFuncCall("filter", []lang.Expr{
 			innermostExpr,
@@ -90,7 +95,7 @@ func (s *schema) planSelectInternal(
 		types[selection.Name] = selectionType
 	}
 
-	lastExpr := lang.NewFuncCall("map", []lang.Expr{
+	mapExpr := lang.NewFuncCall("map", []lang.Expr{
 		innermostExpr,
 		lang.NewELambda(
 			[]lang.Param{
@@ -128,7 +133,20 @@ func (s *schema) planSelectInternal(
 					lang.NewStringLit(query.Where.Value),
 				}),
 			},
-		}, lastExpr), nil
+		}, mapExpr), nil
+	}
+
+	if joinEquality != nil {
+		return lang.NewDoBlock([]lang.DoBinding{
+			{
+				Name: "_",
+				Expr: lang.NewFuncCall("addFilteredTableListener", []lang.Expr{
+					lang.NewStringLit(tableDesc.name),
+					lang.NewStringLit(joinEquality.left.Format().String()),
+					joinEquality.right,
+				}),
+			},
+		}, mapExpr), nil
 	}
 
 	return lang.NewDoBlock([]lang.DoBinding{
@@ -138,7 +156,7 @@ func (s *schema) planSelectInternal(
 				lang.NewStringLit(tableDesc.name),
 			}),
 		},
-	}, lastExpr), nil
+	}, mapExpr), nil
 }
 
 func (s *schema) getSubSelect(

@@ -39,27 +39,56 @@ func TestPlan(t *testing.T) {
 	}{
 		{
 			`MANY blog_posts { id }`,
-			`map(scan(tables.blog_posts.id), (row1) => {
-  id: row1.id
-})`,
+			`do {
+  _ = addWholeTableListener("blog_posts")
+  map(scan(tables.blog_posts.id), (row1) => do {
+    _ = addRecordListener("blog_posts", row1.id)
+    {
+      id: row1.id
+    }
+  })
+}`,
 			"",
 		},
 		{
 			`MANY blog_posts WHERE id = 'foo' { id }`,
-			`map(filter(scan(tables.blog_posts.id), (row1) => strEq(row1.id, "foo")), (row1) => {
-  id: row1.id
-})`,
+			`do {
+  _ = addFilteredTableListener("blog_posts", "id", "foo")
+  map(filter(scan(tables.blog_posts.id), (row1) => strEq(row1.id, "foo")), (row1) => do {
+    _ = addRecordListener("blog_posts", row1.id)
+    {
+      id: row1.id
+    }
+  })
+}`,
 			"",
 		},
 		{
 			`MANY blog_posts { id, comments: MANY comments { id, blog_post_id } }`,
-			`map(scan(tables.blog_posts.id), (row1) => {
-  comments: map(filter(scan(tables.comments.id), (row2) => strEq(row2.blog_post_id, row1.id)), (row2) => {
-    blog_post_id: row2.blog_post_id,
-    id: row2.id
-  }),
-  id: row1.id
-})`,
+			`do {
+  _ = addWholeTableListener("blog_posts")
+  map(scan(tables.blog_posts.id), (row1) => do {
+    _ = addRecordListener("blog_posts", row1.id)
+    {
+      comments: do {
+        _ = addFilteredTableListener("comments", "blog_post_id", row1.id)
+        map(filter(scan(tables.comments.id), (row2) => strEq(row2.blog_post_id, row1.id)), (row2) => do {
+          _ = addRecordListener("comments", row2.id)
+          {
+            blog_post_id: row2.blog_post_id,
+            id: row2.id
+          }
+        })
+      },
+      id: row1.id
+    }
+  })
+}`,
+			"",
+		},
+		{
+			`MANY comments { id, blog_post: ONE blog_posts { id } }`,
+			``,
 			"",
 		},
 	}
@@ -90,7 +119,10 @@ func TestPlan(t *testing.T) {
 
 			formatted := expr.Format().String()
 			if formatted != testCase.out {
-				t.Fatalf("EXPECTED:\n\n%s\n\nGOT:\n\n%s\n\n", testCase.out, formatted)
+				t.Fatalf(
+					"QUERY:\n\n%s\n\nEXPECTED:\n\n%s\n\nGOT:\n\n%s\n\n",
+					testCase.in, testCase.out, formatted,
+				)
 			}
 		})
 	}
