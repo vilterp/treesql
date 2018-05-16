@@ -418,7 +418,11 @@ func (db *EDoBlock) Evaluate(interp *interpreter) (Value, error) {
 		scope: scope,
 	})
 	for _, binding := range db.doBindings {
-		binding.Expr.Evaluate(interp)
+		val, err := binding.Expr.Evaluate(interp)
+		if err != nil {
+			return nil, err
+		}
+		scope.Add(binding.Name, val)
 	}
 	res, err := db.lastExpr.Evaluate(interp)
 	interp.popFrame()

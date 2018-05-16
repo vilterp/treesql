@@ -26,7 +26,7 @@ func (s *Scope) find(name string) (Value, error) {
 		if s.parent != nil {
 			return s.parent.find(name)
 		}
-		return nil, fmt.Errorf("not in scope: %s", name)
+		return nil, fmt.Errorf("not in scope: %s scope: %s", name, s.Format())
 	}
 	return val, nil
 }
