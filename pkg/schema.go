@@ -74,6 +74,14 @@ func (table *tableDescriptor) pkBucketKey() []byte {
 	return pkIDBytes
 }
 
+func (table *tableDescriptor) getPKType() lang.Type {
+	colDesc, err := table.getColDesc(table.primaryKey)
+	if err != nil {
+		panic(fmt.Sprintf("pk doesn't exist on descriptor: %s.%s", table.name, table.primaryKey))
+	}
+	return colDesc.typ
+}
+
 type columnName string
 type columnDescriptor struct {
 	id               int

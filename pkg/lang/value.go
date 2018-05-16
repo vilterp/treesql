@@ -343,7 +343,8 @@ func mustBeVIteratorRef(v Value) *VIteratorRef {
 // Index
 
 type VIndex struct {
-	innerType Type
+	keyType   Type
+	valueType Type
 	// TODO: include the colName in the closure somehow :/
 	colName         string
 	getScanIterator func(colName string) (Iterator, error)
@@ -352,23 +353,27 @@ type VIndex struct {
 var _ Value = &VIndex{}
 
 func NewVIndex(
-	innerType Type, colName string, getScanIterator func(colName string) (Iterator, error),
+	keyType Type,
+	valueType Type,
+	colName string,
+	getScanIterator func(colName string) (Iterator, error),
 ) *VIndex {
 	return &VIndex{
-		innerType:       innerType,
+		keyType:         keyType,
+		valueType:       valueType,
 		colName:         colName,
 		getScanIterator: getScanIterator,
 	}
 }
 
 func (v *VIndex) GetType() Type {
-	return NewTIndex(v.innerType)
+	return NewTIndex(v.keyType, v.valueType)
 }
 
 func (v *VIndex) Format() pp.Doc {
 	return pp.Seq([]pp.Doc{
 		pp.Text("Index<"),
-		v.innerType.Format(),
+		v.valueType.Format(),
 		pp.Text(">"),
 	})
 }

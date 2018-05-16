@@ -20,21 +20,44 @@ func init() {
 
 	// TODO: how are these gonna get access to the DB to add listeners?
 	builtinsScope.AddMap(map[string]lang.Value{
-		"addFilteredTableListener": &lang.VBuiltin{
-			Name:    "addFilteredTableListener",
-			RetType: lang.TInt,
+		// TODO: move this somewhere where it has access to the database...
+		"get": &lang.VBuiltin{
+			Name:    "get",
+			RetType: lang.NewTVar("V"),
 			Params: []lang.Param{
 				{
-					Name: "table",
-					Typ:  lang.TString,
-				},
-				{
-					Name: "column",
-					Typ:  lang.TString,
+					Name: "index",
+					Typ:  lang.NewTIndex(lang.NewTVar("K"), lang.NewTVar("V")),
 				},
 				{
 					Name: "value",
-					Typ:  lang.NewTVar("V"),
+					Typ:  lang.NewTVar("K"),
+				},
+			},
+			Impl: func(interp lang.Caller, args []lang.Value) (lang.Value, error) {
+				return lang.NewVInt(42), nil
+			},
+		},
+		"addInsertListener": &lang.VBuiltin{
+			Name:    "addInsertListener",
+			RetType: lang.TInt,
+			Params: []lang.Param{
+				{
+					Name: "index",
+					Typ:  lang.NewTIndex(lang.NewTVar("K"), lang.NewTVar("V")),
+				},
+				{
+					Name: "selection",
+					Typ: lang.NewTFunction(
+						[]lang.Param{
+							{
+								Name: "row",
+								// TODO: not sure this will always be the same as the index type
+								Typ: lang.NewTVar("V"),
+							},
+						},
+						lang.NewTVar("S"),
+					),
 				},
 			},
 			Impl: func(interp lang.Caller, args []lang.Value) (lang.Value, error) {
@@ -42,31 +65,29 @@ func init() {
 				return lang.NewVInt(42), nil
 			},
 		},
-		"addWholeTableListener": &lang.VBuiltin{
-			Name: "addWholeTableListener",
+		"addUpdateListener": &lang.VBuiltin{
+			Name: "addUpdateListener",
 			Params: []lang.Param{
 				{
-					Name: "table",
-					Typ:  lang.TString,
-				},
-				// TODO: expr
-			},
-			RetType: lang.TInt,
-			Impl: func(interp lang.Caller, args []lang.Value) (lang.Value, error) {
-				fmt.Println("addWholeTableListener", args)
-				return lang.NewVInt(42), nil
-			},
-		},
-		"addRecordListener": &lang.VBuiltin{
-			Name: "addRecordListener",
-			Params: []lang.Param{
-				{
-					Name: "table",
-					Typ:  lang.TString,
+					Name: "index",
+					Typ:  lang.NewTIndex(lang.NewTVar("K"), lang.NewTVar("V")),
 				},
 				{
 					Name: "pk",
-					Typ:  lang.NewTVar("V"),
+					Typ:  lang.NewTVar("K"),
+				},
+				{
+					Name: "selection",
+					Typ: lang.NewTFunction(
+						[]lang.Param{
+							{
+								Name: "row",
+								// TODO: not sure this will always be the same as the index type
+								Typ: lang.NewTVar("V"),
+							},
+						},
+						lang.NewTVar("S"),
+					),
 				},
 			},
 			RetType: lang.TInt,
@@ -89,7 +110,7 @@ func (s *schema) toScope(txn *txn) (*lang.Scope, *lang.TypeScope) {
 		if table.isBuiltin {
 			continue
 		}
-		tables[table.name] = table.toVRecord(txn)
+		tables[table.name] = table.toRecordOfIndices(txn)
 	}
 	tablesRec := lang.NewVRecord(tables)
 	newScope.Add("tables", tablesRec)
@@ -98,17 +119,35 @@ func (s *schema) toScope(txn *txn) (*lang.Scope, *lang.TypeScope) {
 	return newScope, newTypeScope
 }
 
-func (table *tableDescriptor) toVRecord(txn *txn) *lang.VRecord {
+func (table *tableDescriptor) toRecordOfIndices(txn *txn) *lang.VRecord {
 	attrs := map[string]lang.Value{}
 
 	for _, col := range table.columns {
 		if col.name == table.primaryKey {
 			// Construct VIndex to return.
 			attrs[col.name] = lang.NewVIndex(
+				table.getPKType(),
 				table.getType(),
 				col.name,
 				func(colName string) (lang.Iterator, error) {
 					return txn.getTableIterator(table, colName)
+				},
+			)
+		} else if col.referencesColumn != nil {
+			// e.g. comments.blog_post_id: Index<BlogPostID, Index<CommentID, CommentID>>
+			// TODO: just map to unit I guess
+			attrs[col.name] = lang.NewVIndex(
+				col.typ,
+				lang.NewTIndex(
+					col.typ,
+					lang.NewTIndex(
+						table.getPKType(),
+						table.getPKType(),
+					),
+				),
+				col.name,
+				func(colName string) (lang.Iterator, error) {
+					return nil, nil
 				},
 			)
 		}

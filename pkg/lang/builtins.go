@@ -62,15 +62,15 @@ func init() {
 		// Index functions.
 		"scan": &VBuiltin{
 			Name:    "scan",
-			Params:  []Param{{"index", NewTIndex(NewTVar("A"))}},
-			RetType: NewTIterator(NewTVar("A")),
+			Params:  []Param{{"index", NewTIndex(NewTVar("K"), NewTVar("V"))}},
+			RetType: NewTIterator(NewTVar("V")),
 			Impl: func(interp Caller, args []Value) (Value, error) {
 				index := mustBeVIndex(args[0])
 				scanIter, err := index.getScanIterator(index.colName)
 				if err != nil {
 					return nil, err
 				}
-				return NewVIteratorRef(scanIter, index.innerType), nil
+				return NewVIteratorRef(scanIter, index.valueType), nil
 			},
 		},
 		// Comparison functions.

@@ -6,12 +6,20 @@ import (
 	"github.com/vilterp/treesql/pkg/lang"
 )
 
-func (s *schema) planSelect(query *Select, typeScope *lang.TypeScope) (lang.Expr, error) {
-	return s.planSelectInternal(query, typeScope, 1, nil)
+func (s *schema) planSelect(query *Select, typeScope *lang.TypeScope) (lang.Expr, lang.Type, error) {
+	expr, err := s.planSelectInternal(query, typeScope, 1, nil)
+	if err != nil {
+		return nil, nil, err
+	}
+	typ, err := expr.GetType(typeScope)
+	if err != nil {
+		return nil, nil, err
+	}
+	return expr, typ, err
 }
 
 func (s *schema) planSelectInternal(
-	query *Select, typeScope *lang.TypeScope, depth int, joinEquality *equality,
+	query *Select, typeScope *lang.TypeScope, depth int, join *oneToManyJoin,
 ) (lang.Expr, error) {
 	tableDesc, ok := s.tables[query.Table]
 	if !ok {
@@ -20,57 +28,22 @@ func (s *schema) planSelectInternal(
 
 	rowVarName := fmt.Sprintf("row%d", depth)
 
-	// Scan the table.
-	var innermostExpr lang.Expr
-	innermostExpr = lang.NewFuncCall(
-		"scan",
-		[]lang.Expr{
-			lang.NewMemberAccess(
-				lang.NewMemberAccess(
-					lang.NewVar("tables"),
-					query.Table,
-				),
-				tableDesc.primaryKey,
-			),
-		},
-	)
-
-	if joinEquality != nil && query.Where != nil {
-		// TODO: ability to AND stuff
-		return nil, fmt.Errorf("WHERE clauses in sub-selects not supported yet")
-	}
-
-	if joinEquality != nil {
-		innermostExpr = lang.NewFuncCall("filter", []lang.Expr{
-			innermostExpr,
-			getLambdaFilter(*joinEquality),
-		})
-	}
-
+	// Build expr for main collection we're scanning over.
 	if query.Where != nil {
-		innermostExpr = lang.NewFuncCall("filter", []lang.Expr{
-			innermostExpr,
-			lang.NewELambda(
-				[]lang.Param{
-					{
-						Name: rowVarName,
-						Typ:  tableDesc.getType(),
-					},
-				},
-				// TODO: use intEq if it's not a string...
-				lang.NewFuncCall("strEq", []lang.Expr{
-					lang.NewMemberAccess(lang.NewVar(rowVarName), query.Where.ColumnName),
-					lang.NewStringLit(query.Where.Value),
-				}),
-				lang.TBool,
-			),
-		})
+		return nil, fmt.Errorf("not supporting WHERE yet")
 	}
+
+	primaryIndexExpr := lang.NewMemberAccess(
+		lang.NewMemberAccess(
+			lang.NewEVar("tables"),
+			query.Table,
+		),
+		tableDesc.primaryKey,
+	)
 
 	// Get types and expressions for selections.
 	types := map[string]lang.Type{}
 	exprs := map[string]lang.Expr{}
-
 	for _, selection := range query.Selections {
 		var selectionExpr lang.Expr
 		var selectionType lang.Type
@@ -87,7 +60,7 @@ func (s *schema) planSelectInternal(
 			if err != nil {
 				return nil, fmt.Errorf("no such column: %s.%s", query.Table, selection.Name)
 			}
-			selectionExpr = lang.NewMemberAccess(lang.NewVar(rowVarName), selection.Name)
+			selectionExpr = lang.NewMemberAccess(lang.NewEVar(rowVarName), selection.Name)
 			selectionType = colDesc.typ
 		}
 
@@ -95,79 +68,131 @@ func (s *schema) planSelectInternal(
 		types[selection.Name] = selectionType
 	}
 
-	mapExpr := lang.NewFuncCall("map", []lang.Expr{
-		innermostExpr,
-		lang.NewELambda(
-			[]lang.Param{
+	selectionLambdaExpr := lang.NewELambda(
+		[]lang.Param{
+			{
+				Typ:  tableDesc.getType(),
+				Name: rowVarName,
+			},
+		},
+		lang.NewDoBlock(
+			[]lang.DoBinding{
 				{
-					Typ:  tableDesc.getType(),
-					Name: rowVarName,
-				},
-			},
-			lang.NewDoBlock(
-				[]lang.DoBinding{
-					{
-						Name: "_",
-						Expr: lang.NewFuncCall(
-							"addRecordListener",
-							[]lang.Expr{
-								lang.NewStringLit(tableDesc.name),
-								lang.NewMemberAccess(lang.NewVar(rowVarName), tableDesc.primaryKey),
+					"innerSelection",
+					lang.NewELambda(
+						[]lang.Param{
+							{
+								Typ:  tableDesc.getType(),
+								Name: rowVarName,
 							},
-						),
-					},
+						},
+						lang.NewERecord(exprs),
+						lang.NewTRecord(types),
+					),
 				},
-				lang.NewRecordLit(exprs),
-			),
-			lang.NewTRecord(types),
+				{
+					"",
+					lang.NewFuncCall(
+						"addUpdateListener",
+						[]lang.Expr{
+							primaryIndexExpr,
+							lang.NewMemberAccess(lang.NewEVar(rowVarName), tableDesc.primaryKey),
+							lang.NewEVar("innerSelection"),
+						},
+					),
+				},
+			},
+			lang.NewFuncCall("innerSelection", []lang.Expr{
+				lang.NewEVar(rowVarName),
+			}),
 		),
+		lang.NewTRecord(types),
+	)
+
+	if join != nil {
+		joinIdxExpr :=
+			lang.NewMemberAccess(
+				lang.NewMemberAccess(
+					lang.NewEVar("tables"),
+					join.manyTableName,
+				),
+				join.manyJoinColName,
+			)
+
+		// e.g. `get(comments.blog_post_id, blog_post.id)`
+		subIndexExpr := lang.NewFuncCall("get", []lang.Expr{
+			joinIdxExpr,
+			lang.NewMemberAccess(lang.NewEVar(join.oneVarName), join.onePKName),
+		})
+
+		collectionExpr := lang.NewFuncCall("scan", []lang.Expr{
+			lang.NewEVar("subIndex"),
+		})
+
+		mapExpr := lang.NewFuncCall("map", []lang.Expr{
+			collectionExpr,
+			lang.NewEVar("selection"),
+		})
+
+		return lang.NewDoBlock([]lang.DoBinding{
+			{
+				"subIndex",
+				subIndexExpr,
+			},
+			{
+				"selection",
+				selectionLambdaExpr,
+			},
+			{
+				Name: "",
+				Expr: lang.NewFuncCall("addInsertListener", []lang.Expr{
+					lang.NewEVar("subIndex"),
+					lang.NewEVar("selection"),
+				}),
+			},
+		}, mapExpr), nil
+	}
+
+	// Scan the primary index...
+	// TODO: maybe break this out into a function...
+	collectionExpr := lang.NewFuncCall(
+		"scan",
+		[]lang.Expr{
+			primaryIndexExpr,
+		},
+	)
+
+	mapExpr := lang.NewFuncCall("map", []lang.Expr{
+		collectionExpr,
+		lang.NewEVar("selection"),
 	})
-
-	if query.Where != nil {
-		return lang.NewDoBlock([]lang.DoBinding{
-			{
-				Name: "_",
-				Expr: lang.NewFuncCall("addFilteredTableListener", []lang.Expr{
-					lang.NewStringLit(tableDesc.name),
-					lang.NewStringLit(query.Where.ColumnName),
-					lang.NewStringLit(query.Where.Value),
-				}),
-			},
-		}, mapExpr), nil
-	}
-
-	if joinEquality != nil {
-		return lang.NewDoBlock([]lang.DoBinding{
-			{
-				Name: "_",
-				Expr: lang.NewFuncCall("addFilteredTableListener", []lang.Expr{
-					lang.NewStringLit(tableDesc.name),
-					lang.NewStringLit(joinEquality.left.Format().String()),
-					joinEquality.right,
-				}),
-			},
-		}, mapExpr), nil
-	}
 
 	return lang.NewDoBlock([]lang.DoBinding{
 		{
-			Name: "_",
-			Expr: lang.NewFuncCall("addWholeTableListener", []lang.Expr{
-				lang.NewStringLit(tableDesc.name),
+			"selection",
+			selectionLambdaExpr,
+		},
+		{
+			Name: "",
+			Expr: lang.NewFuncCall("addInsertListener", []lang.Expr{
+				primaryIndexExpr,
+				lang.NewEVar("selection"),
 			}),
 		},
 	}, mapExpr), nil
 }
 
 func (s *schema) getSubSelect(
-	rowVarName string, tableDesc *tableDescriptor, selection *Selection,
-	typeScope *lang.TypeScope, depth int,
+	rowVarName string,
+	tableDesc *tableDescriptor,
+	selection *Selection,
+	typeScope *lang.TypeScope,
+	depth int,
 ) (lang.Expr, lang.Type, error) {
 	// Make the scan of the table we're joining to.
 	innerRowVarName := fmt.Sprintf("row%d", depth+1)
 
 	// Just doing the has many case first.
-	// TODO: use an index instead of a filter
 	innerTableDesc := s.tables[selection.SubSelect.Table]
 	colReferencingThis := innerTableDesc.colReferencingTable(tableDesc.name)
 	if colReferencingThis == nil {
@@ -176,12 +201,13 @@ func (s *schema) getSubSelect(
 		)
 	}
 	// Build filter
-	equality := equality{
-		left:  lang.NewMemberAccess(lang.NewVar(innerRowVarName), *colReferencingThis),
-		right: lang.NewMemberAccess(lang.NewVar(rowVarName), tableDesc.primaryKey),
+	equality := oneToManyJoin{
+		oneVarName: rowVarName,
+		onePKName:  tableDesc.primaryKey,
 
-		varName:    innerRowVarName,
-		descriptor: innerTableDesc,
+		manyTableName:   innerTableDesc.name,
+		manyVarName:     innerRowVarName,
+		manyJoinColName: *colReferencingThis,
 	}
 
 	innerTypeScope := typeScope.NewChildScope()
@@ -205,32 +231,11 @@ func (s *schema) getSubSelect(
 	return subSelectExpr, subSelectExprType, nil
 }
 
-type equality struct {
-	left  lang.Expr
-	right lang.Expr
+type oneToManyJoin struct {
+	oneVarName string
+	onePKName  string
 
-	varName    string
-	descriptor *tableDescriptor
-}
-
-func getLambdaFilter(eq equality) lang.Expr {
-	// TODO: equality for things other than strings
-	// maybe generic equality function
-	filterLambdaBody := lang.NewFuncCall("strEq", []lang.Expr{
-		eq.left,
-		eq.right,
-	})
-
-	innerFilterLambda := lang.NewELambda(
-		[]lang.Param{
-			{
-				Name: eq.varName,
-				Typ:  eq.descriptor.getType(), // TODO: ???
-			},
-		},
-		filterLambdaBody,
-		lang.TBool,
-	)
-
-	return innerFilterLambda
+	manyTableName   string
+	manyVarName     string
+	manyJoinColName string
 }

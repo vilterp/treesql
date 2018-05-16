@@ -22,6 +22,17 @@ func TestExprGetType(t *testing.T) {
 		"title": NewVString("hello world"),
 	}))
 	scope.Add("blog_posts", NewVIteratorRef(nil, blogPostType))
+	scope.Add("plus", &VBuiltin{
+		Name:    "plus",
+		RetType: TInt,
+		Params: []Param{
+			{"a", TInt},
+			{"b", TInt},
+		},
+		Impl: func(interp Caller, args []Value) (Value, error) {
+			return NewVInt(5), nil // not actually plus
+		},
+	})
 
 	// Cases.
 	testCases := []struct {
@@ -38,16 +49,16 @@ func TestExprGetType(t *testing.T) {
 			"int",
 		},
 		{
-			NewMemberAccess(NewVar("blog_post"), "id"),
+			NewMemberAccess(NewEVar("blog_post"), "id"),
 			"",
 			"int",
 		},
 		{
 			NewFuncCall("map", []Expr{
-				NewVar("blog_posts"),
+				NewEVar("blog_posts"),
 				NewELambda(
 					[]Param{{"post", blogPostType}},
-					NewMemberAccess(NewVar("post"), "id"),
+					NewMemberAccess(NewEVar("post"), "id"),
 					TString,
 				),
 			}),
@@ -56,11 +67,11 @@ func TestExprGetType(t *testing.T) {
 		},
 		{
 			NewFuncCall("map", []Expr{
-				NewVar("blog_posts"),
+				NewEVar("blog_posts"),
 				NewELambda(
 					[]Param{{"post", blogPostType}},
-					NewRecordLit(map[string]Expr{
-						"id": NewMemberAccess(NewVar("post"), "id"),
+					NewERecord(map[string]Expr{
+						"id": NewMemberAccess(NewEVar("post"), "id"),
 					}),
 					NewTRecord(map[string]Type{
 						"id": TInt,
@@ -74,11 +85,11 @@ func TestExprGetType(t *testing.T) {
 		},
 		{
 			NewFuncCall("filter", []Expr{
-				NewVar("blog_posts"),
+				NewEVar("blog_posts"),
 				NewELambda(
 					[]Param{{"post", blogPostType}},
 					NewFuncCall("intEq", []Expr{
-						NewMemberAccess(NewVar("post"), "id"),
+						NewMemberAccess(NewEVar("post"), "id"),
 						NewIntLit(5),
 					}),
 					TBool,
@@ -93,11 +104,11 @@ func TestExprGetType(t *testing.T) {
 		{
 			NewFuncCall("filter", []Expr{
 				NewFuncCall("map", []Expr{
-					NewVar("blog_posts"),
+					NewEVar("blog_posts"),
 					NewELambda(
 						[]Param{{"post", blogPostType}},
-						NewRecordLit(map[string]Expr{
-							"id": NewMemberAccess(NewVar("post"), "id"),
+						NewERecord(map[string]Expr{
+							"id": NewMemberAccess(NewEVar("post"), "id"),
 						}),
 						NewTRecord(map[string]Type{
 							"id": TInt,
@@ -107,7 +118,7 @@ func TestExprGetType(t *testing.T) {
 				NewELambda(
 					[]Param{{"post", blogPostType}},
 					NewFuncCall("intEq", []Expr{
-						NewMemberAccess(NewVar("post"), "id"),
+						NewMemberAccess(NewEVar("post"), "id"),
 						NewIntLit(5),
 					}),
 					TBool,
@@ -117,6 +128,34 @@ func TestExprGetType(t *testing.T) {
 			`Iterator<{
   id: int,
 }>`,
+		},
+		{
+			NewDoBlock(
+				[]DoBinding{
+					{
+						"",
+						NewFuncCall("blerp", []Expr{}),
+					},
+				},
+				NewIntLit(5),
+			),
+			"not in type scope: blerp",
+			"",
+		},
+		{
+			NewDoBlock(
+				[]DoBinding{
+					{
+						"",
+						NewFuncCall("plus", []Expr{
+							NewIntLit(5), NewStringLit("bloop"),
+						}),
+					},
+				},
+				NewIntLit(5),
+			),
+			"call to plus, param 1: have string; want int",
+			"",
 		},
 	}
 

@@ -221,21 +221,25 @@ func (ti *TIterator) substitute(tvb typeVarBindings) (Type, bool, error) {
 // Index
 
 type TIndex struct {
-	innerType Type
+	keyType   Type
+	valueType Type
 }
 
 var _ Type = &TIndex{}
 
-func NewTIndex(innerType Type) *TIndex {
+func NewTIndex(keyType Type, valueType Type) *TIndex {
 	return &TIndex{
-		innerType: innerType,
+		keyType:   keyType,
+		valueType: valueType,
 	}
 }
 
 func (ti *TIndex) Format() pp.Doc {
 	return pp.Seq([]pp.Doc{
 		pp.Text("Index<"),
-		ti.innerType.Format(),
+		ti.keyType.Format(),
+		pp.Text(", "),
+		ti.valueType.Format(),
 		pp.Text(">"),
 	})
 }
@@ -245,16 +249,16 @@ func (ti *TIndex) matches(other Type) (bool, typeVarBindings) {
 	if !ok {
 		return false, nil
 	}
-	return ti.innerType.matches(oti.innerType)
+	return ti.valueType.matches(oti.valueType)
 }
 
 func (ti *TIndex) substitute(tvb typeVarBindings) (Type, bool, error) {
-	innerTyp, innerConcrete, err := ti.innerType.substitute(tvb)
+	innerTyp, innerConcrete, err := ti.valueType.substitute(tvb)
 	if err != nil {
 		return nil, false, err
 	}
 	return &TIndex{
-		innerType: innerTyp,
+		valueType: innerTyp,
 	}, innerConcrete, nil
 }
 
@@ -266,6 +270,13 @@ type tFunction struct {
 }
 
 var _ Type = &tFunction{}
+
+func NewTFunction(params paramList, retType Type) *tFunction {
+	return &tFunction{
+		params:  params,
+		retType: retType,
+	}
+}
 
 func (tf *tFunction) Format() pp.Doc {
 	return pp.Seq([]pp.Doc{

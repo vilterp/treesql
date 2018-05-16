@@ -153,7 +153,7 @@ var rules = map[string]p.Rule{
 	"var": p.Map(
 		p.Ident,
 		func(tt *p.TraceTree) interface{} {
-			return NewVar(tt.RegexMatch)
+			return NewEVar(tt.RegexMatch)
 		},
 	),
 	"string_lit": p.Map(

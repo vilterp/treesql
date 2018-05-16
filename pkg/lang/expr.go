@@ -69,7 +69,7 @@ type EVar struct {
 
 var _ Expr = &EVar{}
 
-func NewVar(name string) *EVar {
+func NewEVar(name string) *EVar {
 	return &EVar{name: name}
 }
 
@@ -97,7 +97,7 @@ type ERecordLit struct {
 
 var _ Expr = &ERecordLit{}
 
-func NewRecordLit(exprs map[string]Expr) *ERecordLit {
+func NewERecord(exprs map[string]Expr) *ERecordLit {
 	return &ERecordLit{
 		exprs: exprs,
 	}
@@ -376,7 +376,7 @@ func (ma *EMemberAccess) GetType(scope *TypeScope) (Type, error) {
 	case *TRecord:
 		typ, ok := tTyp.types[ma.member]
 		if !ok {
-			return nil, fmt.Errorf("for Expr %s: nonexistent member of type %s: %s", ma.Format(), recTyp.Format(), ma.member)
+			return nil, fmt.Errorf("for expr `%s`: record type `%s` does not have member `%s`", ma.Format(), recTyp.Format(), ma.member)
 		}
 		return typ, nil
 	default:
@@ -422,11 +422,17 @@ func (db *EDoBlock) Evaluate(interp *interpreter) (Value, error) {
 func (db *EDoBlock) Format() pp.Doc {
 	docs := make([]pp.Doc, len(db.doBindings)+1)
 	for idx, binding := range db.doBindings {
-		docs[idx] = pp.Seq([]pp.Doc{
-			pp.Text(binding.Name),
-			pp.Text(" = "),
-			binding.Expr.Format(),
-		})
+		var doc pp.Doc
+		if binding.Name == "" {
+			doc = binding.Expr.Format()
+		} else {
+			doc = pp.Seq([]pp.Doc{
+				pp.Text(binding.Name),
+				pp.Text(" = "),
+				binding.Expr.Format(),
+			})
+		}
+		docs[idx] = doc
 	}
 	docs[len(db.doBindings)] = db.lastExpr.Format()
 

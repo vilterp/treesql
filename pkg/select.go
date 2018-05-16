@@ -53,7 +53,7 @@ func (conn *connection) executeQuery(
 	scope, typeScope := conn.database.schema.toScope(txn)
 
 	// Plan the query.
-	expr, err := conn.database.schema.planSelect(query, typeScope)
+	expr, _, err := conn.database.schema.planSelect(query, typeScope)
 	if err != nil {
 		return nil, nil, nil, err
 	}

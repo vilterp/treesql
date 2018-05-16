@@ -1,9 +1,8 @@
 package treesql
 
 import (
-	"testing"
-
 	"fmt"
+	"testing"
 
 	"github.com/vilterp/treesql/pkg/util"
 )
@@ -37,60 +36,69 @@ func TestPlan(t *testing.T) {
 		out string
 		err string
 	}{
+		// TODO: put update listeners back in
 		{
 			`MANY blog_posts { id }`,
 			`do {
-  _ = addWholeTableListener("blog_posts")
-  map(scan(tables.blog_posts.id), (row1) => do {
-    _ = addRecordListener("blog_posts", row1.id)
-    {
+  selection = (row1) => do {
+    innerSelection = (row1) => {
       id: row1.id
     }
-  })
+    addUpdateListener(tables.blog_posts.id, row1.id, innerSelection)
+    innerSelection(row1)
+  }
+  addInsertListener(tables.blog_posts.id, selection)
+  map(scan(tables.blog_posts.id), selection)
 }`,
 			"",
 		},
-		{
-			`MANY blog_posts WHERE id = 'foo' { id }`,
-			`do {
-  _ = addFilteredTableListener("blog_posts", "id", "foo")
-  map(filter(scan(tables.blog_posts.id), (row1) => strEq(row1.id, "foo")), (row1) => do {
-    _ = addRecordListener("blog_posts", row1.id)
-    {
-      id: row1.id
-    }
-  })
-}`,
-			"",
-		},
+		//		{
+		//			`MANY blog_posts WHERE id = 'foo' { id }`,
+		//			`do {
+		//  addInsertListener(tables.blog_posts.id, "foo")
+		//  map(filter(scan(tables.blog_posts.id), (row1) => strEq(row1.id, "foo")), (row1) => do {
+		//    addUpdateListener(tables.blog_posts.id, row1.id)
+		//    {
+		//      id: row1.id
+		//    }
+		//  })
+		//}`,
+		//			"",
+		//		},
 		{
 			`MANY blog_posts { id, comments: MANY comments { id, blog_post_id } }`,
 			`do {
-  _ = addWholeTableListener("blog_posts")
-  map(scan(tables.blog_posts.id), (row1) => do {
-    _ = addRecordListener("blog_posts", row1.id)
-    {
+  selection = (row1) => do {
+    innerSelection = (row1) => {
       comments: do {
-        _ = addFilteredTableListener("comments", "blog_post_id", row1.id)
-        map(filter(scan(tables.comments.id), (row2) => strEq(row2.blog_post_id, row1.id)), (row2) => do {
-          _ = addRecordListener("comments", row2.id)
-          {
+        subIndex = get(tables.comments.blog_post_id, row1.id)
+        selection = (row2) => do {
+          innerSelection = (row2) => {
             blog_post_id: row2.blog_post_id,
             id: row2.id
           }
-        })
+          addUpdateListener(tables.comments.id, row2.id, innerSelection)
+          innerSelection(row2)
+        }
+        addInsertListener(subIndex, selection)
+        map(scan(subIndex), selection)
       },
       id: row1.id
     }
-  })
+    addUpdateListener(tables.blog_posts.id, row1.id, innerSelection)
+    innerSelection(row1)
+  }
+  addInsertListener(tables.blog_posts.id, selection)
+  map(scan(tables.blog_posts.id), selection)
 }`,
 			"",
 		},
-		{
-			`MANY comments { id, blog_post: ONE blog_posts { id } }`,
-			``,
-			"",
-		},
+		// TODO: many-to-one joins
+		//{
+		//	`MANY comments { id, blog_post: ONE blog_posts { id } }`,
+		//	``,
+		//	"",
+		//},
 	}
 
 	for idx, testCase := range cases {
@@ -112,7 +120,7 @@ func TestPlan(t *testing.T) {
 
 			_, typeScope := db.schema.toScope(txn)
 
-			expr, err := tsr.server.db.schema.planSelect(parsedQuery.Select, typeScope)
+			expr, _, err := tsr.server.db.schema.planSelect(parsedQuery.Select, typeScope)
 			if util.AssertError(t, idx, testCase.err, err) {
 				return
 			}
