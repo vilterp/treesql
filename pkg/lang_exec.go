@@ -12,99 +12,11 @@ type txn struct {
 	db      *Database
 }
 
-var builtinsScope *lang.Scope
-var builtinsTypeScope *lang.TypeScope
-
-func init() {
-	builtinsScope = lang.BuiltinsScope.NewChildScope()
-
-	// TODO: how are these gonna get access to the DB to add listeners?
-	builtinsScope.AddMap(map[string]lang.Value{
-		// TODO: move this somewhere where it has access to the database...
-		"get": &lang.VBuiltin{
-			Name:    "get",
-			RetType: lang.NewTVar("V"),
-			Params: []lang.Param{
-				{
-					Name: "index",
-					Typ:  lang.NewTIndex(lang.NewTVar("K"), lang.NewTVar("V")),
-				},
-				{
-					Name: "value",
-					Typ:  lang.NewTVar("K"),
-				},
-			},
-			Impl: func(interp lang.Caller, args []lang.Value) (lang.Value, error) {
-				return lang.NewVInt(42), nil
-			},
-		},
-		"addInsertListener": &lang.VBuiltin{
-			Name:    "addInsertListener",
-			RetType: lang.TInt,
-			Params: []lang.Param{
-				{
-					Name: "index",
-					Typ:  lang.NewTIndex(lang.NewTVar("K"), lang.NewTVar("V")),
-				},
-				{
-					Name: "selection",
-					Typ: lang.NewTFunction(
-						[]lang.Param{
-							{
-								Name: "row",
-								// TODO: not sure this will always be the same as the index type
-								Typ: lang.NewTVar("V"),
-							},
-						},
-						lang.NewTVar("S"),
-					),
-				},
-			},
-			Impl: func(interp lang.Caller, args []lang.Value) (lang.Value, error) {
-				fmt.Println("addFilteredTableListener", args)
-				return lang.NewVInt(42), nil
-			},
-		},
-		"addUpdateListener": &lang.VBuiltin{
-			Name: "addUpdateListener",
-			Params: []lang.Param{
-				{
-					Name: "index",
-					Typ:  lang.NewTIndex(lang.NewTVar("K"), lang.NewTVar("V")),
-				},
-				{
-					Name: "pk",
-					Typ:  lang.NewTVar("K"),
-				},
-				{
-					Name: "selection",
-					Typ: lang.NewTFunction(
-						[]lang.Param{
-							{
-								Name: "row",
-								// TODO: not sure this will always be the same as the index type
-								Typ: lang.NewTVar("V"),
-							},
-						},
-						lang.NewTVar("S"),
-					),
-				},
-			},
-			RetType: lang.TInt,
-			Impl: func(interp lang.Caller, args []lang.Value) (lang.Value, error) {
-				return lang.NewVInt(42), nil
-			},
-		},
-	})
-
-	builtinsTypeScope = builtinsScope.ToTypeScope()
-}
-
 func (s *schema) toScope(txn *txn) (*lang.Scope, *lang.TypeScope) {
 	// TODO: grab schema mutex here
 	// also, only do this when the schema changes
-	newScope := builtinsScope.NewChildScope()
-	newTypeScope := builtinsTypeScope.NewChildScope()
+	newScope := lang.BuiltinsScope.NewChildScope()
+	newTypeScope := lang.BuiltinsTypeScope.NewChildScope()
 	tables := map[string]lang.Value{}
 	for _, table := range s.tables {
 		if table.isBuiltin {
@@ -139,11 +51,8 @@ func (table *tableDescriptor) toRecordOfIndices(txn *txn) *lang.VRecord {
 			attrs[col.name] = lang.NewVIndex(
 				col.typ,
 				lang.NewTIndex(
-					col.typ,
-					lang.NewTIndex(
-						table.getPKType(),
-						table.getPKType(),
-					),
+					table.getPKType(),
+					table.getPKType(),
 				),
 				col.name,
 				func(colName string) (lang.Iterator, error) {

@@ -322,9 +322,15 @@ func (fc *EFuncCall) GetType(scope *TypeScope) (Type, error) {
 				fc.funcName, idx, argType.Format(), param.Typ.Format(),
 			)
 		}
-		bindings.extend(argBindings)
+		if err := bindings.extend(argBindings); err != nil {
+			return nil, fmt.Errorf("in argument %d to %s: %s", idx, fc.funcName, err)
+		}
+
 	}
 	subsType, _, err := tFunc.retType.substitute(bindings)
+	if err != nil {
+		return nil, err
+	}
 	return subsType, err
 }
 

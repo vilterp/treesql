@@ -68,48 +68,59 @@ func (s *schema) planSelectInternal(
 		types[selection.Name] = selectionType
 	}
 
-	selectionLambdaExpr := lang.NewELambda(
-		[]lang.Param{
-			{
-				Typ:  tableDesc.getType(),
-				Name: rowVarName,
-			},
-		},
-		lang.NewDoBlock(
-			[]lang.DoBinding{
-				{
-					"innerSelection",
-					lang.NewELambda(
-						[]lang.Param{
-							{
-								Typ:  tableDesc.getType(),
-								Name: rowVarName,
-							},
-						},
-						lang.NewERecord(exprs),
-						lang.NewTRecord(types),
-					),
-				},
-				{
-					"",
-					lang.NewFuncCall(
-						"addUpdateListener",
-						[]lang.Expr{
-							primaryIndexExpr,
-							lang.NewMemberAccess(lang.NewEVar(rowVarName), tableDesc.primaryKey),
-							lang.NewEVar("innerSelection"),
-						},
-					),
-				},
-			},
-			lang.NewFuncCall("innerSelection", []lang.Expr{
-				lang.NewEVar(rowVarName),
-			}),
-		),
-		lang.NewTRecord(types),
-	)
-
 	if join != nil {
+		keyParam := rowVarName + "Key"
+		selectionLambdaExpr := lang.NewELambda(
+			[]lang.Param{
+				{
+					Typ:  tableDesc.getPKType(),
+					Name: keyParam,
+				},
+			},
+			lang.NewDoBlock(
+				[]lang.DoBinding{
+					{
+						rowVarName,
+						lang.NewFuncCall(
+							"get",
+							[]lang.Expr{
+								primaryIndexExpr,
+								lang.NewEVar(keyParam),
+							},
+						),
+					},
+					{
+						"innerSelection",
+						lang.NewELambda(
+							[]lang.Param{
+								{
+									Typ:  tableDesc.getType(),
+									Name: rowVarName,
+								},
+							},
+							lang.NewERecord(exprs),
+							lang.NewTRecord(types),
+						),
+					},
+					{
+						"",
+						lang.NewFuncCall(
+							"addUpdateListener",
+							[]lang.Expr{
+								primaryIndexExpr,
+								lang.NewEVar(keyParam),
+								lang.NewEVar("innerSelection"),
+							},
+						),
+					},
+				},
+				lang.NewFuncCall("innerSelection", []lang.Expr{
+					lang.NewEVar(rowVarName),
+				}),
+			),
+			lang.NewTRecord(types),
+		)
+
 		joinIdxExpr :=
 			lang.NewMemberAccess(
 				lang.NewMemberAccess(
@@ -152,6 +163,47 @@ func (s *schema) planSelectInternal(
 			},
 		}, mapExpr), nil
 	}
+
+	selectionLambdaExpr := lang.NewELambda(
+		[]lang.Param{
+			{
+				Typ:  tableDesc.getType(),
+				Name: rowVarName,
+			},
+		},
+		lang.NewDoBlock(
+			[]lang.DoBinding{
+				{
+					"innerSelection",
+					lang.NewELambda(
+						[]lang.Param{
+							{
+								Typ:  tableDesc.getType(),
+								Name: rowVarName,
+							},
+						},
+						lang.NewERecord(exprs),
+						lang.NewTRecord(types),
+					),
+				},
+				{
+					"",
+					lang.NewFuncCall(
+						"addUpdateListener",
+						[]lang.Expr{
+							primaryIndexExpr,
+							lang.NewMemberAccess(lang.NewEVar(rowVarName), tableDesc.primaryKey),
+							lang.NewEVar("innerSelection"),
+						},
+					),
+				},
+			},
+			lang.NewFuncCall("innerSelection", []lang.Expr{
+				lang.NewEVar(rowVarName),
+			}),
+		),
+		lang.NewTRecord(types),
+	)
 
 	// Scan the primary index...
 	// TODO: maybe break this out into a function...

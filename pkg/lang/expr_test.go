@@ -116,7 +116,14 @@ func TestExprGetType(t *testing.T) {
 					),
 				}),
 				NewELambda(
-					[]Param{{"post", blogPostType}},
+					[]Param{
+						{
+							"post",
+							NewTRecord(map[string]Type{
+								"id": TInt,
+							}),
+						},
+					},
 					NewFuncCall("intEq", []Expr{
 						NewMemberAccess(NewEVar("post"), "id"),
 						NewIntLit(5),

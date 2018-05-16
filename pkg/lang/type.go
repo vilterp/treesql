@@ -42,7 +42,7 @@ func (tvb typeVarBindings) extend(other typeVarBindings) error {
 		if ok {
 			if matches, _ := currentTyp.matches(typ); !matches {
 				return fmt.Errorf(
-					"can't extend type scope: currently %s is %s; tried to extend with %s",
+					"for var %s, %s doesn't match %s",
 					name, currentTyp.Format(), typ.Format(),
 				)
 			}
@@ -50,6 +50,22 @@ func (tvb typeVarBindings) extend(other typeVarBindings) error {
 		tvb[name] = typ
 	}
 	return nil
+}
+
+func (tvb typeVarBindings) Format() pp.Doc {
+	var docs []pp.Doc
+	for name, typ := range tvb {
+		docs = append(docs, pp.Seq([]pp.Doc{
+			name.Format(),
+			pp.Text(": "),
+			typ.Format(),
+		}))
+	}
+	return pp.Seq([]pp.Doc{
+		pp.Text("TypeVarBindings{"),
+		pp.Join(docs, pp.Comma),
+		pp.Text("}"),
+	})
 }
 
 // Int
@@ -249,7 +265,19 @@ func (ti *TIndex) matches(other Type) (bool, typeVarBindings) {
 	if !ok {
 		return false, nil
 	}
-	return ti.valueType.matches(oti.valueType)
+	matched, tvb := ti.keyType.matches(oti.keyType)
+	if !matched {
+		return false, nil
+	}
+	matched, moreTVB := ti.valueType.matches(oti.valueType)
+	if !matched {
+		return false, nil
+	}
+	err := tvb.extend(moreTVB)
+	if err != nil {
+		panic(fmt.Sprintf("error while matching type with index: %s", err))
+	}
+	return true, tvb
 }
 
 func (ti *TIndex) substitute(tvb typeVarBindings) (Type, bool, error) {
@@ -281,7 +309,7 @@ func NewTFunction(params paramList, retType Type) *tFunction {
 func (tf *tFunction) Format() pp.Doc {
 	return pp.Seq([]pp.Doc{
 		pp.Text("("),
-		tf.params.Format(),
+		tf.params.FormatTypes(),
 		pp.Text(") => "),
 		tf.retType.Format(),
 	})

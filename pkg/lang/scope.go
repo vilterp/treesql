@@ -174,6 +174,26 @@ func (pl paramList) Format() pp.Doc {
 	return pp.Join(paramDocs, pp.Text(", "))
 }
 
+func (pl paramList) FormatTypes() pp.Doc {
+	paramDocs := make([]pp.Doc, len(pl))
+	for idx, param := range pl {
+		paramDocs[idx] = param.Typ.Format()
+	}
+	return pp.Join(paramDocs, pp.Text(", "))
+}
+
+func (pl paramList) FormatNamesAndTypes() pp.Doc {
+	paramDocs := make([]pp.Doc, len(pl))
+	for idx, param := range pl {
+		paramDocs[idx] = pp.Seq([]pp.Doc{
+			pp.Text(param.Name),
+			pp.Text(": "),
+			param.Typ.Format(),
+		})
+	}
+	return pp.Join(paramDocs, pp.Text(", "))
+}
+
 func (pl paramList) Matches(other paramList) (bool, typeVarBindings) {
 	if len(pl) != len(other) {
 		return false, nil

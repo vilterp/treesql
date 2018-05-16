@@ -72,12 +72,13 @@ func TestPlan(t *testing.T) {
     innerSelection = (row1) => {
       comments: do {
         subIndex = get(tables.comments.blog_post_id, row1.id)
-        selection = (row2) => do {
+        selection = (row2Key) => do {
+          row2 = get(tables.comments.id, row2Key)
           innerSelection = (row2) => {
             blog_post_id: row2.blog_post_id,
             id: row2.id
           }
-          addUpdateListener(tables.comments.id, row2.id, innerSelection)
+          addUpdateListener(tables.comments.id, row2Key, innerSelection)
           innerSelection(row2)
         }
         addInsertListener(subIndex, selection)

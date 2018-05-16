@@ -1,6 +1,7 @@
 package lang
 
 var BuiltinsScope *Scope
+var BuiltinsTypeScope *TypeScope
 
 func init() {
 	BuiltinsScope = NewScope(nil)
@@ -94,7 +95,81 @@ func init() {
 				return NewVBool(left == right), nil
 			},
 		},
+		"get": &VBuiltin{
+			Name:    "get",
+			RetType: NewTVar("V"),
+			Params: []Param{
+				{
+					Name: "index",
+					Typ:  NewTIndex(NewTVar("K"), NewTVar("V")),
+				},
+				{
+					Name: "value",
+					Typ:  NewTVar("K"),
+				},
+			},
+			Impl: func(interp Caller, args []Value) (Value, error) {
+				return NewVInt(42), nil
+			},
+		},
+		"addInsertListener": &VBuiltin{
+			Name:    "addInsertListener",
+			RetType: TInt,
+			Params: []Param{
+				{
+					Name: "index",
+					Typ:  NewTIndex(NewTVar("K"), NewTVar("V")),
+				},
+				{
+					Name: "selection",
+					Typ: NewTFunction(
+						[]Param{
+							{
+								Name: "row",
+								// TODO: not sure this will always be the same as the index type
+								Typ: NewTVar("V"),
+							},
+						},
+						NewTVar("S"),
+					),
+				},
+			},
+			Impl: func(interp Caller, args []Value) (Value, error) {
+				return NewVInt(42), nil
+			},
+		},
+		"addUpdateListener": &VBuiltin{
+			Name: "addUpdateListener",
+			Params: []Param{
+				{
+					Name: "index",
+					Typ:  NewTIndex(NewTVar("K"), NewTVar("V")),
+				},
+				{
+					Name: "pk",
+					Typ:  NewTVar("K"),
+				},
+				{
+					Name: "selection",
+					Typ: NewTFunction(
+						[]Param{
+							{
+								Name: "row",
+								Typ:  NewTVar("ROW"),
+							},
+						},
+						NewTVar("S"),
+					),
+				},
+			},
+			RetType: TInt,
+			Impl: func(interp Caller, args []Value) (Value, error) {
+				return NewVInt(42), nil
+			},
+		},
 	})
+
+	BuiltinsTypeScope = BuiltinsScope.ToTypeScope()
 }
 
 // TODO:
