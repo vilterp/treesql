@@ -38,7 +38,7 @@ func (table *tableDescriptor) toRecordOfIndices(txn *txn) *lang.VRecord {
 		// By declaring `col` inside of the loop, we can use it in closures.
 		col := table.columns[idx]
 		if col.name == table.primaryKey {
-			// Construct VIndex to return.
+			// Construct unique primary index to return.
 			attrs[col.name] = lang.NewVIndex(
 				table.getPKType(),
 				table.getType(),
@@ -50,6 +50,7 @@ func (table *tableDescriptor) toRecordOfIndices(txn *txn) *lang.VRecord {
 				},
 			)
 		} else if col.referencesColumn != nil {
+			// Construct non-unique index to return.
 			// e.g. comments.blog_post_id: Index<BlogPostID, Index<CommentID, CommentID>>
 			// TODO: just map to unit I guess
 			attrs[col.name] = lang.NewVIndex(
@@ -107,7 +108,7 @@ func (ti *indexIterator) Close() error {
 func (txn *txn) getIndexIterator(
 	table *tableDescriptor, col *columnDescriptor,
 ) (*indexIterator, error) {
-	idxBucket, err := txn.getIndexBucket(table, col)
+	idxBucket, err := getIndexBucket(txn.boltTxn, table, col)
 	if err != nil {
 		return nil, err
 	}
@@ -121,7 +122,7 @@ func (txn *txn) getIndexIterator(
 func (txn *txn) getValue(
 	table *tableDescriptor, col *columnDescriptor, key lang.Value,
 ) (lang.Value, error) {
-	idxBucket, err := txn.getIndexBucket(table, col)
+	idxBucket, err := getIndexBucket(txn.boltTxn, table, col)
 	if err != nil {
 		return nil, err
 	}
@@ -133,17 +134,25 @@ func (txn *txn) getValue(
 func (txn *txn) getSubIndex(
 	table *tableDescriptor, col *columnDescriptor, key lang.Value,
 ) (*lang.VIndex, error) {
-	idxBucket, err := txn.getIndexBucket(table, col)
+	// Get index.
+	idxBucket, err := getIndexBucket(txn.boltTxn, table, col)
 	if err != nil {
 		return nil, err
+	}
+
+	// Get sub-index.
+	subIdxBucket := idxBucket.Bucket(lang.MustEncode(key))
+	if subIdxBucket == nil {
+		// TODO: probably not an error for this not to exist.
+		return nil, fmt.Errorf("sub-index `%s/%s/%s` doesn't exist", table.name, col.name, key.Format())
 	}
 
 	return lang.NewVIndex(
 		col.typ,
 		col.typ,
 		func() (lang.Iterator, error) {
-			fmt.Println("gave out cursor for", table.name, col.name)
-			cursor := idxBucket.Cursor()
+			fmt.Println("subindex scan: gave out cursor for", table.name, col.name)
+			cursor := subIdxBucket.Cursor()
 			return &indexIterator{
 				cursor: cursor,
 			}, nil
@@ -154,15 +163,16 @@ func (txn *txn) getSubIndex(
 	), nil
 }
 
-func (txn *txn) getIndexBucket(
-	table *tableDescriptor, col *columnDescriptor,
+// TODO: put this back on txn...
+func getIndexBucket(
+	txn *bolt.Tx, table *tableDescriptor, col *columnDescriptor,
 ) (*bolt.Bucket, error) {
 	colID, err := table.colIDForName(col.name)
 
 	if err != nil {
 		return nil, err
 	}
-	tableBucket := txn.boltTxn.Bucket([]byte(table.name))
+	tableBucket := txn.Bucket([]byte(table.name))
 	if tableBucket == nil {
 		return nil, fmt.Errorf("bucket doesn't exist: %s", table.name)
 	}

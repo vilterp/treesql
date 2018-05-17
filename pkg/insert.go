@@ -32,7 +32,7 @@ func (conn *connection) executeInsert(insert *Insert, channel *channel) error {
 	table := conn.database.schema.tables[insert.Table]
 
 	// Create VRecord
-	// TODO: move this to planner
+	// TODO: move this to planner -- generate & run FP instead of doing it here.
 	values := make(map[string]lang.Value)
 	for idx, value := range insert.Values {
 		col := table.columns[idx]
@@ -44,6 +44,8 @@ func (conn *connection) executeInsert(insert *Insert, channel *channel) error {
 	// Write to table.
 	err := conn.database.boltDB.Update(func(tx *bolt.Tx) error {
 		tableBucket := tx.Bucket([]byte(insert.Table))
+
+		// Write to primary index.
 		primaryIndexBucket := tableBucket.Bucket(table.pkBucketKey())
 
 		keyBytes, err := lang.Encode(key)
@@ -58,7 +60,38 @@ func (conn *connection) executeInsert(insert *Insert, channel *channel) error {
 		if err != nil {
 			return err
 		}
-		return primaryIndexBucket.Put(keyBytes, recordBytes)
+		if err := primaryIndexBucket.Put(keyBytes, recordBytes); err != nil {
+			return err
+		}
+
+		// Write to secondary indices.
+		for _, col := range table.columns {
+			if col.referencesColumn != nil {
+				indexBucket, err := getIndexBucket(tx, table, col)
+				if err != nil {
+					return err
+				}
+
+				valueForColumn := record.GetValue(col.name)
+				encodedValueForColumn, err := lang.Encode(valueForColumn)
+				if err != nil {
+					return err
+				}
+
+				subIndexBucket, err := indexBucket.CreateBucketIfNotExists(encodedValueForColumn)
+				if err != nil {
+					return err
+				}
+
+				// TODO: don't put the key twice. Will require sorting some things out on the
+				// query codegen side.
+				if err := subIndexBucket.Put(keyBytes, keyBytes); err != nil {
+					return err
+				}
+			}
+		}
+
+		return nil
 	})
 	if err != nil {
 		return errors.Wrap(err, "executing insert")

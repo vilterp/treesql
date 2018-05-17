@@ -346,6 +346,7 @@ type VIndex struct {
 	keyType   Type
 	valueType Type
 
+	// TODO: convert to IDs I think
 	table string
 	index string
 	value string
@@ -469,13 +470,13 @@ func (vb *VBuiltin) GetType() Type {
 }
 
 func (vb *VBuiltin) Format() pp.Doc {
-	return pp.Text(fmt.Sprintf(
+	return pp.Textf(
 		`<builtin %s: (%s) => %s>`, vb.Name, vb.Params.Format(), vb.RetType.Format(),
-	))
+	)
 }
 
 func (vb *VBuiltin) WriteAsJSON(w *bufio.Writer, _ Caller) error {
-	return fmt.Errorf("can'out write a builtin to JSON")
+	return fmt.Errorf("cannot write a builtin to JSON")
 }
 
 func (vb *VBuiltin) getParamList() paramList {
