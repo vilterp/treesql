@@ -345,9 +345,14 @@ func mustBeVIteratorRef(v Value) *VIteratorRef {
 type VIndex struct {
 	keyType   Type
 	valueType Type
-	// TODO: include the colName in the closure somehow :/
-	colName         string
-	getScanIterator func(colName string) (Iterator, error)
+
+	table string
+	index string
+	value string
+
+	getScanIterator func() (Iterator, error)
+	getValue        func(key Value) (Value, error)
+	putValue        func(key Value, value Value)
 }
 
 var _ Value = &VIndex{}
@@ -355,14 +360,14 @@ var _ Value = &VIndex{}
 func NewVIndex(
 	keyType Type,
 	valueType Type,
-	colName string,
-	getScanIterator func(colName string) (Iterator, error),
+	getScanIterator func() (Iterator, error),
+	getValue func(key Value) (Value, error),
 ) *VIndex {
 	return &VIndex{
 		keyType:         keyType,
 		valueType:       valueType,
-		colName:         colName,
 		getScanIterator: getScanIterator,
+		getValue:        getValue,
 	}
 }
 
@@ -385,7 +390,7 @@ func (v *VIndex) WriteAsJSON(*bufio.Writer, Caller) error {
 func mustBeVIndex(v Value) *VIndex {
 	i, ok := v.(*VIndex)
 	if !ok {
-		panic("not a VIndex")
+		panic(fmt.Sprintf("not a VIndex: %s", v.Format()))
 	}
 	return i
 }

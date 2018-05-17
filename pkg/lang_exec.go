@@ -34,15 +34,19 @@ func (s *schema) toScope(txn *txn) (*lang.Scope, *lang.TypeScope) {
 func (table *tableDescriptor) toRecordOfIndices(txn *txn) *lang.VRecord {
 	attrs := map[string]lang.Value{}
 
-	for _, col := range table.columns {
+	for idx := range table.columns {
+		// By declaring `col` inside of the loop, we can use it in closures.
+		col := table.columns[idx]
 		if col.name == table.primaryKey {
 			// Construct VIndex to return.
 			attrs[col.name] = lang.NewVIndex(
 				table.getPKType(),
 				table.getType(),
-				col.name,
-				func(colName string) (lang.Iterator, error) {
-					return txn.getTableIterator(table, colName)
+				func() (lang.Iterator, error) {
+					return txn.getIndexIterator(table, col)
+				},
+				func(key lang.Value) (lang.Value, error) {
+					return txn.getValue(table, col, key)
 				},
 			)
 		} else if col.referencesColumn != nil {
@@ -54,9 +58,11 @@ func (table *tableDescriptor) toRecordOfIndices(txn *txn) *lang.VRecord {
 					table.getPKType(),
 					table.getPKType(),
 				),
-				col.name,
-				func(colName string) (lang.Iterator, error) {
-					return nil, nil
+				func() (lang.Iterator, error) {
+					panic("TODO: implement scan on non-unique indices")
+				},
+				func(key lang.Value) (lang.Value, error) {
+					return txn.getSubIndex(table, col, key)
 				},
 			)
 		}
@@ -67,15 +73,14 @@ func (table *tableDescriptor) toRecordOfIndices(txn *txn) *lang.VRecord {
 
 // TODO: maybe name BoltIterator
 // once there are also virtual table iterators
-type tableIterator struct {
+type indexIterator struct {
 	cursor        *bolt.Cursor
-	table         *tableDescriptor
 	seekedToFirst bool
 }
 
-var _ lang.Iterator = &tableIterator{}
+var _ lang.Iterator = &indexIterator{}
 
-func (ti *tableIterator) Next(_ lang.Caller) (lang.Value, error) {
+func (ti *indexIterator) Next(_ lang.Caller) (lang.Value, error) {
 	var key []byte
 	var value []byte
 	if !ti.seekedToFirst {
@@ -94,13 +99,65 @@ func (ti *tableIterator) Next(_ lang.Caller) (lang.Value, error) {
 	return record, nil
 }
 
-func (ti *tableIterator) Close() error {
+func (ti *indexIterator) Close() error {
 	// surprisingly, bolt.Cursor doesn't have a .Close()
 	return nil
 }
 
-func (txn *txn) getTableIterator(table *tableDescriptor, colName string) (*tableIterator, error) {
-	colID, err := table.colIDForName(colName)
+func (txn *txn) getIndexIterator(
+	table *tableDescriptor, col *columnDescriptor,
+) (*indexIterator, error) {
+	idxBucket, err := txn.getIndexBucket(table, col)
+	if err != nil {
+		return nil, err
+	}
+
+	cursor := idxBucket.Cursor()
+	return &indexIterator{
+		cursor: cursor,
+	}, nil
+}
+
+func (txn *txn) getValue(
+	table *tableDescriptor, col *columnDescriptor, key lang.Value,
+) (lang.Value, error) {
+	idxBucket, err := txn.getIndexBucket(table, col)
+	if err != nil {
+		return nil, err
+	}
+
+	res := idxBucket.Get(lang.MustEncode(key))
+	return lang.Decode(res)
+}
+
+func (txn *txn) getSubIndex(
+	table *tableDescriptor, col *columnDescriptor, key lang.Value,
+) (*lang.VIndex, error) {
+	idxBucket, err := txn.getIndexBucket(table, col)
+	if err != nil {
+		return nil, err
+	}
+
+	return lang.NewVIndex(
+		col.typ,
+		col.typ,
+		func() (lang.Iterator, error) {
+			fmt.Println("gave out cursor for", table.name, col.name)
+			cursor := idxBucket.Cursor()
+			return &indexIterator{
+				cursor: cursor,
+			}, nil
+		},
+		func(key lang.Value) (lang.Value, error) {
+			panic("TODO: implement get on sub index")
+		},
+	), nil
+}
+
+func (txn *txn) getIndexBucket(
+	table *tableDescriptor, col *columnDescriptor,
+) (*bolt.Bucket, error) {
+	colID, err := table.colIDForName(col.name)
 
 	if err != nil {
 		return nil, err
@@ -114,10 +171,5 @@ func (txn *txn) getTableIterator(table *tableDescriptor, colName string) (*table
 		return nil, fmt.Errorf("bucket doesn't exist: %s/%d", table.name, colID)
 	}
 
-	cursor := idxBucket.Cursor()
-	//cursor.
-	return &tableIterator{
-		table:  table,
-		cursor: cursor,
-	}, nil
+	return idxBucket, nil
 }

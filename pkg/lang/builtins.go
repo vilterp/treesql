@@ -67,7 +67,7 @@ func init() {
 			RetType: NewTIterator(NewTVar("V")),
 			Impl: func(interp Caller, args []Value) (Value, error) {
 				index := mustBeVIndex(args[0])
-				scanIter, err := index.getScanIterator(index.colName)
+				scanIter, err := index.getScanIterator()
 				if err != nil {
 					return nil, err
 				}
@@ -109,7 +109,9 @@ func init() {
 				},
 			},
 			Impl: func(interp Caller, args []Value) (Value, error) {
-				return NewVInt(42), nil
+				index := mustBeVIndex(args[0])
+				key := args[1]
+				return index.getValue(key)
 			},
 		},
 		"addInsertListener": &VBuiltin{
