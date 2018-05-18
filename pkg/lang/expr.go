@@ -184,7 +184,7 @@ type ELambda struct {
 var _ Expr = &ELambda{}
 
 func (l *ELambda) Evaluate(interp *interpreter) (Value, error) {
-	parentTypeScope := interp.stackTop.scope.ToTypeScope()
+	parentTypeScope := interp.stackTop.scope.GetTypeScope()
 	newTypeScope := l.params.createTypeScope(parentTypeScope)
 	typ, err := l.body.GetType(newTypeScope)
 	if err != nil {

@@ -171,7 +171,7 @@ func init() {
 		},
 	})
 
-	BuiltinsTypeScope = BuiltinsScope.ToTypeScope()
+	BuiltinsTypeScope = BuiltinsScope.GetTypeScope()
 }
 
 // TODO:

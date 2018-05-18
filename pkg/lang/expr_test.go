@@ -166,7 +166,7 @@ func TestExprGetType(t *testing.T) {
 		},
 	}
 
-	typeScope := scope.ToTypeScope()
+	typeScope := scope.GetTypeScope()
 	for idx, testCase := range testCases {
 		actual, err := testCase.in.GetType(typeScope)
 		if util.AssertError(t, idx, testCase.error, err) {

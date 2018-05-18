@@ -151,7 +151,6 @@ func (txn *txn) getSubIndex(
 		col.typ,
 		col.typ,
 		func() (lang.Iterator, error) {
-			fmt.Println("subindex scan: gave out cursor for", table.name, col.name)
 			cursor := subIdxBucket.Cursor()
 			return &indexIterator{
 				cursor: cursor,

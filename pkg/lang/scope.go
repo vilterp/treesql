@@ -11,13 +11,20 @@ import (
 type Scope struct {
 	parent *Scope
 	vals   map[string]Value
+	types  *TypeScope
 }
 
 func NewScope(parent *Scope) *Scope {
-	return &Scope{
+	scope := &Scope{
 		vals:   map[string]Value{},
 		parent: parent,
 	}
+	if parent != nil {
+		scope.types = NewTypeScope(parent.types)
+	} else {
+		scope.types = NewTypeScope(nil)
+	}
+	return scope
 }
 
 func (s *Scope) find(name string) (Value, error) {
@@ -33,6 +40,7 @@ func (s *Scope) find(name string) (Value, error) {
 
 func (s *Scope) Add(name string, value Value) {
 	s.vals[name] = value
+	s.types.Add(name, value.GetType())
 }
 
 func (s *Scope) AddMap(vals map[string]Value) {
@@ -41,17 +49,8 @@ func (s *Scope) AddMap(vals map[string]Value) {
 	}
 }
 
-func (s *Scope) ToTypeScope() *TypeScope {
-	var parentScope *TypeScope
-	if s.parent != nil {
-		parentScope = s.parent.ToTypeScope()
-	}
-	ts := parentScope.NewChildScope()
-	for name, val := range s.vals {
-		typ := val.GetType()
-		ts.Add(name, typ)
-	}
-	return ts
+func (s *Scope) GetTypeScope() *TypeScope {
+	return s.types
 }
 
 func (s *Scope) NewChildScope() *Scope {
