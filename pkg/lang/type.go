@@ -1,6 +1,7 @@
 package lang
 
 import (
+	"encoding/binary"
 	"fmt"
 	"sort"
 
@@ -13,6 +14,12 @@ type Type interface {
 
 	// Returns substituted type, isConcrete, and an error.
 	substitute(typeVarBindings) (Type, bool, error)
+}
+
+type DecodableType interface {
+	Type
+
+	Decode([]byte) ([]byte, Value, error)
 }
 
 func ParseType(name string) (Type, error) {
@@ -74,6 +81,7 @@ type tInt struct{}
 
 var TInt = &tInt{}
 var _ Type = TInt
+var _ DecodableType = TInt
 
 func (tInt) Format() pp.Doc {
 	return pp.Text("int")
@@ -84,6 +92,12 @@ func (tInt) matches(other Type) (bool, typeVarBindings) {
 }
 
 func (ti *tInt) substitute(typeVarBindings) (Type, bool, error) { return ti, true, nil }
+
+func (ti *tInt) Decode(b []byte) ([]byte, Value, error) {
+	// TODO: handle non-uints
+	result := binary.BigEndian.Uint32(b[0:4])
+	return b[4:], NewVInt(int(result)), nil
+}
 
 // Bool
 
@@ -119,32 +133,37 @@ func (tString) matches(other Type) (bool, typeVarBindings) {
 
 func (ts *tString) substitute(typeVarBindings) (Type, bool, error) { return ts, true, nil }
 
+func (ts *tString) Decode(b []byte) ([]byte, Value, error) {
+	b1, length, err := TInt.Decode(b)
+	if err != nil {
+		return nil, nil, err
+	}
+	lengthInt := int(*(length.(*VInt)))
+	return b1[lengthInt:], NewVString(string(b1[:lengthInt])), nil
+}
+
 // Record
 
 type TRecord struct {
-	types map[string]Type
+	types      map[string]Type
+	sortedKeys []string
 }
 
 var _ Type = &TRecord{}
 
 func NewTRecord(types map[string]Type) *TRecord {
-	return &TRecord{
+	res := &TRecord{
 		types: types,
 	}
+	res.sortedKeys = make([]string, len(types))
+	sort.Strings(res.sortedKeys)
+
+	return res
 }
 
 func (tr *TRecord) Format() pp.Doc {
-	// Sort keys
-	keys := make([]string, len(tr.types))
-	idx := 0
-	for k := range tr.types {
-		keys[idx] = k
-		idx++
-	}
-	sort.Strings(keys)
-
 	kvDocs := make([]pp.Doc, len(tr.types))
-	for idx, key := range keys {
+	for idx, key := range tr.sortedKeys {
 		kvDocs[idx] = pp.Seq([]pp.Doc{
 			pp.Text(key),
 			pp.Text(": "),

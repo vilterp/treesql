@@ -2,6 +2,7 @@ package lang
 
 import (
 	"bufio"
+	"bytes"
 	"fmt"
 	"sort"
 
@@ -20,7 +21,7 @@ type Value interface {
 type EncodableValue interface {
 	Value
 
-	Encode() []byte
+	Encode(*bytes.Buffer) error
 }
 
 // Int
@@ -47,16 +48,23 @@ func (v *VInt) WriteAsJSON(w *bufio.Writer, _ Caller) error {
 	return err
 }
 
-func (v *VInt) Encode() []byte {
-	return []byte(v.Format().String())
-}
-
 func mustBeVInt(v Value) *VInt {
 	i, ok := v.(*VInt)
 	if !ok {
 		panic(fmt.Sprintf("not an int: %s", v.Format()))
 	}
 	return i
+}
+
+func (v *VInt) Encode(buf *bytes.Buffer) error {
+	val := int32(*v)
+
+	buf.WriteByte(byte(val >> 24))
+	buf.WriteByte(byte(val >> 16))
+	buf.WriteByte(byte(val >> 8))
+	buf.WriteByte(byte(val))
+
+	return nil
 }
 
 // Bool
@@ -86,8 +94,14 @@ func (v *VBool) WriteAsJSON(w *bufio.Writer, _ Caller) error {
 	return err
 }
 
-func (v *VBool) Encode() []byte {
-	return []byte(v.Format().String())
+func (v *VBool) Encode(buf *bytes.Buffer) error {
+	b := bool(*v)
+	if b {
+		buf.WriteByte(1)
+	} else {
+		buf.WriteByte(0)
+	}
+	return nil
 }
 
 func mustBeVBool(v Value) *VBool {
@@ -123,8 +137,11 @@ func (v *VString) WriteAsJSON(w *bufio.Writer, _ Caller) error {
 	return err
 }
 
-func (v *VString) Encode() []byte {
-	return []byte(v.Format().String())
+func (v *VString) Encode(buf *bytes.Buffer) error {
+	length := NewVInt(len(*v))
+	length.Encode(buf)
+	buf.WriteString(string(*v))
+	return nil
 }
 
 func mustBeVString(v Value) string {
@@ -203,10 +220,6 @@ func (v *VRecord) WriteAsJSON(w *bufio.Writer, c Caller) error {
 	return nil
 }
 
-func (v *VRecord) Encode() []byte {
-	return []byte(v.Format().String())
-}
-
 func (v *VRecord) GetValue(key string) Value {
 	return v.vals[key]
 }
@@ -257,10 +270,6 @@ func (v *VArray) WriteAsJSON(w *bufio.Writer, c Caller) error {
 	}
 	w.WriteString("]")
 	return nil
-}
-
-func (v *VArray) Encode() []byte {
-	return []byte(v.Format().String())
 }
 
 // Iterator

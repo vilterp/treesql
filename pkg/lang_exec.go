@@ -71,10 +71,18 @@ func (table *tableDescriptor) toSubIndexMap(txn *txn) map[string]*lang.VIndex {
 // once there are also virtual table iterators
 type indexIterator struct {
 	cursor        *bolt.Cursor
+	typ           lang.Type
 	seekedToFirst bool
 }
 
 var _ lang.Iterator = &indexIterator{}
+
+func newIndexIterator(cursor *bolt.Cursor, typ lang.Type) *indexIterator {
+	return &indexIterator{
+		cursor: cursor,
+		typ:    typ,
+	}
+}
 
 func (ti *indexIterator) Next(_ lang.Caller) (lang.Value, error) {
 	var key []byte
@@ -109,9 +117,7 @@ func (txn *txn) getIndexIterator(
 	}
 
 	cursor := idxBucket.Cursor()
-	return &indexIterator{
-		cursor: cursor,
-	}, nil
+	return newIndexIterator(cursor, col.typ), nil
 }
 
 func (txn *txn) getValue(
