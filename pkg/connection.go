@@ -4,10 +4,7 @@ import (
 	"bufio"
 	"context"
 
-	"fmt"
-
 	"github.com/gorilla/websocket"
-	"github.com/vilterp/treesql/pkg/lang"
 	clog "github.com/vilterp/treesql/pkg/log"
 )
 
@@ -52,14 +49,9 @@ func (conn *connection) writeMessagesToSocket() {
 
 		bufWriter := bufio.NewWriter(writer)
 
-		lang.FindCalls = map[string]int{}
-
 		if err := msg.toVal().WriteAsJSON(bufWriter, msg.getCaller()); err != nil {
 			clog.Println(conn, "error writing msg to conn: writing value:", err)
 		}
-
-		fmt.Println("find calls:", lang.FindCalls)
-
 		if err := bufWriter.Flush(); err != nil {
 			clog.Println(conn, "error writing msg to conn: flushing buffer:", err)
 		}

@@ -4,8 +4,6 @@ import (
 	"fmt"
 	"math/rand"
 	"testing"
-
-	"github.com/vilterp/treesql/pkg/lang"
 )
 
 func TestSelect(t *testing.T) {
@@ -200,6 +198,4 @@ func BenchmarkSelect(t *testing.B) {
 		}
 	}
 	t.StopTimer()
-
-	fmt.Println(lang.FindCalls)
 }
