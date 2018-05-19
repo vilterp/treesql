@@ -65,7 +65,7 @@ func (conn *connection) executeUpdate(update *Update, channel *channel) error {
 		bucket := tx.Bucket([]byte(update.Table)).Bucket(table.pkBucketKey())
 		err := bucket.ForEach(func(keyBytes []byte, valBytes []byte) error {
 			// Parse record
-			value, err := lang.Decode(valBytes)
+			value, err := lang.Decode(table.getType(), valBytes)
 			if err != nil {
 				return fmt.Errorf(`couldn't decode "%s": %v`, string(valBytes), err)
 			}

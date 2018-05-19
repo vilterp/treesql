@@ -10,12 +10,10 @@ func TestExprGetType(t *testing.T) {
 	// Create scope.
 	scope := BuiltinsScope.NewChildScope()
 
-	blogPostType := &TRecord{
-		types: map[string]Type{
-			"id":    TInt,
-			"title": TString,
-		},
-	}
+	blogPostType := NewTRecord(map[string]Type{
+		"id":    TInt,
+		"title": TString,
+	})
 
 	scope.Add("blog_post", NewVRecord(map[string]Value{
 		"id":    NewVInt(2),

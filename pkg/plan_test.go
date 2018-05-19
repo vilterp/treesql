@@ -122,7 +122,7 @@ func TestPlan(t *testing.T) {
 				db:      db,
 			}
 
-			indexMap := db.schema.toIndexMap(txn)
+			indexMap := db.schema.toSchemaIndexMap(txn)
 
 			expr, _, err := tsr.server.db.schema.planSelect(parsedQuery.Select, lang.BuiltinsScope.GetTypeScope(), indexMap)
 			if util.AssertError(t, idx, testCase.err, err) {

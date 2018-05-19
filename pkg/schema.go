@@ -13,6 +13,18 @@ type schema struct {
 	nextColumnID int
 }
 
+var tableTyp = lang.NewTRecord(map[string]lang.Type{
+	"name":        lang.TString,
+	"primary_key": lang.TString,
+})
+
+var columnTyp = lang.NewTRecord(map[string]lang.Type{
+	"id":         lang.TInt,
+	"name":       lang.TString,
+	"table_name": lang.TString,
+	"type":       lang.TString,
+})
+
 // TODO: better name, or refactor. not just a descriptor, since
 // it also holds live query info.
 type tableDescriptor struct {
@@ -86,7 +98,7 @@ type columnName string
 type columnDescriptor struct {
 	id               int
 	name             string
-	typ              lang.Type
+	typ              lang.DecodableType
 	referencesColumn *columnReference
 }
 
@@ -125,7 +137,7 @@ func columnFromVal(record *lang.VRecord) (*columnDescriptor, error) {
 		}
 	}
 	typStr := record.GetValue("type").(*lang.VString)
-	typ, err := lang.ParseType(string(*typStr))
+	typ, err := lang.ParseDecodableType(string(*typStr))
 	if err != nil {
 		return nil, fmt.Errorf("error parsing type: %v", err)
 	}
@@ -171,7 +183,7 @@ func (db *Database) loadUserSchema() {
 		// Load all table descriptors.
 		if err := tx.Bucket([]byte("__tables__")).ForEach(func(_ []byte, tableBytes []byte) error {
 			// Parse table record.
-			tableVal, err := lang.Decode(tableBytes)
+			tableVal, err := lang.Decode(tableTyp, tableBytes)
 			if err != nil {
 				return err
 			}
@@ -195,7 +207,7 @@ func (db *Database) loadUserSchema() {
 		}
 		// Load all column descriptors; stick them on table descriptors.
 		if err := tx.Bucket([]byte("__columns__")).ForEach(func(key []byte, columnBytes []byte) error {
-			columnVal, err := lang.Decode(columnBytes)
+			columnVal, err := lang.Decode(columnTyp, columnBytes)
 			if err != nil {
 				return err
 			}
@@ -251,10 +263,11 @@ func (db *Database) buildTableDescriptor(create *CreateTable) (*tableDescriptor,
 			}
 		}
 		// parse type
-		typ, err := lang.ParseType(parsedColumn.TypeName)
+		typ, err := lang.ParseDecodableType(parsedColumn.TypeName)
 		if err != nil {
 			return nil, fmt.Errorf("error parsing type: %v", err)
 		}
+
 		// build column spec
 		columnSpec := &columnDescriptor{
 			id:               db.schema.nextColumnID,

@@ -171,9 +171,7 @@ func (v *VRecord) GetType() Type {
 	for name, val := range v.vals {
 		types[name] = val.GetType()
 	}
-	return &TRecord{
-		types: types,
-	}
+	return NewTRecord(types)
 }
 
 func (v *VRecord) Format() pp.Doc {
@@ -235,6 +233,30 @@ func (v *VRecord) Update(updateKey string, newVal Value) *VRecord {
 		}
 	}
 	return NewVRecord(newVals)
+}
+
+func (v *VRecord) Encode(buf *bytes.Buffer) error {
+	// TODO: don't always sort the keys...
+	keys := make([]string, len(v.vals))
+	idx := 0
+	for k := range v.vals {
+		keys[idx] = k
+		idx++
+	}
+	sort.Strings(keys)
+
+	for _, key := range keys {
+		val := v.vals[key]
+		encodable, ok := val.(EncodableValue)
+		if !ok {
+			return fmt.Errorf("not encodable: %T", val)
+		}
+		if err := encodable.Encode(buf); err != nil {
+			return err
+		}
+	}
+
+	return nil
 }
 
 // Array

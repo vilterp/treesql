@@ -6,9 +6,9 @@ import (
 	"github.com/vilterp/treesql/pkg/lang"
 )
 
-type IndexMap map[string]map[string]*lang.VIndex
+type SchemaIndexMap map[string]map[string]*lang.VIndex
 
-func (s *schema) planSelect(query *Select, typeScope *lang.TypeScope, indexMap IndexMap) (lang.Expr, lang.Type, error) {
+func (s *schema) planSelect(query *Select, typeScope *lang.TypeScope, indexMap SchemaIndexMap) (lang.Expr, lang.Type, error) {
 	expr, err := s.planSelectInternal(query, typeScope, indexMap, 1, nil)
 	if err != nil {
 		return nil, nil, err
@@ -21,7 +21,7 @@ func (s *schema) planSelect(query *Select, typeScope *lang.TypeScope, indexMap I
 }
 
 func (s *schema) planSelectInternal(
-	query *Select, typeScope *lang.TypeScope, indexMap IndexMap, depth int, join *oneToManyJoin,
+	query *Select, typeScope *lang.TypeScope, indexMap SchemaIndexMap, depth int, join *oneToManyJoin,
 ) (lang.Expr, error) {
 	tableDesc, ok := s.tables[query.Table]
 	if !ok {
@@ -144,7 +144,7 @@ func (s *schema) getSubSelect(
 	tableDesc *tableDescriptor,
 	selection *Selection,
 	typeScope *lang.TypeScope,
-	indexMap IndexMap,
+	indexMap SchemaIndexMap,
 	depth int,
 ) (lang.Expr, lang.Type, error) {
 	// Make the scan of the table we're joining to.

@@ -33,6 +33,18 @@ func ParseType(name string) (Type, error) {
 	}
 }
 
+func ParseDecodableType(name string) (DecodableType, error) {
+	typ, err := ParseType(name)
+	if err != nil {
+		return nil, err
+	}
+	decodableType, ok := typ.(DecodableType)
+	if !ok {
+		return nil, fmt.Errorf("not a decodable type: %s", typ.Format())
+	}
+	return decodableType, nil
+}
+
 func typeIsConcrete(t Type) bool {
 	_, isConcrete, err := t.substitute(make(typeVarBindings))
 	if err != nil {
@@ -122,6 +134,7 @@ type tString struct{}
 
 var TString = &tString{}
 var _ Type = TString
+var _ DecodableType = TString
 
 func (tString) Format() pp.Doc {
 	return pp.Text("string")
@@ -150,12 +163,18 @@ type TRecord struct {
 }
 
 var _ Type = &TRecord{}
+var _ DecodableType = &TRecord{}
 
 func NewTRecord(types map[string]Type) *TRecord {
 	res := &TRecord{
 		types: types,
 	}
 	res.sortedKeys = make([]string, len(types))
+	idx := 0
+	for key, _ := range types {
+		res.sortedKeys[idx] = key
+		idx++
+	}
 	sort.Strings(res.sortedKeys)
 
 	return res
@@ -210,7 +229,28 @@ func (tr *TRecord) substitute(tvb typeVarBindings) (Type, bool, error) {
 		types[name] = newTyp
 		isConcrete = isConcrete && typConcrete
 	}
-	return &TRecord{types: types}, isConcrete, nil
+	return NewTRecord(types), isConcrete, nil
+}
+
+func (tr *TRecord) Decode(b []byte) ([]byte, Value, error) {
+	values := map[string]Value{}
+
+	curBytes := b
+	for _, key := range tr.sortedKeys {
+		keyTyp := tr.types[key]
+		decodableTyp, ok := keyTyp.(DecodableType)
+		if !ok {
+			return nil, nil, fmt.Errorf("not decodable: %s", decodableTyp.Format())
+		}
+		rest, val, err := decodableTyp.Decode(curBytes)
+		if err != nil {
+			return nil, nil, err
+		}
+		curBytes = rest
+		values[key] = val
+	}
+
+	return curBytes, NewVRecord(values), nil
 }
 
 // Iterator

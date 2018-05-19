@@ -33,42 +33,16 @@ func MustEncode(v Value) []byte {
 	return res
 }
 
-func EncodeRecord(record *VRecord, typ *TRecord) ([]byte, error) {
-	buf := &bytes.Buffer{}
-
-	for _, key := range typ.sortedKeys {
-		val := record.vals[key]
-		encodable, ok := val.(EncodableValue)
-		if !ok {
-			return nil, fmt.Errorf("not encodable: %T", val)
-		}
-		if err := encodable.Encode(buf); err != nil {
-			return nil, err
-		}
+func Decode(typ DecodableType, b []byte) (Value, error) {
+	rest, val, err := typ.Decode(b)
+	if err != nil {
+		return nil, err
+	}
+	if len(rest) != 0 {
+		panic(fmt.Errorf("%d extra bytes when decoding %s: %v", len(rest), typ.Format(), rest))
 	}
 
-	return buf.Bytes(), nil
-}
-
-func DecodeRecord(typ *TRecord, theBytes []byte) (*VRecord, error) {
-	values := map[string]Value{}
-
-	curBytes := theBytes
-	for _, key := range typ.sortedKeys {
-		keyTyp := typ.types[key]
-		decodableTyp, ok := keyTyp.(DecodableType)
-		if !ok {
-			return nil, fmt.Errorf("not decodable: %s", decodableTyp.Format())
-		}
-		rest, val, err := decodableTyp.Decode(curBytes)
-		if err != nil {
-			return nil, err
-		}
-		curBytes = rest
-		values[key] = val
-	}
-
-	return NewVRecord(values), nil
+	return val, nil
 }
 
 func EncodeInteger(val int32) []byte {

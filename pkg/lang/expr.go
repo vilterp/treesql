@@ -181,9 +181,7 @@ func (rl *ERecordLit) GetType(scope *TypeScope) (Type, error) {
 		types[name] = typ
 	}
 
-	return &TRecord{
-		types: types,
-	}, nil
+	return NewTRecord(types), nil
 }
 
 func (rl *ERecordLit) Inline(scope *Scope) (Expr, error) {

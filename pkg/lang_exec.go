@@ -12,7 +12,7 @@ type txn struct {
 	db      *Database
 }
 
-func (s *schema) toIndexMap(txn *txn) IndexMap {
+func (s *schema) toSchemaIndexMap(txn *txn) SchemaIndexMap {
 	// TODO: grab schema mutex here
 	// also, only do this when the schema changes
 	tables := map[string]map[string]*lang.VIndex{}
@@ -20,13 +20,13 @@ func (s *schema) toIndexMap(txn *txn) IndexMap {
 		if table.isBuiltin {
 			continue
 		}
-		tables[table.name] = table.toSubIndexMap(txn)
+		tables[table.name] = table.toIndexMap(txn)
 	}
 
 	return tables
 }
 
-func (table *tableDescriptor) toSubIndexMap(txn *txn) map[string]*lang.VIndex {
+func (table *tableDescriptor) toIndexMap(txn *txn) map[string]*lang.VIndex {
 	indices := map[string]*lang.VIndex{}
 
 	for idx := range table.columns {
@@ -71,13 +71,13 @@ func (table *tableDescriptor) toSubIndexMap(txn *txn) map[string]*lang.VIndex {
 // once there are also virtual table iterators
 type indexIterator struct {
 	cursor        *bolt.Cursor
-	typ           lang.Type
+	typ           lang.DecodableType
 	seekedToFirst bool
 }
 
 var _ lang.Iterator = &indexIterator{}
 
-func newIndexIterator(cursor *bolt.Cursor, typ lang.Type) *indexIterator {
+func newIndexIterator(cursor *bolt.Cursor, typ lang.DecodableType) *indexIterator {
 	return &indexIterator{
 		cursor: cursor,
 		typ:    typ,
@@ -96,11 +96,8 @@ func (ti *indexIterator) Next(_ lang.Caller) (lang.Value, error) {
 	if key == nil {
 		return nil, lang.EndOfIteration
 	}
-	record, err := lang.Decode(value)
-	if err != nil {
-		return nil, err
-	}
-	return record, nil
+
+	return lang.Decode(ti.typ, value)
 }
 
 func (ti *indexIterator) Close() error {
@@ -116,8 +113,21 @@ func (txn *txn) getIndexIterator(
 		return nil, err
 	}
 
+	// Choose type based on whether this is the primary index or not.
+	var typ lang.DecodableType
+	if col.name == table.primaryKey {
+		typ = table.getType()
+	} else {
+		typ = col.typ
+	}
+
+	decodableType, ok := typ.(lang.DecodableType)
+	if !ok {
+		panic(fmt.Sprintf("not a decodable type: %s", col.typ.Format()))
+	}
+
 	cursor := idxBucket.Cursor()
-	return newIndexIterator(cursor, col.typ), nil
+	return newIndexIterator(cursor, decodableType), nil
 }
 
 func (txn *txn) getValue(
@@ -129,7 +139,15 @@ func (txn *txn) getValue(
 	}
 
 	res := idxBucket.Get(lang.MustEncode(key))
-	return lang.Decode(res)
+
+	var typ lang.DecodableType
+	if col.name == table.primaryKey {
+		typ = table.getType()
+	} else {
+		typ = col.typ
+	}
+
+	return lang.Decode(typ, res)
 }
 
 func (txn *txn) getSubIndex(
@@ -153,9 +171,7 @@ func (txn *txn) getSubIndex(
 		col.typ,
 		func() (lang.Iterator, error) {
 			cursor := subIdxBucket.Cursor()
-			return &indexIterator{
-				cursor: cursor,
-			}, nil
+			return newIndexIterator(cursor, col.typ), nil
 		},
 		func(key lang.Value) (lang.Value, error) {
 			panic("TODO: implement get on sub index")

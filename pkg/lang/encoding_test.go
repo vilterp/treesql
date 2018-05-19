@@ -12,19 +12,18 @@ func TestEncoding(t *testing.T) {
 	}{
 		{
 			NewVInt(42),
-			[]byte("42"),
+			[]byte{0, 0, 0, 42},
 		},
 		{
 			NewVString("foo"),
-			[]byte(`"foo"`),
+			[]byte{0, 0, 0, 3, 102, 111, 111},
 		},
 		{
 			NewVRecord(map[string]Value{
 				"foo": NewVInt(42),
+				"bar": NewVString("bla"),
 			}),
-			[]byte(`{
-  foo: 42,
-}`),
+			[]byte{0, 0, 0, 3, 98, 108, 97, 0, 0, 0, 42},
 		},
 	}
 
@@ -44,7 +43,8 @@ func TestEncoding(t *testing.T) {
 		}
 
 		// Test that it round trips.
-		decoded, err := Decode(out)
+		typ := testCase.value.GetType().(DecodableType)
+		decoded, err := Decode(typ, out)
 		if err != nil {
 			t.Fatalf("case %d: error while decoding: %v", idx, err)
 		}

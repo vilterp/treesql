@@ -51,7 +51,7 @@ func (conn *connection) executeQuery(
 		db:      conn.database,
 		boltTxn: tx,
 	}
-	indexMap := conn.database.schema.toIndexMap(txn)
+	indexMap := conn.database.schema.toSchemaIndexMap(txn)
 
 	// Plan the query.
 	expr, _, err := conn.database.schema.planSelect(query, lang.BuiltinsScope.GetTypeScope(), indexMap)

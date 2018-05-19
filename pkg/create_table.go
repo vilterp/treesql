@@ -17,9 +17,9 @@ func (db *Database) validateCreateTable(create *CreateTable) error {
 	}
 	// types are real
 	for _, column := range create.Columns {
-		_, err := lang.ParseType(column.TypeName)
+		_, err := lang.ParseDecodableType(column.TypeName)
 		if err != nil {
-			return &nonexistentType{TypeName: column.TypeName}
+			return err
 		}
 	}
 	// only one primary key
