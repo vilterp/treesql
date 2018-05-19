@@ -4,8 +4,6 @@ import (
 	"context"
 	"time"
 
-	"fmt"
-
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
 	"github.com/vilterp/treesql/pkg/lang"
@@ -23,6 +21,7 @@ func (conn *connection) executeTopLevelQuery(query *Select, channel *channel) er
 		Caller: caller,
 		Type:   result.GetType(),
 	})
+
 	return nil
 }
 
@@ -43,8 +42,6 @@ func (conn *connection) executeQuery(
 	query *Select,
 	channel *channel,
 ) (lang.Value, lang.Caller, *time.Duration, error) {
-	lang.FindCalls = map[string]int{}
-
 	startTime := time.Now()
 	tx, _ := conn.database.boltDB.Begin(false)
 	// ctx := context.WithValue(conn.context, clog.ChannelIDKey, channel.id)
@@ -74,8 +71,6 @@ func (conn *connection) executeQuery(
 	// Measure execution time.
 	endTime := time.Now()
 	duration := endTime.Sub(startTime)
-
-	fmt.Println("find calls:", lang.FindCalls)
 
 	return val, interp, &duration, nil
 }

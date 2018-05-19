@@ -133,22 +133,10 @@ func (s *schema) planSelectInternal(
 
 	mapExpr := lang.NewFuncCall("map", []lang.Expr{
 		collectionExpr,
-		lang.NewEVar("selection"),
+		selectionLambdaExpr,
 	})
 
-	return lang.NewEDoBlock([]lang.DoBinding{
-		{
-			"selection",
-			selectionLambdaExpr,
-		},
-		{
-			Name: "",
-			Expr: lang.NewFuncCall("addInsertListener", []lang.Expr{
-				primaryIndexExpr,
-				lang.NewEVar("selection"),
-			}),
-		},
-	}, mapExpr), nil
+	return mapExpr, nil
 }
 
 func (s *schema) getSubSelect(
