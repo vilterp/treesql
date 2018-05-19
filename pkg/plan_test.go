@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/vilterp/treesql/pkg/lang"
 	"github.com/vilterp/treesql/pkg/util"
 )
 
@@ -119,9 +120,9 @@ func TestPlan(t *testing.T) {
 				db:      db,
 			}
 
-			_, typeScope := db.schema.toScope(txn)
+			indexMap := db.schema.toIndexMap(txn)
 
-			expr, _, err := tsr.server.db.schema.planSelect(parsedQuery.Select, typeScope)
+			expr, _, err := tsr.server.db.schema.planSelect(parsedQuery.Select, lang.BuiltinsScope.GetTypeScope(), indexMap)
 			if util.AssertError(t, idx, testCase.err, err) {
 				return
 			}

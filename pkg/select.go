@@ -4,6 +4,8 @@ import (
 	"context"
 	"time"
 
+	"fmt"
+
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
 	"github.com/vilterp/treesql/pkg/lang"
@@ -41,6 +43,8 @@ func (conn *connection) executeQuery(
 	query *Select,
 	channel *channel,
 ) (lang.Value, lang.Caller, *time.Duration, error) {
+	lang.FindCalls = map[string]int{}
+
 	startTime := time.Now()
 	tx, _ := conn.database.boltDB.Begin(false)
 	// ctx := context.WithValue(conn.context, clog.ChannelIDKey, channel.id)
@@ -50,10 +54,10 @@ func (conn *connection) executeQuery(
 		db:      conn.database,
 		boltTxn: tx,
 	}
-	scope, typeScope := conn.database.schema.toScope(txn)
+	indexMap := conn.database.schema.toIndexMap(txn)
 
 	// Plan the query.
-	expr, _, err := conn.database.schema.planSelect(query, typeScope)
+	expr, _, err := conn.database.schema.planSelect(query, lang.BuiltinsScope.GetTypeScope(), indexMap)
 	if err != nil {
 		return nil, nil, nil, err
 	}
@@ -61,7 +65,7 @@ func (conn *connection) executeQuery(
 	clog.Println(conn, "QUERY PLAN:", expr.Format())
 
 	// Interpret the expr.
-	interp := lang.NewInterpreter(scope, expr)
+	interp := lang.NewInterpreter(lang.BuiltinsScope, expr)
 	val, err := interp.Interpret()
 	if err != nil {
 		return nil, nil, nil, err
@@ -70,6 +74,8 @@ func (conn *connection) executeQuery(
 	// Measure execution time.
 	endTime := time.Now()
 	duration := endTime.Sub(startTime)
+
+	fmt.Println("find calls:", lang.FindCalls)
 
 	return val, interp, &duration, nil
 }

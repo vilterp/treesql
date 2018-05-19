@@ -379,6 +379,8 @@ func (v *VIndex) GetType() Type {
 func (v *VIndex) Format() pp.Doc {
 	return pp.Seq([]pp.Doc{
 		pp.Text("Index<"),
+		v.keyType.Format(),
+		pp.Text(", "),
 		v.valueType.Format(),
 		pp.Text(">"),
 	})
@@ -437,7 +439,7 @@ func (vl *vLambda) Format() pp.Doc {
 }
 
 func (vl *vLambda) WriteAsJSON(w *bufio.Writer, _ Caller) error {
-	return fmt.Errorf("can'out write a lambda to JSON")
+	return fmt.Errorf("cannot write a lambda to JSON")
 }
 
 func (vl *vLambda) getParamList() paramList {
@@ -471,7 +473,7 @@ func (vb *VBuiltin) GetType() Type {
 
 func (vb *VBuiltin) Format() pp.Doc {
 	return pp.Textf(
-		`<builtin %s: (%s) => %s>`, vb.Name, vb.Params.Format(), vb.RetType.Format(),
+		`<builtin %s: (%s) => %s>`, vb.Name, vb.Params.FormatTypes(), vb.RetType.Format(),
 	)
 }
 

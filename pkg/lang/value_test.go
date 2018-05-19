@@ -73,12 +73,12 @@ func TestWriteAsJSON(t *testing.T) {
 		{
 			&VBuiltin{},
 			"",
-			"can'out write a builtin to JSON",
+			"cannot write a builtin to JSON",
 		},
 		{
 			&vLambda{},
 			"",
-			"can'out write a lambda to JSON",
+			"cannot write a lambda to JSON",
 		},
 	}
 

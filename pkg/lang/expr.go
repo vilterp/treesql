@@ -104,6 +104,7 @@ func (e *EVar) Inline(scope *Scope) (Expr, error) {
 		return e, nil
 	}
 	return newEInlinedValue(value), nil
+	//return e, nil
 }
 
 // Record
@@ -565,22 +566,23 @@ func (db *EDoBlock) GetType(scope *TypeScope) (Type, error) {
 }
 
 func (db *EDoBlock) Inline(scope *Scope) (Expr, error) {
-	inlinedBindings := make([]DoBinding, len(db.doBindings))
-	for idx, binding := range db.doBindings {
-		inlinedExpr, err := binding.Expr.Inline(scope)
-		if err != nil {
-			return nil, err
-		}
-		inlinedBindings[idx] = DoBinding{
-			Name: binding.Name,
-			Expr: inlinedExpr,
-		}
-	}
-	inlinedLastExpr, err := db.lastExpr.Inline(scope)
-	if err != nil {
-		return nil, err
-	}
-	return NewEDoBlock(inlinedBindings, inlinedLastExpr), nil
+	//inlinedBindings := make([]DoBinding, len(db.doBindings))
+	//for idx, binding := range db.doBindings {
+	//	inlinedExpr, err := binding.Expr.Inline(scope)
+	//	if err != nil {
+	//		return nil, err
+	//	}
+	//	inlinedBindings[idx] = DoBinding{
+	//		Name: binding.Name,
+	//		Expr: inlinedExpr,
+	//	}
+	//}
+	//inlinedLastExpr, err := db.lastExpr.Inline(scope)
+	//if err != nil {
+	//	return nil, err
+	//}
+	//return NewEDoBlock(inlinedBindings, inlinedLastExpr), nil
+	return db, nil
 }
 
 type eInlinedValue struct {
@@ -609,6 +611,34 @@ func (iv *eInlinedValue) GetType(scope *TypeScope) (Type, error) {
 
 func (iv *eInlinedValue) Inline(_ *Scope) (Expr, error) {
 	return iv, nil
+}
+
+type EIndexRef struct {
+	index *VIndex
+}
+
+var _ Expr = &EIndexRef{}
+
+func NewEIndexRef(index *VIndex) *EIndexRef {
+	return &EIndexRef{
+		index: index,
+	}
+}
+
+func (ir *EIndexRef) Evaluate(interp *interpreter) (Value, error) {
+	return ir.index, nil
+}
+
+func (ir *EIndexRef) Format() pp.Doc {
+	return pp.Text("<index>")
+}
+
+func (ir *EIndexRef) GetType(scope *TypeScope) (Type, error) {
+	return ir.index.GetType(), nil
+}
+
+func (ir *EIndexRef) Inline(_ *Scope) (Expr, error) {
+	return ir, nil
 }
 
 // TODO: if

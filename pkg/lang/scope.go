@@ -6,6 +6,8 @@ import (
 	pp "github.com/vilterp/treesql/pkg/prettyprint"
 )
 
+var FindCalls = map[string]int{}
+
 // Value Scope
 
 type Scope struct {
@@ -28,6 +30,8 @@ func NewScope(parent *Scope) *Scope {
 }
 
 func (s *Scope) find(name string) (Value, error) {
+	FindCalls[name]++
+
 	val, ok := s.vals[name]
 	if !ok {
 		if s.parent != nil {

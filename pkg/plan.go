@@ -6,8 +6,10 @@ import (
 	"github.com/vilterp/treesql/pkg/lang"
 )
 
-func (s *schema) planSelect(query *Select, typeScope *lang.TypeScope) (lang.Expr, lang.Type, error) {
-	expr, err := s.planSelectInternal(query, typeScope, 1, nil)
+type IndexMap map[string]map[string]*lang.VIndex
+
+func (s *schema) planSelect(query *Select, typeScope *lang.TypeScope, indexMap IndexMap) (lang.Expr, lang.Type, error) {
+	expr, err := s.planSelectInternal(query, typeScope, indexMap, 1, nil)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -19,7 +21,7 @@ func (s *schema) planSelect(query *Select, typeScope *lang.TypeScope) (lang.Expr
 }
 
 func (s *schema) planSelectInternal(
-	query *Select, typeScope *lang.TypeScope, depth int, join *oneToManyJoin,
+	query *Select, typeScope *lang.TypeScope, indexMap IndexMap, depth int, join *oneToManyJoin,
 ) (lang.Expr, error) {
 	tableDesc, ok := s.tables[query.Table]
 	if !ok {
@@ -33,13 +35,7 @@ func (s *schema) planSelectInternal(
 		return nil, fmt.Errorf("not supporting WHERE yet")
 	}
 
-	primaryIndexExpr := lang.NewMemberAccess(
-		lang.NewMemberAccess(
-			lang.NewEVar("tables"),
-			query.Table,
-		),
-		tableDesc.primaryKey,
-	)
+	primaryIndexExpr := lang.NewEIndexRef(indexMap[query.Table][tableDesc.primaryKey])
 
 	// Get types and expressions for selections.
 	types := map[string]lang.Type{}
@@ -50,7 +46,7 @@ func (s *schema) planSelectInternal(
 		if selection.SubSelect != nil {
 			var err error
 			selectionExpr, selectionType, err = s.getSubSelect(
-				rowVarName, tableDesc, selection, typeScope, depth,
+				rowVarName, tableDesc, selection, typeScope, indexMap, depth,
 			)
 			if err != nil {
 				return nil, err
@@ -89,46 +85,13 @@ func (s *schema) planSelectInternal(
 							},
 						),
 					},
-					{
-						"innerSelection",
-						lang.NewELambda(
-							[]lang.Param{
-								{
-									Typ:  tableDesc.getType(),
-									Name: rowVarName,
-								},
-							},
-							lang.NewERecord(exprs),
-							lang.NewTRecord(types),
-						),
-					},
-					{
-						"",
-						lang.NewFuncCall(
-							"addUpdateListener",
-							[]lang.Expr{
-								primaryIndexExpr,
-								lang.NewEVar(keyParam),
-								lang.NewEVar("innerSelection"),
-							},
-						),
-					},
 				},
-				lang.NewFuncCall("innerSelection", []lang.Expr{
-					lang.NewEVar(rowVarName),
-				}),
+				lang.NewERecord(exprs),
 			),
 			lang.NewTRecord(types),
 		)
 
-		joinIdxExpr :=
-			lang.NewMemberAccess(
-				lang.NewMemberAccess(
-					lang.NewEVar("tables"),
-					join.manyTableName,
-				),
-				join.manyJoinColName,
-			)
+		joinIdxExpr := lang.NewEIndexRef(indexMap[join.manyTableName][join.manyJoinColName])
 
 		// e.g. `get(comments.blog_post_id, blog_post.id)`
 		subIndexExpr := lang.NewFuncCall("get", []lang.Expr{
@@ -137,31 +100,15 @@ func (s *schema) planSelectInternal(
 		})
 
 		collectionExpr := lang.NewFuncCall("scan", []lang.Expr{
-			lang.NewEVar("subIndex"),
+			subIndexExpr,
 		})
 
 		mapExpr := lang.NewFuncCall("map", []lang.Expr{
 			collectionExpr,
-			lang.NewEVar("selection"),
+			selectionLambdaExpr,
 		})
 
-		return lang.NewEDoBlock([]lang.DoBinding{
-			{
-				"subIndex",
-				subIndexExpr,
-			},
-			{
-				"selection",
-				selectionLambdaExpr,
-			},
-			{
-				Name: "",
-				Expr: lang.NewFuncCall("addInsertListener", []lang.Expr{
-					lang.NewEVar("subIndex"),
-					lang.NewEVar("selection"),
-				}),
-			},
-		}, mapExpr), nil
+		return mapExpr, nil
 	}
 
 	selectionLambdaExpr := lang.NewELambda(
@@ -171,37 +118,7 @@ func (s *schema) planSelectInternal(
 				Name: rowVarName,
 			},
 		},
-		lang.NewEDoBlock(
-			[]lang.DoBinding{
-				{
-					"innerSelection",
-					lang.NewELambda(
-						[]lang.Param{
-							{
-								Typ:  tableDesc.getType(),
-								Name: rowVarName,
-							},
-						},
-						lang.NewERecord(exprs),
-						lang.NewTRecord(types),
-					),
-				},
-				{
-					"",
-					lang.NewFuncCall(
-						"addUpdateListener",
-						[]lang.Expr{
-							primaryIndexExpr,
-							lang.NewMemberAccess(lang.NewEVar(rowVarName), tableDesc.primaryKey),
-							lang.NewEVar("innerSelection"),
-						},
-					),
-				},
-			},
-			lang.NewFuncCall("innerSelection", []lang.Expr{
-				lang.NewEVar(rowVarName),
-			}),
-		),
+		lang.NewERecord(exprs),
 		lang.NewTRecord(types),
 	)
 
@@ -239,6 +156,7 @@ func (s *schema) getSubSelect(
 	tableDesc *tableDescriptor,
 	selection *Selection,
 	typeScope *lang.TypeScope,
+	indexMap IndexMap,
 	depth int,
 ) (lang.Expr, lang.Type, error) {
 	// Make the scan of the table we're joining to.
@@ -266,7 +184,7 @@ func (s *schema) getSubSelect(
 	innerTypeScope.Add(rowVarName, tableDesc.getType())
 
 	subSelectExpr, err := s.planSelectInternal(
-		selection.SubSelect, innerTypeScope, depth+1, &equality,
+		selection.SubSelect, innerTypeScope, indexMap, depth+1, &equality,
 	)
 	if err != nil {
 		return nil, nil, err

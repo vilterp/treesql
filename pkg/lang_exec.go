@@ -12,34 +12,29 @@ type txn struct {
 	db      *Database
 }
 
-func (s *schema) toScope(txn *txn) (*lang.Scope, *lang.TypeScope) {
+func (s *schema) toIndexMap(txn *txn) IndexMap {
 	// TODO: grab schema mutex here
 	// also, only do this when the schema changes
-	newScope := lang.BuiltinsScope.NewChildScope()
-	newTypeScope := lang.BuiltinsTypeScope.NewChildScope()
-	tables := map[string]lang.Value{}
+	tables := map[string]map[string]*lang.VIndex{}
 	for _, table := range s.tables {
 		if table.isBuiltin {
 			continue
 		}
-		tables[table.name] = table.toRecordOfIndices(txn)
+		tables[table.name] = table.toSubIndexMap(txn)
 	}
-	tablesRec := lang.NewVRecord(tables)
-	newScope.Add("tables", tablesRec)
-	newTypeScope.Add("tables", tablesRec.GetType())
 
-	return newScope, newTypeScope
+	return tables
 }
 
-func (table *tableDescriptor) toRecordOfIndices(txn *txn) *lang.VRecord {
-	attrs := map[string]lang.Value{}
+func (table *tableDescriptor) toSubIndexMap(txn *txn) map[string]*lang.VIndex {
+	indices := map[string]*lang.VIndex{}
 
 	for idx := range table.columns {
 		// By declaring `col` inside of the loop, we can use it in closures.
 		col := table.columns[idx]
 		if col.name == table.primaryKey {
 			// Construct unique primary index to return.
-			attrs[col.name] = lang.NewVIndex(
+			indices[col.name] = lang.NewVIndex(
 				table.getPKType(),
 				table.getType(),
 				func() (lang.Iterator, error) {
@@ -53,7 +48,7 @@ func (table *tableDescriptor) toRecordOfIndices(txn *txn) *lang.VRecord {
 			// Construct non-unique index to return.
 			// e.g. comments.blog_post_id: Index<BlogPostID, Index<CommentID, CommentID>>
 			// TODO: just map to unit I guess
-			attrs[col.name] = lang.NewVIndex(
+			indices[col.name] = lang.NewVIndex(
 				col.typ,
 				lang.NewTIndex(
 					table.getPKType(),
@@ -69,7 +64,7 @@ func (table *tableDescriptor) toRecordOfIndices(txn *txn) *lang.VRecord {
 		}
 	}
 
-	return lang.NewVRecord(attrs)
+	return indices
 }
 
 // TODO: maybe name BoltIterator
