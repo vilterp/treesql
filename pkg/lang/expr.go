@@ -612,14 +612,19 @@ func (iv *eInlinedValue) Inline(_ *Scope) (Expr, error) {
 }
 
 type EIndexRef struct {
+	table string
+	col   string
+
 	index *VIndex
 }
 
 var _ Expr = &EIndexRef{}
 
-func NewEIndexRef(index *VIndex) *EIndexRef {
+func NewEIndexRef(table string, col string, index *VIndex) *EIndexRef {
 	return &EIndexRef{
 		index: index,
+		table: table,
+		col:   col,
 	}
 }
 
@@ -628,7 +633,7 @@ func (ir *EIndexRef) Evaluate(interp *interpreter) (Value, error) {
 }
 
 func (ir *EIndexRef) Format() pp.Doc {
-	return pp.Text("<index>")
+	return pp.Textf("<index %s.%s>", ir.table, ir.col)
 }
 
 func (ir *EIndexRef) GetType(scope *TypeScope) (Type, error) {

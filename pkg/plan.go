@@ -35,7 +35,11 @@ func (s *schema) planSelectInternal(
 		return nil, fmt.Errorf("not supporting WHERE yet")
 	}
 
-	primaryIndexExpr := lang.NewEIndexRef(indexMap[query.Table][tableDesc.primaryKey])
+	primaryIndexExpr := lang.NewEIndexRef(
+		query.Table,
+		tableDesc.primaryKey,
+		indexMap[query.Table][tableDesc.primaryKey],
+	)
 
 	// Get types and expressions for selections.
 	types := map[string]lang.Type{}
@@ -91,7 +95,11 @@ func (s *schema) planSelectInternal(
 			lang.NewTRecord(types),
 		)
 
-		joinIdxExpr := lang.NewEIndexRef(indexMap[join.manyTableName][join.manyJoinColName])
+		joinIdxExpr := lang.NewEIndexRef(
+			join.manyTableName,
+			join.manyJoinColName,
+			indexMap[join.manyTableName][join.manyJoinColName],
+		)
 
 		// e.g. `get(comments.blog_post_id, blog_post.id)`
 		subIndexExpr := lang.NewFuncCall("get", []lang.Expr{
