@@ -10,6 +10,7 @@ import (
 type Expr interface {
 	Evaluate(*interpreter) (Value, error)
 	GetType(*TypeScope) (Type, error)
+	Inline(*Scope) (Expr, error)
 	Format() pp.Doc
 }
 
@@ -37,6 +38,10 @@ func (e *EIntLit) GetType(*TypeScope) (Type, error) {
 	return TInt, nil
 }
 
+func (e *EIntLit) Inline(_ *Scope) (Expr, error) {
+	return e, nil
+}
+
 // String
 
 type EStringLit string
@@ -59,6 +64,10 @@ func (e *EStringLit) Format() pp.Doc {
 
 func (e *EStringLit) GetType(*TypeScope) (Type, error) {
 	return TString, nil
+}
+
+func (e *EStringLit) Inline(_ *Scope) (Expr, error) {
+	return e, nil
 }
 
 // Var
@@ -87,6 +96,14 @@ func (e *EVar) GetType(scope *TypeScope) (Type, error) {
 		return nil, err
 	}
 	return typ, nil
+}
+
+func (e *EVar) Inline(scope *Scope) (Expr, error) {
+	value, err := scope.find(e.name)
+	if err != nil {
+		return e, nil
+	}
+	return newEInlinedValue(value), nil
 }
 
 // Record
@@ -168,6 +185,18 @@ func (rl *ERecordLit) GetType(scope *TypeScope) (Type, error) {
 	}, nil
 }
 
+func (rl *ERecordLit) Inline(scope *Scope) (Expr, error) {
+	inlinedExprs := map[string]Expr{}
+	for name, expr := range rl.exprs {
+		inlinedExpr, err := expr.Inline(scope)
+		if err != nil {
+			return nil, err
+		}
+		inlinedExprs[name] = inlinedExpr
+	}
+	return NewERecord(inlinedExprs), nil
+}
+
 // Lambda
 
 type Param struct {
@@ -183,6 +212,14 @@ type ELambda struct {
 
 var _ Expr = &ELambda{}
 
+func NewELambda(params paramList, body Expr, retType Type) *ELambda {
+	return &ELambda{
+		params:  params,
+		body:    body,
+		retType: retType,
+	}
+}
+
 func (l *ELambda) Evaluate(interp *interpreter) (Value, error) {
 	parentTypeScope := interp.stackTop.scope.GetTypeScope()
 	newTypeScope := l.params.createTypeScope(parentTypeScope)
@@ -190,8 +227,15 @@ func (l *ELambda) Evaluate(interp *interpreter) (Value, error) {
 	if err != nil {
 		return nil, err
 	}
+
+	inlinedExpr, err := l.Inline(interp.stackTop.scope)
+	if err != nil {
+		return nil, err
+	}
+	inlinedLambda := inlinedExpr.(*ELambda)
+
 	return &vLambda{
-		def: l,
+		def: inlinedLambda,
 		// TODO: don't close over the scope if we don't need anything from there
 		definedInScope: interp.stackTop.scope,
 		typ:            typ,
@@ -224,20 +268,27 @@ func (l *ELambda) GetType(s *TypeScope) (Type, error) {
 	}, nil
 }
 
-func NewELambda(params paramList, body Expr, retType Type) *ELambda {
-	return &ELambda{
-		params:  params,
-		body:    body,
-		retType: retType,
+func (l *ELambda) Inline(scope *Scope) (Expr, error) {
+	inlinedExpr, err := l.body.Inline(scope)
+	if err != nil {
+		return nil, err
 	}
+	return NewELambda(
+		l.params,
+		inlinedExpr,
+		l.retType,
+	), nil
 }
 
 // Func Call
 
 type EFuncCall struct {
-	funcName string
-	args     []Expr
+	funcName     string
+	preBoundFunc Value
+	args         []Expr
 }
+
+var _ Expr = &EFuncCall{}
 
 // TODO: remove all these constructors once a parser exists
 func NewFuncCall(name string, args []Expr) *EFuncCall {
@@ -247,9 +298,22 @@ func NewFuncCall(name string, args []Expr) *EFuncCall {
 	}
 }
 
-func (fc *EFuncCall) Evaluate(interp *interpreter) (Value, error) {
-	// Get function value.
+func (fc *EFuncCall) getFuncVal(interp *interpreter) (Value, error) {
+	if fc.preBoundFunc != nil {
+		return fc.preBoundFunc, nil
+	}
+
 	funcVal, err := interp.stackTop.scope.find(fc.funcName)
+	if err != nil {
+		return nil, err
+	}
+	fc.preBoundFunc = funcVal
+
+	return funcVal, nil
+}
+
+func (fc *EFuncCall) Evaluate(interp *interpreter) (Value, error) {
+	funcVal, err := fc.getFuncVal(interp)
 	if err != nil {
 		return nil, err
 	}
@@ -334,6 +398,17 @@ func (fc *EFuncCall) GetType(scope *TypeScope) (Type, error) {
 	return subsType, err
 }
 
+func (fc *EFuncCall) Inline(scope *Scope) (Expr, error) {
+	funcVal, err := scope.find(fc.funcName)
+	if err != nil {
+		return fc, nil
+	}
+	// TODO: not mutate
+	fc.preBoundFunc = funcVal
+
+	return fc, nil
+}
+
 // Member Access
 
 type EMemberAccess struct {
@@ -390,6 +465,27 @@ func (ma *EMemberAccess) GetType(scope *TypeScope) (Type, error) {
 	}
 }
 
+func (ma *EMemberAccess) Inline(scope *Scope) (Expr, error) {
+	inlinedExpr, err := ma.record.Inline(scope)
+	if err != nil {
+		return nil, err
+	}
+
+	switch inlinedExprT := inlinedExpr.(type) {
+	case *eInlinedValue:
+		value := inlinedExprT.value
+		switch inlinedValue := value.(type) {
+		case *VRecord:
+			return newEInlinedValue(inlinedValue.vals[ma.member]), nil
+		default:
+			return nil, fmt.Errorf("member access on non-record: %s", ma.member)
+		}
+
+	default:
+		return NewMemberAccess(inlinedExpr, ma.member), nil
+	}
+}
+
 // Do block
 
 type DoBinding struct {
@@ -404,7 +500,7 @@ type EDoBlock struct {
 
 var _ Expr = &EDoBlock{}
 
-func NewDoBlock(bindings []DoBinding, lastExpr Expr) *EDoBlock {
+func NewEDoBlock(bindings []DoBinding, lastExpr Expr) *EDoBlock {
 	return &EDoBlock{
 		doBindings: bindings,
 		lastExpr:   lastExpr,
@@ -466,6 +562,53 @@ func (db *EDoBlock) GetType(scope *TypeScope) (Type, error) {
 		ts.Add(binding.Name, typ)
 	}
 	return db.lastExpr.GetType(ts)
+}
+
+func (db *EDoBlock) Inline(scope *Scope) (Expr, error) {
+	inlinedBindings := make([]DoBinding, len(db.doBindings))
+	for idx, binding := range db.doBindings {
+		inlinedExpr, err := binding.Expr.Inline(scope)
+		if err != nil {
+			return nil, err
+		}
+		inlinedBindings[idx] = DoBinding{
+			Name: binding.Name,
+			Expr: inlinedExpr,
+		}
+	}
+	inlinedLastExpr, err := db.lastExpr.Inline(scope)
+	if err != nil {
+		return nil, err
+	}
+	return NewEDoBlock(inlinedBindings, inlinedLastExpr), nil
+}
+
+type eInlinedValue struct {
+	value Value
+}
+
+var _ Expr = &eInlinedValue{}
+
+func newEInlinedValue(value Value) *eInlinedValue {
+	return &eInlinedValue{
+		value: value,
+	}
+}
+
+func (iv *eInlinedValue) Evaluate(interp *interpreter) (Value, error) {
+	return iv.value, nil
+}
+
+func (iv *eInlinedValue) Format() pp.Doc {
+	return pp.Text("<inlined value>")
+}
+
+func (iv *eInlinedValue) GetType(scope *TypeScope) (Type, error) {
+	return iv.value.GetType(), nil
+}
+
+func (iv *eInlinedValue) Inline(_ *Scope) (Expr, error) {
+	return iv, nil
 }
 
 // TODO: if

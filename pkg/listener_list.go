@@ -127,7 +127,7 @@ func (list *listenerList) sendEvent(event *tableEvent) {
 func valueMustBeString(val lang.Value) (string, error) {
 	vString, ok := val.(*lang.VString)
 	if !ok {
-		return "", fmt.Errorf("value in listener where clause must be string")
+		return "", fmt.Errorf("value in Listener where clause must be string")
 	}
 	return string(*vString), nil
 }

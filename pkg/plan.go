@@ -77,7 +77,7 @@ func (s *schema) planSelectInternal(
 					Name: keyParam,
 				},
 			},
-			lang.NewDoBlock(
+			lang.NewEDoBlock(
 				[]lang.DoBinding{
 					{
 						rowVarName,
@@ -145,7 +145,7 @@ func (s *schema) planSelectInternal(
 			lang.NewEVar("selection"),
 		})
 
-		return lang.NewDoBlock([]lang.DoBinding{
+		return lang.NewEDoBlock([]lang.DoBinding{
 			{
 				"subIndex",
 				subIndexExpr,
@@ -171,7 +171,7 @@ func (s *schema) planSelectInternal(
 				Name: rowVarName,
 			},
 		},
-		lang.NewDoBlock(
+		lang.NewEDoBlock(
 			[]lang.DoBinding{
 				{
 					"innerSelection",
@@ -219,7 +219,7 @@ func (s *schema) planSelectInternal(
 		lang.NewEVar("selection"),
 	})
 
-	return lang.NewDoBlock([]lang.DoBinding{
+	return lang.NewEDoBlock([]lang.DoBinding{
 		{
 			"selection",
 			selectionLambdaExpr,

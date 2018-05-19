@@ -137,7 +137,7 @@ func TestExprGetType(t *testing.T) {
 }>`,
 		},
 		{
-			NewDoBlock(
+			NewEDoBlock(
 				[]DoBinding{
 					{
 						"",
@@ -150,7 +150,7 @@ func TestExprGetType(t *testing.T) {
 			"",
 		},
 		{
-			NewDoBlock(
+			NewEDoBlock(
 				[]DoBinding{
 					{
 						"",

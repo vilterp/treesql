@@ -29,7 +29,7 @@ func (conn *connection) executeQueryForTableListener(
 ) (lang.Value, error) {
 	result, _, _, selectErr := conn.executeQuery(query, channel)
 	//clog.Println(
-	//	channel, "executed table listener query for statement", statementID, "in", duration,
+	//	channel, "executed table Listener query for statement", statementID, "in", duration,
 	//)
 	return result, selectErr
 }
