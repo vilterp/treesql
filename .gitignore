@@ -5,9 +5,8 @@ thoughts_on_go.txt
 treesql.data
 test-dir/
 vendor/
+profiles/
 
 treesql-server
 treesql-shell
-
-deploy/systemd/*.env.sh
 

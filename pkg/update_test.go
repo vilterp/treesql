@@ -27,4 +27,6 @@ func TestUpdate(t *testing.T) {
 		},
 	})
 	ts.Close()
+
+	// TODO: run a query after the update to test that indices got updated
 }

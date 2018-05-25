@@ -74,7 +74,7 @@ func main() {
 		if _, err := client.Exec(insertStmt); err != nil {
 			log.Fatal(errors.Wrap(err, "inserting blog post"))
 		}
-		go insertComments(client, postID)
+		insertComments(client, postID)
 		log.Println("post id:", postID)
 	}
 }

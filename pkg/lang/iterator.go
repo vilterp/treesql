@@ -1,7 +1,7 @@
 package lang
 
 type Iterator interface {
-	// Next returns the next value, or an error if we have reached the
+	// Next returns the next value, or (nil, EndOfIteration) if we have reached the
 	// end of the sequence.
 	Next(caller Caller) (Value, error)
 	Close() error

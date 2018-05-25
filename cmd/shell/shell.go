@@ -4,10 +4,10 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strings"
-
-	"log"
+	"time"
 
 	"github.com/chzyer/readline"
 	"github.com/robertkrimen/isatty"
@@ -60,7 +60,6 @@ func main() {
 	for {
 		line, readlineErr := l.Readline()
 		if readlineErr != nil {
-			fmt.Println("bye!")
 			os.Exit(0)
 		}
 
@@ -104,9 +103,15 @@ func runLiveQuery(client *treesql.Client, query string) {
 }
 
 func runStatement(client *treesql.Client, stmt string) {
+	start := time.Now()
 	channel := client.RunStatement(stmt)
 	firstUpdate := <-channel.Updates
+	afterFirstUpdate := time.Now()
+	timeToFirstUpdate := afterFirstUpdate.Sub(start)
+
 	printMessage(channel, firstUpdate)
+	fmt.Println("initial result in", timeToFirstUpdate)
+
 	go handleMessages(channel)
 }
 

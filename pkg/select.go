@@ -59,7 +59,7 @@ func (conn *connection) executeQuery(
 		return nil, nil, nil, err
 	}
 
-	clog.Println(conn, "QUERY PLAN:", expr.Format())
+	clog.Printf(conn, "QUERY PLAN:\n%s\n", expr.Format())
 
 	// Interpret the expr.
 	interp := lang.NewInterpreter(lang.BuiltinsScope, expr)
