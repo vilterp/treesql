@@ -3,6 +3,43 @@ package lang
 var BuiltinsScope *Scope
 
 func init() {
+	// Map live function.
+	// TODO: would be nice to parse this instead of writing out the AST
+	// mapLive : (Index<K, V>, (V) => S) => Iterator<S>
+	// mapLive = (index, f) => do {
+	//   iterator = scan(index)
+	//   addInsertListener(index, f)
+	//   map(iterator, f)
+	// }
+	mapLiveParams := []Param{
+		{"index", NewTIndex(NewTVar("K"), NewTVar("V"))},
+		{"f", NewTFunction(
+			[]Param{{"record", NewTVar("V")}},
+			NewTVar("S"),
+		)},
+	}
+	mapLiveRetType := NewTIterator(NewTVar("S"))
+
+	mapLive := &vLambda{
+		typ: NewTFunction(
+			mapLiveParams,
+			mapLiveRetType,
+		),
+		def: NewELambda(
+			mapLiveParams,
+			mapLiveRetType,
+			NewEDoBlock(
+				[]DoBinding{
+					{"iterator", NewEFuncCall("scan", []Expr{NewEVar("index")})},
+					{"", NewEFuncCall("addInsertListener", []Expr{NewEVar("index"), NewEVar("f")})},
+				},
+				NewEFuncCall("map", []Expr{NewEVar("iterator"), NewEVar("f")}),
+			),
+		),
+		definedInScope: BuiltinsScope,
+	}
+
+	// Build builtins scope.
 	BuiltinsScope = NewScope(nil)
 	BuiltinsScope.AddMap(map[string]Value{
 		// Arithmetic.
@@ -59,20 +96,6 @@ func init() {
 				}, nil
 			},
 		},
-		// Index functions.
-		"scan": &VBuiltin{
-			Name:    "scan",
-			Params:  []Param{{"index", NewTIndex(NewTVar("K"), NewTVar("V"))}},
-			RetType: NewTIterator(NewTVar("V")),
-			Impl: func(interp Caller, args []Value) (Value, error) {
-				index := mustBeVIndex(args[0])
-				scanIter, err := index.getScanIterator()
-				if err != nil {
-					return nil, err
-				}
-				return NewVIteratorRef(scanIter, index.valueType), nil
-			},
-		},
 		// Comparison functions.
 		"strEq": &VBuiltin{
 			Name:    "strEq",
@@ -94,6 +117,7 @@ func init() {
 				return NewVBool(left == right), nil
 			},
 		},
+		// Index functions.
 		"get": &VBuiltin{
 			Name:    "get",
 			RetType: NewTVar("V"),
@@ -113,9 +137,24 @@ func init() {
 				return index.getValue(key)
 			},
 		},
+		"scan": &VBuiltin{
+			Name:    "scan",
+			Params:  []Param{{"index", NewTIndex(NewTVar("K"), NewTVar("V"))}},
+			RetType: NewTIterator(NewTVar("V")),
+			Impl: func(interp Caller, args []Value) (Value, error) {
+				index := mustBeVIndex(args[0])
+				scanIter, err := index.getScanIterator()
+				if err != nil {
+					return nil, err
+				}
+				return NewVIteratorRef(scanIter, index.valueType), nil
+			},
+		},
+		"mapLive": mapLive,
+		// Index listener functions.
 		"addInsertListener": &VBuiltin{
 			Name:    "addInsertListener",
-			RetType: TInt,
+			RetType: TUnit,
 			Params: []Param{
 				{
 					Name: "index",
@@ -136,7 +175,10 @@ func init() {
 				},
 			},
 			Impl: func(interp Caller, args []Value) (Value, error) {
-				return NewVInt(42), nil
+				index := mustBeVIndex(args[0])
+				f := mustBeVFunction(args[1])
+				index.addInsertListener(f)
+				return VUnit, nil
 			},
 		},
 		"addUpdateListener": &VBuiltin{
@@ -163,9 +205,10 @@ func init() {
 					),
 				},
 			},
-			RetType: TInt,
+			RetType: TUnit,
 			Impl: func(interp Caller, args []Value) (Value, error) {
-				return NewVInt(42), nil
+				panic("TODO: implement addUpdateListener")
+				return VUnit, nil
 			},
 		},
 	})

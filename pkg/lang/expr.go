@@ -211,7 +211,7 @@ type ELambda struct {
 
 var _ Expr = &ELambda{}
 
-func NewELambda(params paramList, body Expr, retType Type) *ELambda {
+func NewELambda(params paramList, retType Type, body Expr) *ELambda {
 	return &ELambda{
 		params:  params,
 		body:    body,
@@ -274,23 +274,27 @@ func (l *ELambda) Inline(scope *Scope) (Expr, error) {
 	}
 	return NewELambda(
 		l.params,
-		inlinedExpr,
 		l.retType,
+		inlinedExpr,
 	), nil
 }
 
 // Func Call
 
 type EFuncCall struct {
-	funcName     string
+	funcName string
+	args     []Expr
+
+	// when Inline() is called, this is set.
+	// BenchmarkSelect indicates that not looking up the function in the scope
+	// every time gives an ~8x speedup.
 	preBoundFunc Value
-	args         []Expr
 }
 
 var _ Expr = &EFuncCall{}
 
 // TODO: remove all these constructors once a parser exists
-func NewFuncCall(name string, args []Expr) *EFuncCall {
+func NewEFuncCall(name string, args []Expr) *EFuncCall {
 	return &EFuncCall{
 		funcName: name,
 		args:     args,

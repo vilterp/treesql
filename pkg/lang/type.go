@@ -444,4 +444,24 @@ func (tv *tVar) substitute(tvb typeVarBindings) (Type, bool, error) {
 	return binding, false, nil
 }
 
+// Unit
+
+type tUnit struct{}
+
+var TUnit = &tUnit{}
+
+var _ Type = TUnit
+
+func (tu *tUnit) Format() pp.Doc {
+	return pp.Text("()")
+}
+
+func (tu *tUnit) matches(other Type) (bool, typeVarBindings) {
+	return other == TUnit, nil
+}
+
+func (tu *tUnit) substitute(tvb typeVarBindings) (Type, bool, error) {
+	return tu, true, nil
+}
+
 // TODO: ADTs

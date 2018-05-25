@@ -43,6 +43,9 @@ func (table *tableDescriptor) toIndexMap(txn *txn) map[string]*lang.VIndex {
 				func(key lang.Value) (lang.Value, error) {
 					return txn.getValue(table, col, key)
 				},
+				func(lambda lang.VFunction) {
+					fmt.Println("hello from addInsertListener on primary index")
+				},
 			)
 		} else if col.referencesColumn != nil {
 			// Construct non-unique index to return.
@@ -59,6 +62,9 @@ func (table *tableDescriptor) toIndexMap(txn *txn) map[string]*lang.VIndex {
 				},
 				func(key lang.Value) (lang.Value, error) {
 					return txn.getSubIndex(table, col, key)
+				},
+				func(lambda lang.VFunction) {
+					fmt.Println("hello from addInsertListener on secondary index")
 				},
 			)
 		}
@@ -175,6 +181,9 @@ func (txn *txn) getSubIndex(
 		},
 		func(key lang.Value) (lang.Value, error) {
 			panic("TODO: implement get on sub index")
+		},
+		func(lambda lang.VFunction) {
+			fmt.Println("hello from addInsertistener on sub index")
 		},
 	), nil
 }

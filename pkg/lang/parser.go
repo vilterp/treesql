@@ -34,7 +34,7 @@ var rules = map[string]p.Rule{
 				// Don't understand why we can cast the individual but not the array...
 				exprs[idx] = exprI.(Expr)
 			}
-			return NewFuncCall(name, exprs)
+			return NewEFuncCall(name, exprs)
 		},
 	),
 	"arg_list": p.Map(
@@ -112,7 +112,7 @@ var rules = map[string]p.Rule{
 			typ := tree.ItemTraces[3].GetMapRes().(Type)
 			// Get expr.
 			expr := tree.ItemTraces[5].GetMapRes().(Expr)
-			return NewELambda(params, expr, typ)
+			return NewELambda(params, typ, expr)
 		},
 	),
 	"param": p.Map(

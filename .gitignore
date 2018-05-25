@@ -6,6 +6,7 @@ treesql.data
 test-dir/
 vendor/
 profiles/
+pkg.test
 
 treesql-server
 treesql-shell

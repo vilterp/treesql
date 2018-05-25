@@ -52,7 +52,7 @@ func TestExprGetType(t *testing.T) {
 			"int",
 		},
 		{
-			NewFuncCall("map", []Expr{
+			NewEFuncCall("map", []Expr{
 				NewEVar("blog_posts"),
 				NewELambda(
 					[]Param{{"post", blogPostType}},
@@ -64,7 +64,7 @@ func TestExprGetType(t *testing.T) {
 			"",
 		},
 		{
-			NewFuncCall("map", []Expr{
+			NewEFuncCall("map", []Expr{
 				NewEVar("blog_posts"),
 				NewELambda(
 					[]Param{{"post", blogPostType}},
@@ -82,11 +82,11 @@ func TestExprGetType(t *testing.T) {
 }>`,
 		},
 		{
-			NewFuncCall("filter", []Expr{
+			NewEFuncCall("filter", []Expr{
 				NewEVar("blog_posts"),
 				NewELambda(
 					[]Param{{"post", blogPostType}},
-					NewFuncCall("intEq", []Expr{
+					NewEFuncCall("intEq", []Expr{
 						NewMemberAccess(NewEVar("post"), "id"),
 						NewIntLit(5),
 					}),
@@ -100,8 +100,8 @@ func TestExprGetType(t *testing.T) {
 }>`,
 		},
 		{
-			NewFuncCall("filter", []Expr{
-				NewFuncCall("map", []Expr{
+			NewEFuncCall("filter", []Expr{
+				NewEFuncCall("map", []Expr{
 					NewEVar("blog_posts"),
 					NewELambda(
 						[]Param{{"post", blogPostType}},
@@ -122,7 +122,7 @@ func TestExprGetType(t *testing.T) {
 							}),
 						},
 					},
-					NewFuncCall("intEq", []Expr{
+					NewEFuncCall("intEq", []Expr{
 						NewMemberAccess(NewEVar("post"), "id"),
 						NewIntLit(5),
 					}),
@@ -139,7 +139,7 @@ func TestExprGetType(t *testing.T) {
 				[]DoBinding{
 					{
 						"",
-						NewFuncCall("blerp", []Expr{}),
+						NewEFuncCall("blerp", []Expr{}),
 					},
 				},
 				NewIntLit(5),
@@ -152,7 +152,7 @@ func TestExprGetType(t *testing.T) {
 				[]DoBinding{
 					{
 						"",
-						NewFuncCall("plus", []Expr{
+						NewEFuncCall("plus", []Expr{
 							NewIntLit(5), NewStringLit("bloop"),
 						}),
 					},

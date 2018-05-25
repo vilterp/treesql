@@ -385,6 +385,8 @@ type VIndex struct {
 	getScanIterator func() (Iterator, error)
 	getValue        func(key Value) (Value, error)
 	putValue        func(key Value, value Value)
+
+	addInsertListener func(lambda VFunction)
 }
 
 var _ Value = &VIndex{}
@@ -394,12 +396,14 @@ func NewVIndex(
 	valueType Type,
 	getScanIterator func() (Iterator, error),
 	getValue func(key Value) (Value, error),
+	addInsertListener func(lambda VFunction),
 ) *VIndex {
 	return &VIndex{
-		keyType:         keyType,
-		valueType:       valueType,
-		getScanIterator: getScanIterator,
-		getValue:        getValue,
+		keyType:           keyType,
+		valueType:         valueType,
+		getScanIterator:   getScanIterator,
+		getValue:          getValue,
+		addInsertListener: addInsertListener,
 	}
 }
 
@@ -431,21 +435,21 @@ func mustBeVIndex(v Value) *VIndex {
 
 // Function
 
-type vFunction interface {
+type VFunction interface {
 	Value
 
 	getParamList() paramList
 	getRetType() Type
 }
 
-func mustBeVFunction(v Value) vFunction {
+func mustBeVFunction(v Value) VFunction {
 	switch tV := v.(type) {
 	case *vLambda:
 		return tV
 	case *VBuiltin:
 		return tV
 	default:
-		panic("not a vFunction")
+		panic("not a VFunction")
 	}
 }
 
@@ -459,7 +463,7 @@ type vLambda struct {
 }
 
 var _ Value = &vLambda{}
-var _ vFunction = &vLambda{}
+var _ VFunction = &vLambda{}
 
 func (vl *vLambda) GetType() Type {
 	return vl.typ
@@ -493,7 +497,7 @@ type VBuiltin struct {
 }
 
 var _ Value = &VBuiltin{}
-var _ vFunction = &VBuiltin{}
+var _ VFunction = &VBuiltin{}
 
 func (vb *VBuiltin) GetType() Type {
 	return &tFunction{
@@ -518,6 +522,28 @@ func (vb *VBuiltin) getParamList() paramList {
 
 func (vb *VBuiltin) getRetType() Type {
 	return vb.RetType
+}
+
+// Unit
+
+type vUnit struct{}
+
+var VUnit = &vUnit{}
+
+var _ Value = VUnit
+
+func (vu *vUnit) GetType() Type {
+	return TUnit
+}
+
+func (vu *vUnit) Format() pp.Doc {
+	return pp.Text("()")
+}
+
+func (vu *vUnit) WriteAsJSON(w *bufio.Writer, _ Caller) error {
+	// I think this makes sense semantically...
+	w.WriteString("null")
+	return nil
 }
 
 // TODO: ADT val

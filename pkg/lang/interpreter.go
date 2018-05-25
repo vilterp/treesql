@@ -9,7 +9,7 @@ type interpreter struct {
 }
 
 type Caller interface {
-	Call(vFunction, []Value) (Value, error)
+	Call(VFunction, []Value) (Value, error)
 }
 
 // TODO: callLookuper interface
@@ -42,7 +42,7 @@ func (i *interpreter) popFrame() *stackFrame {
 	return top
 }
 
-func (i *interpreter) Call(vFunc vFunction, argVals []Value) (Value, error) {
+func (i *interpreter) Call(vFunc VFunction, argVals []Value) (Value, error) {
 	// Make new scope.
 	newScope := i.stackTop.scope.NewChildScope()
 	params := vFunc.getParamList()
@@ -91,7 +91,7 @@ type stackFrame struct {
 	scope       *Scope
 
 	// if it's a function stack frame
-	vFunc vFunction
+	vFunc VFunction
 }
 
 // TODO: stack frame and stuff

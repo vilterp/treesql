@@ -77,11 +77,12 @@ func (s *schema) planSelectInternal(
 					Name: keyParam,
 				},
 			},
+			lang.NewTRecord(types),
 			lang.NewEDoBlock(
 				[]lang.DoBinding{
 					{
 						rowVarName,
-						lang.NewFuncCall(
+						lang.NewEFuncCall(
 							"get",
 							[]lang.Expr{
 								primaryIndexExpr,
@@ -92,7 +93,6 @@ func (s *schema) planSelectInternal(
 				},
 				lang.NewERecord(exprs),
 			),
-			lang.NewTRecord(types),
 		)
 
 		joinIdxExpr := lang.NewEIndexRef(
@@ -102,21 +102,15 @@ func (s *schema) planSelectInternal(
 		)
 
 		// e.g. `get(comments.blog_post_id, blog_post.id)`
-		subIndexExpr := lang.NewFuncCall("get", []lang.Expr{
+		subIndexExpr := lang.NewEFuncCall("get", []lang.Expr{
 			joinIdxExpr,
 			lang.NewMemberAccess(lang.NewEVar(join.oneVarName), join.onePKName),
 		})
 
-		collectionExpr := lang.NewFuncCall("scan", []lang.Expr{
+		return lang.NewEFuncCall("mapLive", []lang.Expr{
 			subIndexExpr,
-		})
-
-		mapExpr := lang.NewFuncCall("map", []lang.Expr{
-			collectionExpr,
 			selectionLambdaExpr,
-		})
-
-		return mapExpr, nil
+		}), nil
 	}
 
 	selectionLambdaExpr := lang.NewELambda(
@@ -126,21 +120,12 @@ func (s *schema) planSelectInternal(
 				Name: rowVarName,
 			},
 		},
-		lang.NewERecord(exprs),
 		lang.NewTRecord(types),
+		lang.NewERecord(exprs),
 	)
 
-	// Scan the primary index...
-	// TODO: maybe break this out into a function...
-	collectionExpr := lang.NewFuncCall(
-		"scan",
-		[]lang.Expr{
-			primaryIndexExpr,
-		},
-	)
-
-	mapExpr := lang.NewFuncCall("map", []lang.Expr{
-		collectionExpr,
+	mapExpr := lang.NewEFuncCall("mapLive", []lang.Expr{
+		primaryIndexExpr,
 		selectionLambdaExpr,
 	})
 

@@ -11,7 +11,7 @@ type Iterator interface {
 
 type mapIterator struct {
 	innerIterator Iterator
-	f             vFunction
+	f             VFunction
 }
 
 var _ Iterator = &mapIterator{}
@@ -34,7 +34,7 @@ func (mi *mapIterator) Close() error {
 
 type filterIterator struct {
 	innerIterator Iterator
-	f             vFunction
+	f             VFunction
 }
 
 func (fi *filterIterator) Next(c Caller) (Value, error) {

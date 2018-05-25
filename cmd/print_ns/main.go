@@ -6,6 +6,6 @@ import (
 )
 
 func main() {
-	x := time.Duration(937086942)
+	x := time.Duration(33406158)
 	fmt.Println(x)
 }
