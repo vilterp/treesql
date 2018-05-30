@@ -3,8 +3,6 @@ package treesql
 import "testing"
 
 func TestLiveQueries(t *testing.T) {
-	t.Skip("this is not gonna work until FP is hooked up")
-
 	server, client, err := NewTestServer(testServerArgs{})
 	if err != nil {
 		t.Fatal(err)
@@ -30,12 +28,10 @@ func TestLiveQueries(t *testing.T) {
 		t.Fatal(err)
 	}
 
+	// TODO: add comments back in
 	_, _, lqErr := client.LiveQuery(`
 		MANY blog_posts {
-			id,
-			comments: MANY comments {
-				id
-			}
+			id
 		} live
 	`)
 	if lqErr != nil {
@@ -44,7 +40,7 @@ func TestLiveQueries(t *testing.T) {
 
 	// TODO: assert against actual message contents.
 
-	done := make(chan bool)
+	//done := make(chan bool)
 
 	// Verify table listener is hit.
 	//go func() {
@@ -85,14 +81,14 @@ func TestLiveQueries(t *testing.T) {
 	}
 
 	// Verify nested table listener is hit.
-	if _, err := client.Exec(`INSERT INTO comments VALUES ("0", "0", "nice post")`); err != nil {
-		t.Fatal(err)
-	}
+	//if _, err := client.Exec(`INSERT INTO comments VALUES ("0", "0", "nice post")`); err != nil {
+	//	t.Fatal(err)
+	//}
 
 	// Verify nested record listener is hit.
-	if _, err := client.Exec(`UPDATE comments SET body = "nice post!" WHERE id = "0"`); err != nil {
-		t.Fatal(err)
-	}
+	//if _, err := client.Exec(`UPDATE comments SET body = "nice post!" WHERE id = "0"`); err != nil {
+	//	t.Fatal(err)
+	//}
 
-	<-done // Make sure we're done
+	//<-done // Make sure we're done
 }

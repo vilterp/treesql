@@ -90,7 +90,7 @@ func (conn *connection) executeUpdate(update *Update, channel *channel) error {
 					return err
 				}
 				// Send live query updates.
-				conn.database.pushTableEvent(channel, update.Table, record, updated)
+				conn.database.pushTableEvent(channel, update.Table, valBytes, updatedBytes)
 				rowsUpdated++
 			}
 			return nil

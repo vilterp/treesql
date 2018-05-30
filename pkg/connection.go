@@ -51,12 +51,15 @@ func (conn *connection) writeMessagesToSocket() {
 
 		if err := msg.toVal().WriteAsJSON(bufWriter, msg.getCaller()); err != nil {
 			clog.Println(conn, "error writing msg to conn: writing value:", err)
+			continue
 		}
 		if err := bufWriter.Flush(); err != nil {
 			clog.Println(conn, "error writing msg to conn: flushing buffer:", err)
+			continue
 		}
 		if err := writer.Close(); err != nil {
 			clog.Println(conn, "error writing msg to conn: closing writer:", err)
+			continue
 		}
 	}
 }

@@ -41,24 +41,25 @@ func (conn *connection) executeInsert(insert *Insert, channel *channel) error {
 	record := lang.NewVRecord(values)
 	key := values[table.primaryKey]
 
+	keyBytes, err := lang.Encode(key)
+	if err != nil {
+		return err
+	}
+
+	recordBytes, err := lang.Encode(record)
+	if err != nil {
+		return err
+	}
+
 	// Write to table.
-	err := conn.database.boltDB.Update(func(tx *bolt.Tx) error {
+	if err := conn.database.boltDB.Update(func(tx *bolt.Tx) error {
 		tableBucket := tx.Bucket([]byte(insert.Table))
 
 		// Write to primary index.
 		primaryIndexBucket := tableBucket.Bucket(table.pkBucketKey())
 
-		keyBytes, err := lang.Encode(key)
-		if err != nil {
-			return err
-		}
-
 		if current := primaryIndexBucket.Get(keyBytes); current != nil {
 			return &recordAlreadyExists{ColName: table.primaryKey, Val: key}
-		}
-		recordBytes, err := lang.Encode(record)
-		if err != nil {
-			return err
 		}
 		if err := primaryIndexBucket.Put(keyBytes, recordBytes); err != nil {
 			return err
@@ -92,13 +93,12 @@ func (conn *connection) executeInsert(insert *Insert, channel *channel) error {
 		}
 
 		return nil
-	})
-	if err != nil {
+	}); err != nil {
 		return errors.Wrap(err, "executing insert")
 	}
 
 	// Push to live query listeners.
-	conn.database.pushTableEvent(channel, insert.Table, nil, record)
+	conn.database.pushTableEvent(channel, insert.Table, nil, recordBytes)
 	// Return ack.
 	channel.writeAckMessage("INSERT 1")
 

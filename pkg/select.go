@@ -4,7 +4,6 @@ import (
 	"context"
 	"time"
 
-	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
 	"github.com/vilterp/treesql/pkg/lang"
 	clog "github.com/vilterp/treesql/pkg/log"
@@ -47,10 +46,7 @@ func (conn *connection) executeQuery(
 	// ctx := context.WithValue(conn.context, clog.ChannelIDKey, channel.id)
 
 	// Make transaction and scope.
-	txn := &txn{
-		db:      conn.database,
-		boltTxn: tx,
-	}
+	txn := newTxn(tx, channel)
 	indexMap := conn.database.schema.toSchemaIndexMap(txn)
 
 	// Plan the query.
@@ -77,13 +73,8 @@ func (conn *connection) executeQuery(
 
 // maybe this should be called transaction? idk
 type selectExecution struct {
-	ID          channelID
-	Channel     *channel
-	Query       *Select
-	Transaction *bolt.Tx
-	Context     context.Context
-}
-
-func (ex *selectExecution) Ctx() context.Context {
-	return ex.Context
+	ID      channelID
+	Channel *channel
+	Query   *Select
+	Context context.Context
 }

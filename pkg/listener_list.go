@@ -15,10 +15,10 @@ type listenerList struct {
 }
 
 type Listener struct {
-	QueryExecution *selectExecution
+	channel *channel
 	// vv nil for record listeners
-	Query     *Select
-	QueryPath *queryPath
+	query     *Select
+	queryPath *queryPath
 }
 
 func (table *tableDescriptor) newListenerList() *listenerList {
@@ -29,8 +29,8 @@ func (table *tableDescriptor) newListenerList() *listenerList {
 }
 
 func (list *listenerList) addListener(listener *Listener) {
-	stmtID := listener.QueryExecution.ID
-	connID := connectionID(listener.QueryExecution.Channel.connection.id)
+	stmtID := channelID(listener.channel.id)
+	connID := connectionID(listener.channel.connection.id)
 	listenersForConn := list.Listeners[connID]
 	if listenersForConn == nil {
 		listenersForConn = map[channelID][]*Listener{}
@@ -60,18 +60,18 @@ func (list *listenerList) getNumListeners() int {
 	return list.numListeners
 }
 
-func (list *listenerList) addQueryListener(ex *selectExecution, query *Select, queryPath *queryPath) {
+func (list *listenerList) addQueryListener(c *channel, query *Select, queryPath *queryPath) {
 	list.addListener(&Listener{
-		QueryExecution: ex,
-		Query:          query,
-		QueryPath:      queryPath,
+		channel:   c,
+		query:     query,
+		queryPath: queryPath,
 	})
 }
 
-func (list *listenerList) addRecordListener(ex *selectExecution, queryPath *queryPath) {
+func (list *listenerList) addRecordListener(c *channel, queryPath *queryPath) {
 	list.addListener(&Listener{
-		QueryExecution: ex,
-		QueryPath:      queryPath,
+		channel:   c,
+		queryPath: queryPath,
 	})
 }
 
@@ -79,9 +79,9 @@ func (list *listenerList) sendEvent(event *tableEvent) {
 	for _, listenersForConn := range list.Listeners {
 		for _, listenersForChannel := range listenersForConn {
 			for _, listener := range listenersForChannel {
-				if listener.Query != nil {
+				if listener.query != nil {
 					// whole table or filtered table update
-					conn := listener.QueryExecution.Channel.connection
+					conn := listener.channel.connection
 					// want to just be like "clone this, with this different..."
 					// like object spread operator in JS (also Elixir, Elm)
 					// TODO: change this to be an FP expression
@@ -94,10 +94,10 @@ func (list *listenerList) sendEvent(event *tableEvent) {
 
 					newQuery := &Select{
 						Live:       true,
-						Many:       listener.Query.Many,
-						One:        listener.Query.One, // ugh
-						Selections: listener.Query.Selections,
-						Table:      listener.Query.Table,
+						Many:       listener.query.Many,
+						One:        listener.query.One, // ugh
+						Selections: listener.query.Selections,
+						Table:      listener.query.Table,
 						Where: &Where{
 							ColumnName: list.Table.primaryKey,
 							Value:      whereValString,
@@ -105,19 +105,19 @@ func (list *listenerList) sendEvent(event *tableEvent) {
 					}
 					go func() {
 						result, selectErr := conn.executeQueryForTableListener(
-							newQuery, int(listener.QueryExecution.ID), listener.QueryExecution.Channel,
+							newQuery, int(listener.channel.id), listener.channel,
 						)
 						if selectErr != nil {
-							log.Println("failed to execute query for table listener statement id", listener.QueryExecution.ID)
+							log.Println("failed to execute query for table listener statement id", listener.channel.id)
 						}
-						listener.QueryExecution.Channel.writeTableUpdate(&TableUpdate{
-							QueryPath: listener.QueryPath.flatten(),
+						listener.channel.writeTableUpdate(&TableUpdate{
+							QueryPath: listener.queryPath.flatten(),
 							Selection: result,
 						})
 					}()
 				} else {
 					// record update
-					listener.QueryExecution.Channel.writeRecordUpdate(event, listener.QueryPath)
+					listener.channel.writeRecordUpdate(event, listener.queryPath)
 				}
 			}
 		}

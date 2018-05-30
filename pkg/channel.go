@@ -95,6 +95,9 @@ func (cm *ChannelMessage) getCaller() lang.Caller {
 	if cm.Message.InitialResultMessage != nil {
 		return cm.Message.InitialResultMessage.Caller
 	}
+	if cm.Message.TableUpdateMessage != nil {
+		panic("need caller")
+	}
 	if cm.Message.AckMessage != nil {
 		return nil
 	}
@@ -161,8 +164,10 @@ type MessageToClient struct {
 	AckMessage   *string             `json:"ack,omitempty"`
 	// data
 	InitialResultMessage *InitialResult `json:"initial_result,omitempty"`
-	RecordUpdateMessage  *RecordUpdate  `json:"record_update,omitempty"`
-	TableUpdateMessage   *TableUpdate   `json:"table_update,omitempty"`
+	// Update into a record
+	RecordUpdateMessage *RecordUpdate `json:"record_update,omitempty"`
+	// Insert into a table
+	TableUpdateMessage *TableUpdate `json:"table_update,omitempty"`
 }
 
 func (mtc *MessageToClient) ToVal() lang.Value {
@@ -206,7 +211,10 @@ type TableUpdate struct {
 }
 
 func (tu *TableUpdate) toVal() lang.Value {
-	panic("unimplemented")
+	return lang.NewVRecord(map[string]lang.Value{
+		"selection": tu.Selection,
+		// TODO: query path
+	})
 }
 
 type RecordUpdate struct {
@@ -215,7 +223,12 @@ type RecordUpdate struct {
 }
 
 func (ru *RecordUpdate) toVal() lang.Value {
-	panic("unimplemented")
+	// TODO: query path
+	return lang.NewVRecord(map[string]lang.Value{
+		"table_name": lang.NewVString(ru.TableEvent.TableName),
+		"old_record": ru.TableEvent.OldRecord,
+		"new_record": ru.TableEvent.NewRecord,
+	})
 }
 
 func (channel *channel) writeErrorMessage(err error) {
@@ -248,6 +261,7 @@ func (channel *channel) writeTableUpdate(update *TableUpdate) {
 }
 
 func (channel *channel) writeRecordUpdate(update *tableEvent, queryPath *queryPath) {
+	panic("why am I in record update")
 	channel.writeMessage(&MessageToClient{
 		Type: RecordUpdateMessage,
 		RecordUpdateMessage: &RecordUpdate{

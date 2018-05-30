@@ -117,10 +117,11 @@ func TestPlan(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			txn := &txn{
-				boltTxn: boltTxn,
-				db:      db,
-			}
+			txn := newTxn(boltTxn, &channel{
+				connection: &connection{
+					database: db,
+				},
+			})
 
 			indexMap := db.schema.toSchemaIndexMap(txn)
 

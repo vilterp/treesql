@@ -99,8 +99,3 @@ type stackFrame struct {
 // also keep a query path of some kind in there,
 // so we can go back up the stack and install live query
 // listeners.
-
-func Interpret(e Expr, rootScope *Scope) (Value, error) {
-	i := NewInterpreter(rootScope, e)
-	return i.Interpret()
-}

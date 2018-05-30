@@ -4,6 +4,8 @@ import (
 	"sync"
 	"time"
 
+	"fmt"
+
 	"github.com/vilterp/treesql/pkg/lang"
 	clog "github.com/vilterp/treesql/pkg/log"
 )
@@ -39,21 +41,19 @@ func (table *tableDescriptor) newLiveQueryInfo() *liveQueryInfo {
 
 type tableEvent struct {
 	TableName string
-	OldRecord *lang.VRecord
-	NewRecord *lang.VRecord
+	OldRecord []byte
+	NewRecord []byte
 
 	channel *channel
 }
 
 type tableSubscriptionEvent struct {
-	QueryExecution *selectExecution
-	QueryPath      *queryPath
-	SubQuery       *Select // where we are in the query
+	channel   *channel
+	QueryPath *queryPath
+	SubQuery  *Select // where we are in the query
 	// vv this and value null => subscribe to whole table w/ no filter
 	ColumnName *string
 	Value      lang.Value
-
-	channel *channel
 }
 
 type recordSubscriptionEvent struct {
@@ -109,10 +109,12 @@ func (table *tableDescriptor) handleTableSub(evt *tableSubscriptionEvent) {
 	liveInfo.mu.Lock()
 	defer liveInfo.mu.Unlock()
 
+	fmt.Println("handling table sub", evt)
+
 	if evt.ColumnName == nil {
 		// whole table listener
 		liveInfo.mu.wholeTableListeners.addQueryListener(
-			evt.QueryExecution, evt.SubQuery, evt.QueryPath,
+			evt.channel, evt.SubQuery, evt.QueryPath,
 		)
 	} else {
 		// filtered listener
@@ -131,7 +133,7 @@ func (table *tableDescriptor) handleTableSub(evt *tableSubscriptionEvent) {
 			listenersForColumn[string(lang.MustEncode(evt.Value))] = listenersForValue
 		}
 		listenersForValue.addQueryListener(
-			evt.QueryExecution, evt.SubQuery, evt.QueryPath,
+			evt.channel, evt.SubQuery, evt.QueryPath,
 		)
 	}
 }
@@ -146,7 +148,7 @@ func (table *tableDescriptor) handleRecordSub(evt *recordSubscriptionEvent) {
 		listenersForValue = table.newListenerList()
 		liveInfo.mu.recordListeners[string(lang.MustEncode(evt.Value))] = listenersForValue
 	}
-	listenersForValue.addRecordListener(evt.QueryExecution, evt.QueryPath)
+	listenersForValue.addRecordListener(evt.channel, evt.QueryPath)
 }
 
 func (table *tableDescriptor) handleTableEvent(evt *tableEvent) {
@@ -156,7 +158,7 @@ func (table *tableDescriptor) handleTableEvent(evt *tableEvent) {
 	defer liveInfo.mu.Unlock()
 
 	if evt.NewRecord != nil && evt.OldRecord == nil {
-		// clog.Println(evt.channel, "pushing insert event to table listeners")
+		clog.Println(evt.channel, "pushing insert event to table listeners")
 		// whole table listeners
 		liveInfo.mu.wholeTableListeners.sendEvent(evt)
 		// filtered table listeners

@@ -9,7 +9,14 @@ import (
 
 type txn struct {
 	boltTxn *bolt.Tx
-	db      *Database
+	channel *channel
+}
+
+func newTxn(boltTx *bolt.Tx, channel *channel) *txn {
+	return &txn{
+		channel: channel,
+		boltTxn: boltTx,
+	}
 }
 
 func (s *schema) toSchemaIndexMap(txn *txn) SchemaIndexMap {
@@ -44,6 +51,15 @@ func (table *tableDescriptor) toIndexMap(txn *txn) map[string]*lang.VIndex {
 					return txn.getValue(table, col, key)
 				},
 				func(lambda lang.VFunction) {
+					lqi := table.liveQueryInfo
+					lqi.mu.Lock()
+					defer lqi.mu.Unlock()
+
+					lqi.tableSubscriptionEvents <- &tableSubscriptionEvent{
+						channel:  txn.channel,
+						SubQuery: &Select{}, // TODO: put query in here
+					}
+
 					fmt.Println("hello from addInsertListener on primary index")
 				},
 			)
@@ -184,6 +200,14 @@ func (txn *txn) getSubIndex(
 		},
 		func(lambda lang.VFunction) {
 			fmt.Println("hello from addInsertistener on sub index")
+			lqi := table.liveQueryInfo
+			lqi.mu.Lock()
+			defer lqi.mu.Unlock()
+
+			lqi.tableSubscriptionEvents <- &tableSubscriptionEvent{
+				ColumnName: &col.name,
+				Value:      key,
+			}
 		},
 	), nil
 }

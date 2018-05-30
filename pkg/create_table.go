@@ -47,12 +47,20 @@ func (db *Database) validateCreateTable(create *CreateTable) error {
 }
 
 func (conn *connection) executeCreateTable(create *CreateTable, channel *channel) error {
+	// Build and serialize table desc.
 	tableDesc, err := conn.database.buildTableDescriptor(create)
 	if err != nil {
 		return err
 	}
 	tableRecord := tableDesc.toRecord(conn.database)
+	tableBytes, err := lang.Encode(tableRecord)
+	if err != nil {
+		return err
+	}
+
 	columnRecords := make([]*lang.VRecord, len(create.Columns))
+	encodedColumnRecords := make([][]byte, len(create.Columns))
+
 	updateErr := conn.database.boltDB.Update(func(tx *bolt.Tx) error {
 		// TODO: give ids to tables; create bucket from that
 		// create bucket for new table
@@ -74,10 +82,6 @@ func (conn *connection) executeCreateTable(create *CreateTable, channel *channel
 		}
 		// write record to __tables__
 		tablesBucket := tx.Bucket([]byte("__tables__"))
-		tableBytes, err := lang.Encode(tableRecord)
-		if err != nil {
-			return err
-		}
 		if err := tablesBucket.Put([]byte(create.Name), tableBytes); err != nil {
 			return err
 		}
@@ -85,17 +89,18 @@ func (conn *connection) executeCreateTable(create *CreateTable, channel *channel
 		for idx, columnDesc := range tableDesc.columns {
 			// serialize descriptor
 			columnRecord := columnDesc.toRecord(create.Name, conn.database)
-			value, err := lang.Encode(columnRecord)
+			columnRecordBytes, err := lang.Encode(columnRecord)
 			if err != nil {
 				return err
 			}
 			// write to bucket
 			columnsBucket := tx.Bucket([]byte("__columns__"))
 			key := []byte(fmt.Sprintf("%d", columnDesc.id))
-			if err := columnsBucket.Put(key, value); err != nil {
+			if err := columnsBucket.Put(key, columnRecordBytes); err != nil {
 				return err
 			}
 			columnRecords[idx] = columnRecord
+			encodedColumnRecords[idx] = columnRecordBytes
 		}
 		// write next column id sequence
 		nextColumnIDBytes := lang.EncodeInteger(int32(conn.database.schema.nextColumnID))
@@ -108,9 +113,9 @@ func (conn *connection) executeCreateTable(create *CreateTable, channel *channel
 	// add to in-memory schema
 	conn.database.addTableDescriptor(tableDesc)
 	// push live query messages
-	conn.database.pushTableEvent(channel, "__tables__", nil, tableRecord)
-	for _, columnRecord := range columnRecords {
-		conn.database.pushTableEvent(channel, "__columns__", nil, columnRecord)
+	conn.database.pushTableEvent(channel, "__tables__", nil, tableBytes)
+	for _, encodedColumnRecord := range encodedColumnRecords {
+		conn.database.pushTableEvent(channel, "__columns__", nil, encodedColumnRecord)
 	}
 	clog.Println(channel, "created table", create.Name)
 	channel.writeAckMessage("CREATE TABLE")
