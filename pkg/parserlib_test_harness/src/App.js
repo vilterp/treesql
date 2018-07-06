@@ -79,7 +79,6 @@ class App extends Component {
 
   updateQueryAndPos = () => {
     const textArea = this.textArea.current;
-    console.log("TA:", textArea, "SS:", textArea.selectionStart);
     const query = textArea.value;
     this.setState({
       cursorPos: textArea.selectionStart,
@@ -112,7 +111,14 @@ class App extends Component {
               onClick={this.updateQueryAndPos}
             />
             <br />
-            Pos: {this.state.cursorPos}
+            Pos: {this.state.cursorPos}<br />
+            {this.state.trace && this.state.trace.Completions
+              ? <ul>
+                  {this.state.trace.Completions.map((completion) => (
+                    <li key={completion}>{completion}</li>
+                  ))}
+                </ul>
+              : null}
           </div>
           <div className="grid-cell app-sourceview">
             {this.state.trace && this.state.grammar

@@ -22,7 +22,10 @@ func main() {
 			p.Keyword("("),
 			p.Keyword(")"),
 		}),
-		"var": p.Ident,
+		"var": p.Choice([]p.Rule{
+			p.Keyword("foo"),
+			p.Keyword("bar"),
+		}),
 	})
 	if err != nil {
 		panic(err)

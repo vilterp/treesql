@@ -139,3 +139,11 @@ func (tt *TraceTree) OptWhitespaceSurroundRes() *TraceTree {
 	whitespaceSeq := tt
 	return whitespaceSeq.ItemTraces[1]
 }
+
+const (
+	PosToLeft = iota
+	PosLeftEdge
+	PosWithin
+	PosRightEdge
+	PosToRight
+)

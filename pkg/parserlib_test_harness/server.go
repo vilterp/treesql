@@ -16,8 +16,9 @@ type completionsRequest struct {
 }
 
 type completionsResponse struct {
-	Trace *parserlib.TraceTree
-	Err   string
+	Trace       *parserlib.TraceTree
+	Completions []string
+	Err         string
 }
 
 // TODO: use some logging middleware
@@ -75,6 +76,15 @@ func NewServer(port string, gram *parserlib.Grammar, startRule string) {
 		if err != nil {
 			resp.Err = err.Error()
 			log.Println("/completions parse error: ", err.Error())
+		}
+		if trace != nil {
+			// Get completions.
+			completions, err := trace.GetCompletions()
+			if err != nil {
+				resp.Err = err.Error()
+				log.Println("/completions completions error: ", err.Error())
+			}
+			resp.Completions = completions
 		}
 
 		// Respond.

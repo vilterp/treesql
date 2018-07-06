@@ -63,7 +63,7 @@ func (g *Grammar) String() string {
 type Rule interface {
 	String() string
 	Validate(g *Grammar) error
-	Completions(g *Grammar) []string
+	Completions(g *Grammar, cursor int) []string
 	Children() []Rule
 	Serialize(g *Grammar) SerializedRule
 }

@@ -2,6 +2,7 @@ package parserlib
 
 import (
 	"fmt"
+	"strings"
 )
 
 // TODO: structured parse errors
@@ -90,7 +91,7 @@ func (ps *ParserState) runRule(cursor int) (*TraceTree, *ParseError) {
 		RuleID:    ps.grammar.idForRule[rule],
 		StartPos:  startPos,
 		CursorPos: 0,
-		EndPos:    frame.pos,
+		EndPos:    startPos,
 	}
 	switch tRule := rule.(type) {
 	case *choice:
@@ -100,17 +101,29 @@ func (ps *ParserState) runRule(cursor int) (*TraceTree, *ParseError) {
 			StartPos:  startPos,
 			CursorPos: cursor,
 		}
+		maxAdvancement := 0
+		maxAdvancementTraceIndex := 0
+		var maxAdvancementTrace *TraceTree
 		for choiceIdx, choice := range tRule.choices {
 			choiceTrace, err := ps.callRule(choice, frame.pos, cursor)
-			trace.EndPos = choiceTrace.EndPos
-			trace.ChoiceIdx = choiceIdx
-			trace.ChoiceTrace = choiceTrace
+			advancement := choiceTrace.EndPos.Offset - choiceTrace.StartPos.Offset
+			if advancement >= maxAdvancement {
+				maxAdvancement = advancement
+				maxAdvancementTrace = choiceTrace
+				maxAdvancementTraceIndex = choiceIdx
+			}
 			if err == nil {
 				// We found a match!
+				trace.EndPos = choiceTrace.EndPos
+				trace.ChoiceIdx = choiceIdx
+				trace.ChoiceTrace = choiceTrace
 				return trace, nil
 			}
 		}
-		return trace, frame.Errorf(nil, `no match for rule "%s"`, rule.String())
+		trace.EndPos = maxAdvancementTrace.EndPos
+		trace.ChoiceIdx = maxAdvancementTraceIndex
+		trace.ChoiceTrace = maxAdvancementTrace
+		return trace, frame.Errorf(nil, "no match for rule `%s`", rule.String())
 	case *sequence:
 		trace := &TraceTree{
 			grammar:    ps.grammar,
@@ -138,23 +151,23 @@ func (ps *ParserState) runRule(cursor int) (*TraceTree, *ParseError) {
 		trace.EndPos = frame.pos
 		return trace, nil
 	case *keyword:
-		inputLeft := len(ps.input) - frame.pos.Offset
-		if len(tRule.value) > inputLeft {
+		remainingInput := ps.input[frame.pos.Offset:]
+		if len(tRule.value) > len(remainingInput) {
+			trimmed := strings.TrimPrefix(tRule.value, remainingInput)
+			if len(trimmed) < len(tRule.value) {
+				minimalTrace.EndPos = minimalTrace.StartPos.MoreOnLine(len(trimmed))
+			}
 			return minimalTrace, frame.Errorf(
-				nil, `expected "%s"; got "%s"<EOF>`, tRule.value, ps.input[frame.pos.Offset:],
+				nil, `expected "%s"; got "%s"<EOF>`, tRule.value, remainingInput,
 			)
 		}
-		nextNChars := ps.input[frame.pos.Offset : frame.pos.Offset+len(tRule.value)]
-		if nextNChars == tRule.value {
-			return &TraceTree{
-				grammar:   ps.grammar,
-				RuleID:    ps.grammar.idForRule[rule],
-				StartPos:  startPos,
-				EndPos:    frame.pos.MoreOnLine(len(tRule.value)),
-				CursorPos: cursor,
-			}, nil
+		trimmed := strings.TrimPrefix(remainingInput, tRule.value)
+		advancement := len(remainingInput) - len(trimmed)
+		minimalTrace.EndPos = minimalTrace.StartPos.MoreOnLine(advancement)
+		if advancement == len(tRule.value) {
+			return minimalTrace, nil
 		}
-		return minimalTrace, frame.Errorf(nil, `expected "%s"; got "%s"`, tRule.value, nextNChars)
+		return minimalTrace, frame.Errorf(nil, `expected "%s"; got "%s"`, tRule.value, remainingInput)
 	case *ref:
 		refRule, ok := ps.grammar.rules[tRule.name]
 		if !ok {
