@@ -177,7 +177,7 @@ var rules = map[string]p.Rule{
 	"expr": p.Choice([]p.Rule{
 		p.Ref("func_call"),
 		p.Ref("member_access"),
-		p.Ref("var"),
+		//p.Ref("var"),
 		p.Ref("record_literal"),
 		p.Ref("lambda"),
 		p.Ref("string_lit"),

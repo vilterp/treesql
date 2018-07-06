@@ -140,6 +140,10 @@ func (tt *TraceTree) OptWhitespaceSurroundRes() *TraceTree {
 	return whitespaceSeq.ItemTraces[1]
 }
 
+func (tt *TraceTree) Length() int {
+	return tt.EndPos.Offset - tt.StartPos.Offset
+}
+
 const (
 	PosToLeft = iota
 	PosLeftEdge

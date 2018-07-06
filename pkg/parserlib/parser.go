@@ -140,7 +140,7 @@ func (ps *ParserState) runRule(cursor int) (*TraceTree, *ParseError) {
 		for itemIdx, item := range tRule.items {
 			trace.AtItemIdx = itemIdx
 			itemTrace, err := ps.callRule(item, frame.pos, cursor-advancement)
-			advancement += itemTrace.EndPos.Offset - trace.EndPos.Offset
+			advancement += itemTrace.Length()
 			trace.EndPos = itemTrace.EndPos
 			trace.ItemTraces[itemIdx] = itemTrace
 			if err != nil {
