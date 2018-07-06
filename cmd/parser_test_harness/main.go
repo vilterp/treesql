@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 
-	"github.com/vilterp/treesql/pkg/lang"
+	p "github.com/vilterp/treesql/pkg/parserlib"
 	"github.com/vilterp/treesql/pkg/parserlib_test_harness"
 )
 
@@ -12,5 +12,21 @@ var port = flag.String("port", "9999", "port to listen on")
 func main() {
 	flag.Parse()
 
-	parserlib_test_harness.NewServer(*port, lang.Grammar, "expr")
+	g, err := p.NewGrammar(map[string]p.Rule{
+		"expr": p.Choice([]p.Rule{
+			p.Ref("call"),
+			p.Ref("var"),
+		}),
+		"call": p.Sequence([]p.Rule{
+			p.Ref("var"),
+			p.Keyword("("),
+			p.Keyword(")"),
+		}),
+		"var": p.Ident,
+	})
+	if err != nil {
+		panic(err)
+	}
+
+	parserlib_test_harness.NewServer(*port, g, "call")
 }

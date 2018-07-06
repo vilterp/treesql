@@ -9,9 +9,10 @@ import (
 type TraceTree struct {
 	grammar *Grammar
 
-	RuleID   RuleID
-	StartPos Position
-	EndPos   Position
+	RuleID    RuleID
+	StartPos  Position
+	CursorPos int // cursor offset relative to StartPos
+	EndPos    Position
 
 	// If it's a choice node.
 	ChoiceIdx   int

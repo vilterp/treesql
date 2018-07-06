@@ -17,17 +17,19 @@ class App extends Component {
     super();
     this.state = {
       query: INITIAL_QUERY,
+      cursorPos: 0,
       grammar: null,
       trace: null,
 
       highlightedRuleID: null,
       highlightedSpan: null,
-    }
+    };
+    this.textArea = React.createRef();
   }
 
   componentDidMount() {
     this.fetchGrammar();
-    this.fetchQuery(INITIAL_QUERY);
+    this.fetchQuery(0, INITIAL_QUERY);
   }
 
   fetchGrammar() {
@@ -43,10 +45,10 @@ class App extends Component {
     });
   }
 
-  fetchQuery(query) {
+  fetchQuery(pos, query) {
     const completionReq = {
       Input: query,
-      CursorPos: 0,
+      CursorPos: pos,
     };
     fetch("http://localhost:9999/completions", {
       method: "POST",
@@ -63,13 +65,6 @@ class App extends Component {
     });
   }
 
-  handleQueryUpdate(val) {
-    this.setState({
-      query: val,
-    });
-    this.fetchQuery(val);
-  }
-
   handleHighlightRule = (ruleID, highlight) => {
     this.setState({
       highlightedRuleID: highlight ? ruleID : null,
@@ -80,6 +75,17 @@ class App extends Component {
     this.setState({
       highlightedSpan: highlight ? span : null,
     });
+  }
+
+  updateQueryAndPos = () => {
+    const textArea = this.textArea.current;
+    console.log("TA:", textArea, "SS:", textArea.selectionStart);
+    const query = textArea.value;
+    this.setState({
+      cursorPos: textArea.selectionStart,
+      query: query,
+    });
+    this.fetchQuery(textArea.selectionStart, query);
   }
 
   render() {
@@ -96,12 +102,17 @@ class App extends Component {
         <div className="app-container">
           <div className="grid-cell app-editor">
             <textarea
+              ref={this.textArea}
               style={{ fontFamily: "monospace" }}
               cols={80}
               rows={10}
               value={this.state.query}
-              onChange={(evt) => this.handleQueryUpdate(evt.target.value)}
+              onChange={this.updateQueryAndPos}
+              onKeyUp={this.updateQueryAndPos}
+              onClick={this.updateQueryAndPos}
             />
+            <br />
+            Pos: {this.state.cursorPos}
           </div>
           <div className="grid-cell app-sourceview">
             {this.state.trace && this.state.grammar

@@ -2,8 +2,8 @@ package parserlib
 
 import "fmt"
 
-func (g *Grammar) GetCompletions(startRule string, input string) ([]string, error) {
-	trace, err := g.Parse(startRule, input)
+func (g *Grammar) GetCompletions(startRule string, input string, cursor int) ([]string, error) {
+	trace, err := g.Parse(startRule, input, cursor)
 	switch err.(type) {
 	case *ParseError:
 		break

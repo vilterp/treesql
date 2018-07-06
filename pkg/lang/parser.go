@@ -222,8 +222,8 @@ func init() {
 	Grammar = g
 }
 
-func Parse(input string) (Expr, error) {
-	tree, err := Grammar.Parse("expr", input)
+func Parse(input string, cursor int) (Expr, error) {
+	tree, err := Grammar.Parse("expr", input, cursor)
 	if err != nil {
 		return nil, err
 	}

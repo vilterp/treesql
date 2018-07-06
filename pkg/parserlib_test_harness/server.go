@@ -70,7 +70,7 @@ func NewServer(port string, gram *parserlib.Grammar, startRule string) {
 		var resp completionsResponse
 
 		// Parse it.
-		trace, err := gram.Parse(startRule, cr.Input)
+		trace, err := gram.Parse(startRule, cr.Input, cr.CursorPos)
 		resp.Trace = trace
 		if err != nil {
 			resp.Err = err.Error()

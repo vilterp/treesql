@@ -20,19 +20,15 @@ export class TraceView extends React.Component {
 }
 
 class TraceNode extends React.Component {
-  render() {
+  renderInternal(rule) {
     const {
-      trace,
       grammar,
+      trace,
       onHighlightRule,
       highlightedRuleID,
       onHighlightSpan,
       highlightedSpan,
     } = this.props;
-
-    if (!trace) {
-      return <span>(empty)</span>;
-    }
 
     const highlightProps = {
       onHighlightRule: onHighlightRule,
@@ -74,7 +70,6 @@ class TraceNode extends React.Component {
       );
     }
 
-    const rule = grammar.RulesByID[trace.RuleID];
     switch (rule.RuleType) {
       case "SEQUENCE":
         // TODO: highlightify
@@ -161,6 +156,24 @@ class TraceNode extends React.Component {
         console.error(trace);
         return <pre>{JSON.stringify(trace)}</pre>
     }
+  }
+
+  render() {
+    const {
+      trace,
+      grammar,
+    } = this.props;
+
+    if (!trace) {
+      return <span>(empty)</span>;
+    }
+
+    const rule = grammar.RulesByID[trace.RuleID];
+    return (
+      <div>
+        {this.renderInternal(rule, trace)} ({trace.CursorPos})
+      </div>
+    );
   }
 
 }
