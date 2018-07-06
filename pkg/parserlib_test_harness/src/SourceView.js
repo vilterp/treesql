@@ -102,7 +102,7 @@ class SourceViewNode extends React.Component {
             className="rule-keyword"
             style={{ textDecoration: cursorWithin ? "underline" : "none" }}
           >
-            {rule.Keyword}
+            {textWithCursor(rule.Keyword, trace.CursorPos)}
           </span>
         );
       case "REGEX":
@@ -114,7 +114,7 @@ class SourceViewNode extends React.Component {
               textDecoration: cursorWithin ? "underline" : "none",
             }}
           >
-            {trace.RegexMatch}
+            {textWithCursor(trace.RegexMatch, trace.CursorPos)}
           </span>
         );
       case "MAP":
@@ -132,4 +132,18 @@ class SourceViewNode extends React.Component {
         return <pre>{JSON.stringify(trace)}</pre>
     }
   }
+}
+
+function textWithCursor(text, pos) {
+  if (pos < 0 || pos >= text.length) {
+    return text;
+  }
+
+  return (
+    <span>
+      {text.substr(0, pos)}
+      <span className="cursor">|</span>
+      {text.substr(pos)}
+    </span>
+  );
 }
