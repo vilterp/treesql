@@ -1,7 +1,7 @@
 import React from "react";
 import { RuleNameView } from './RuleNameView';
 import { formatSpan } from './span';
-import classNames from "classnames";
+import classNames from "classnames";import { cursorIsWithin } from './trace';
 import "./SourceView.css";
 import "./TraceView.css";
 import "./GrammarView.css"; // factor out the common parts? idk
@@ -179,12 +179,4 @@ class TraceNode extends React.Component {
     );
   }
 
-}
-
-function length(trace) {
-  return trace.EndPos.Offset - trace.StartPos.Offset;
-}
-
-function cursorIsWithin(trace) {
-  return trace.CursorPos >= 0 && trace.CursorPos < length(trace);
 }

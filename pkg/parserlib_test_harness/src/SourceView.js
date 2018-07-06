@@ -1,5 +1,6 @@
 import React from "react";
 import { formatSpan } from './span';
+import { cursorIsWithin } from './trace';
 import classNames from "classnames";
 import "./GrammarView.css";
 import "./SourceView.css";
@@ -30,6 +31,7 @@ class SourceViewNode extends React.Component {
 
     const formattedSpan = trace ? formatSpan(trace) : null;
     const isHighlightedSpan = formattedSpan === highlightedSpan;
+    const cursorWithin = trace ? cursorIsWithin(trace) : false;
 
     function highlightWrapper(element) {
       return (
@@ -96,13 +98,21 @@ class SourceViewNode extends React.Component {
       }
       case "KEYWORD":
         return highlightWrapper(
-          <span className="rule-keyword">{rule.Keyword}</span>
+          <span
+            className="rule-keyword"
+            style={{ textDecoration: cursorWithin ? "underline" : "none" }}
+          >
+            {rule.Keyword}
+          </span>
         );
       case "REGEX":
         return highlightWrapper(
           <span
             className="rule-regex"
-            style={{ whiteSpace: "pre" }}
+            style={{
+              whiteSpace: "pre",
+              textDecoration: cursorWithin ? "underline" : "none",
+            }}
           >
             {trace.RegexMatch}
           </span>
