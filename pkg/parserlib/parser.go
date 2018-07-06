@@ -165,6 +165,7 @@ func (ps *ParserState) runRule(cursor int) (*TraceTree, *ParseError) {
 		advancement := len(remainingInput) - len(trimmed)
 		minimalTrace.EndPos = minimalTrace.StartPos.MoreOnLine(advancement)
 		if advancement == len(tRule.value) {
+			minimalTrace.CursorPos = cursor
 			return minimalTrace, nil
 		}
 		return minimalTrace, frame.Errorf(nil, `expected "%s"; got "%s"`, tRule.value, remainingInput)

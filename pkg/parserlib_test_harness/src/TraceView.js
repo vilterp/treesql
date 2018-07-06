@@ -169,11 +169,22 @@ class TraceNode extends React.Component {
     }
 
     const rule = grammar.RulesByID[trace.RuleID];
+    const within = ["KEYWORD", "REGEX"].includes(rule.RuleType) && cursorIsWithin(trace);
+
+
     return (
-      <div>
+      <div style={{ textDecoration: within ? "underline" : "none" }}>
         {this.renderInternal(rule, trace)} ({trace.CursorPos})
       </div>
     );
   }
 
+}
+
+function length(trace) {
+  return trace.EndPos.Offset - trace.StartPos.Offset;
+}
+
+function cursorIsWithin(trace) {
+  return trace.CursorPos >= 0 && trace.CursorPos < length(trace);
 }

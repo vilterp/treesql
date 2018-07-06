@@ -4,10 +4,7 @@ import { TraceView } from './TraceView';
 import { GrammarView } from './GrammarView';
 import { SourceView } from './SourceView';
 
-const INITIAL_QUERY = `map(blog_posts, (post) => {
-  id: post.id,
-  title: post.title
-})`;
+const INITIAL_QUERY = `foo()`;
 
 // TODO: bundle all these "onhighlightX" and "highlightedX" props to a
 // highlightContext or something
