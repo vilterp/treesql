@@ -142,7 +142,7 @@ function textWithCursor(text, pos) {
   return (
     <span>
       {text.substr(0, pos)}
-      <span className="cursor">|</span>
+      <div className="cursor" />
       {text.substr(pos)}
     </span>
   );

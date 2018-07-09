@@ -10,10 +10,10 @@ export class TraceView extends React.Component {
   render() {
     return (
       <div className="trace-view">
-        <TraceNode {...this.props} />
         {this.props.error
-          ? <p>Error: {this.props.error}</p>
+          ? <p style={{ color: "red" }}>Error: {this.props.error}</p>
           : null}
+        <TraceNode {...this.props} />
       </div>
     )
   }
@@ -174,7 +174,7 @@ class TraceNode extends React.Component {
 
     return (
       <div style={{ textDecoration: within ? "underline" : "none" }}>
-        {this.renderInternal(rule, trace)} ({trace.CursorPos})
+        {this.renderInternal(rule, trace)}
       </div>
     );
   }
