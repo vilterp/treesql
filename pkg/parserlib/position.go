@@ -44,3 +44,8 @@ func (pos *Position) ShowInContext(input string) string {
 		strings.Repeat(" ", pos.Col-1)+"^",
 	)
 }
+
+type SourceSpan struct {
+	From Position
+	To   Position
+}

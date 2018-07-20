@@ -3,6 +3,10 @@ package main
 import (
 	"flag"
 
+	"fmt"
+	"log"
+	"net/http"
+
 	p "github.com/vilterp/treesql/pkg/parserlib"
 	"github.com/vilterp/treesql/pkg/parserlib_test_harness"
 )
@@ -43,5 +47,18 @@ func main() {
 		panic(err)
 	}
 
-	parserlib_test_harness.NewServer(*port, g, "select")
+	language := p.Language{
+		Grammar: g,
+		ParseTreeToPSI: func(tt *p.TraceTree) p.PSINode {
+			return nil
+		},
+	}
+
+	server := parserlib_test_harness.NewServer(language, "select")
+
+	addr := fmt.Sprintf(":%s", *port)
+	log.Printf("serving on %s", addr)
+	if err := http.ListenAndServe(addr, server); err != nil {
+		log.Fatal(err)
+	}
 }

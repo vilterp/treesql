@@ -17,6 +17,7 @@ type completionsRequest struct {
 
 type completionsResponse struct {
 	Trace       *parserlib.TraceTree
+	PSITree     parserlib.PSINode
 	Completions []string
 	Err         string
 }
@@ -24,83 +25,100 @@ type completionsResponse struct {
 // TODO: use some logging middleware
 // which prints statuses, urls, and times
 
-func NewServer(port string, gram *parserlib.Grammar, startRule string) {
-	gramSerialized := gram.Serialize()
+type server struct {
+	language          parserlib.Language
+	serializedGrammar *parserlib.SerializedGrammar
+	startRule         string
+
+	mux *http.ServeMux
+}
+
+func NewServer(l parserlib.Language, startRule string) *server {
+	mux := http.NewServeMux()
 
 	// Serve UI static files.
-
-	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("/index.html")
 		http.ServeFile(w, r, "pkg/parserlib_test_harness/build/index.html")
 	})
 
 	fileServer := http.FileServer(http.Dir("pkg/parserlib_test_harness/build/static"))
-	http.Handle("/static/", http.StripPrefix("/static/", fileServer))
+	mux.Handle("/static/", http.StripPrefix("/static/", fileServer))
+
+	server := &server{
+		language:          l,
+		startRule:         startRule,
+		serializedGrammar: l.Grammar.Serialize(),
+		mux:               mux,
+	}
 
 	// Serve grammar and completions.
+	http.HandleFunc("/grammar", server.handleGrammar)
+	http.HandleFunc("/completions", server.handleCompletions)
 
-	http.HandleFunc("/grammar", func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		if err := json.NewEncoder(w).Encode(&gramSerialized); err != nil {
-			log.Println("err encoding json:", err)
-		}
-		end := time.Now()
-		log.Println("/grammar responded in", end.Sub(start))
-	})
+	return server
+}
 
-	http.HandleFunc("/completions", func(w http.ResponseWriter, r *http.Request) {
-		start := time.Now()
-		w.Header().Set("Access-Control-Allow-Origin", "*")
-		if r.Method != "POST" {
-			log.Println("/completions: expecting GET")
-			http.Error(w, "expecting GET", 400)
-			return
-		}
-		// Decode request.
-		decoder := json.NewDecoder(r.Body)
-		defer r.Body.Close()
-		var cr completionsRequest
-		err := decoder.Decode(&cr)
-		if err != nil {
-			log.Printf("/completions error: %v", err)
-			http.Error(w, fmt.Sprintf("error parsing request body: %v", err), 400)
-			return
-		}
+func (s *server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.mux.ServeHTTP(w, r)
+}
 
-		var resp completionsResponse
+func (s *server) handleGrammar(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if err := json.NewEncoder(w).Encode(s.serializedGrammar); err != nil {
+		log.Println("err encoding json:", err)
+	}
+	end := time.Now()
+	log.Println("/grammar responded in", end.Sub(start))
+}
 
-		// Parse it.
-		trace, err := gram.Parse(startRule, cr.Input, cr.CursorPos)
-		resp.Trace = trace
+func (s *server) handleCompletions(w http.ResponseWriter, r *http.Request) {
+	start := time.Now()
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	if r.Method != "POST" {
+		log.Println("/completions: expecting GET")
+		http.Error(w, "expecting GET", 400)
+		return
+	}
+	// Decode request.
+	decoder := json.NewDecoder(r.Body)
+	defer r.Body.Close()
+	var cr completionsRequest
+	err := decoder.Decode(&cr)
+	if err != nil {
+		log.Printf("/completions error: %v", err)
+		http.Error(w, fmt.Sprintf("error parsing request body: %v", err), 400)
+		return
+	}
+
+	var resp completionsResponse
+
+	// Parse it.
+	trace, err := s.language.Grammar.Parse(s.startRule, cr.Input, cr.CursorPos)
+	resp.Trace = trace
+	if err != nil {
+		resp.Err = err.Error()
+		log.Println("/completions parse error: ", err.Error())
+	}
+	if trace != nil {
+		// Get PSI tree.
+		resp.PSITree = s.language.ParseTreeToPSI(trace)
+		// Get completions.
+		completions, err := trace.GetCompletions()
 		if err != nil {
 			resp.Err = err.Error()
-			log.Println("/completions parse error: ", err.Error())
+			log.Println("/completions completions error: ", err.Error())
 		}
-		if trace != nil {
-			// Get completions.
-			completions, err := trace.GetCompletions()
-			if err != nil {
-				resp.Err = err.Error()
-				log.Println("/completions completions error: ", err.Error())
-			}
-			resp.Completions = completions
-		}
-
-		// Respond.
-		if err := json.NewEncoder(w).Encode(&resp); err != nil {
-			log.Println("err encoding json:", err)
-			http.Error(w, err.Error(), 500)
-		}
-
-		end := time.Now()
-		log.Println("/completions responded in", end.Sub(start))
-	})
-
-	// Start 'er up.
-	addr := fmt.Sprintf(":%s", port)
-	log.Printf("serving on %s", addr)
-	if err := http.ListenAndServe(addr, nil); err != nil {
-		log.Fatal(err)
+		resp.Completions = completions
 	}
+
+	// Respond.
+	if err := json.NewEncoder(w).Encode(&resp); err != nil {
+		log.Println("err encoding json:", err)
+		http.Error(w, err.Error(), 500)
+	}
+
+	end := time.Now()
+	log.Println("/completions responded in", end.Sub(start))
 }
