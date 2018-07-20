@@ -53,8 +53,8 @@ func NewServer(l parserlib.Language, startRule string) *server {
 	}
 
 	// Serve grammar and completions.
-	http.HandleFunc("/grammar", server.handleGrammar)
-	http.HandleFunc("/completions", server.handleCompletions)
+	mux.HandleFunc("/grammar", server.handleGrammar)
+	mux.HandleFunc("/completions", server.handleCompletions)
 
 	return server
 }
