@@ -13,6 +13,7 @@ type Grammar struct {
 
 	idForRule  map[Rule]RuleID
 	ruleForID  map[RuleID]Rule
+	nameForID  map[RuleID]string
 	nextRuleID RuleID
 }
 
@@ -21,19 +22,21 @@ func NewGrammar(rules map[string]Rule) (*Grammar, error) {
 		rules:     rules,
 		idForRule: make(map[Rule]RuleID),
 		ruleForID: make(map[RuleID]Rule),
+		nameForID: make(map[RuleID]string),
 		// prevent zero value from accidentally making things work that shouldn't
 		nextRuleID: 1,
 	}
 	if err := g.validate(); err != nil {
 		return nil, err
 	}
-	for _, rule := range rules {
-		g.assignRuleIDs(rule)
+	for name, rule := range rules {
+		id := g.assignRuleIDs(rule)
+		g.nameForID[id] = name
 	}
 	return g, nil
 }
 
-func (g *Grammar) assignRuleIDs(r Rule) {
+func (g *Grammar) assignRuleIDs(r Rule) RuleID {
 	id := g.nextRuleID
 	g.idForRule[r] = id
 	g.ruleForID[id] = r
@@ -41,6 +44,7 @@ func (g *Grammar) assignRuleIDs(r Rule) {
 	for _, child := range r.Children() {
 		g.assignRuleIDs(child)
 	}
+	return id
 }
 
 func (g *Grammar) validate() error {
@@ -58,6 +62,10 @@ func (g *Grammar) String() string {
 		rulesStrings = append(rulesStrings, fmt.Sprintf("%s: %s", name, rule))
 	}
 	return strings.Join(rulesStrings, "\n")
+}
+
+func (g *Grammar) NameForID(id RuleID) string {
+	return g.nameForID[id]
 }
 
 type Rule interface {

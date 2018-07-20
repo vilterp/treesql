@@ -49,3 +49,7 @@ type SourceSpan struct {
 	From Position
 	To   Position
 }
+
+func (ss SourceSpan) Length() int {
+	return ss.To.Offset - ss.From.Offset
+}

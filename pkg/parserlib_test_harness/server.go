@@ -17,7 +17,7 @@ type completionsRequest struct {
 
 type completionsResponse struct {
 	Trace       *parserlib.TraceTree
-	PSITree     parserlib.PSINode
+	PSITree     *parserlib.SerializedPSINode
 	Completions []string
 	Err         string
 }
@@ -26,14 +26,13 @@ type completionsResponse struct {
 // which prints statuses, urls, and times
 
 type server struct {
-	language          parserlib.Language
+	language          *parserlib.Language
 	serializedGrammar *parserlib.SerializedGrammar
-	startRule         string
 
 	mux *http.ServeMux
 }
 
-func NewServer(l parserlib.Language, startRule string) *server {
+func NewServer(l *parserlib.Language) *server {
 	mux := http.NewServeMux()
 
 	// Serve UI static files.
@@ -47,7 +46,6 @@ func NewServer(l parserlib.Language, startRule string) *server {
 
 	server := &server{
 		language:          l,
-		startRule:         startRule,
 		serializedGrammar: l.Grammar.Serialize(),
 		mux:               mux,
 	}
@@ -95,7 +93,7 @@ func (s *server) handleCompletions(w http.ResponseWriter, r *http.Request) {
 	var resp completionsResponse
 
 	// Parse it.
-	trace, err := s.language.Grammar.Parse(s.startRule, cr.Input, cr.CursorPos)
+	trace, err := s.language.Grammar.Parse(cr.Input, cr.CursorPos)
 	resp.Trace = trace
 	if err != nil {
 		resp.Err = err.Error()
@@ -103,7 +101,7 @@ func (s *server) handleCompletions(w http.ResponseWriter, r *http.Request) {
 	}
 	if trace != nil {
 		// Get PSI tree.
-		resp.PSITree = s.language.ParseTreeToPSI(trace)
+		resp.PSITree = parserlib.SerializePSINode(s.language.ParseTreeToPSI(trace))
 		// Get completions.
 		completions, err := trace.GetCompletions()
 		if err != nil {

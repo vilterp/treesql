@@ -7,8 +7,8 @@ import (
 	"log"
 	"net/http"
 
-	p "github.com/vilterp/treesql/pkg/parserlib"
 	"github.com/vilterp/treesql/pkg/parserlib_test_harness"
+	"github.com/vilterp/treesql/pkg/treesql_lang"
 )
 
 var port = flag.String("port", "9999", "port to listen on")
@@ -42,19 +42,8 @@ func main() {
 	//if err != nil {
 	//	panic(err)
 	//}
-	g, err := p.TestTreeSQLGrammar()
-	if err != nil {
-		panic(err)
-	}
 
-	language := p.Language{
-		Grammar: g,
-		ParseTreeToPSI: func(tt *p.TraceTree) p.PSINode {
-			return nil
-		},
-	}
-
-	server := parserlib_test_harness.NewServer(language, "select")
+	server := parserlib_test_harness.NewServer(treesql_lang.Language)
 
 	addr := fmt.Sprintf(":%s", *port)
 	log.Printf("serving on %s", addr)

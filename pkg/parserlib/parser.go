@@ -29,15 +29,18 @@ type ParserStackFrame struct {
 	rule Rule
 }
 
-func (g *Grammar) Parse(startRuleName string, input string, cursor int) (*TraceTree, error) {
+// TODO: find way around this (need to have ref at bottom of trace tree)
+const StartRuleName = "__start__"
+
+func (g *Grammar) Parse(input string, cursor int) (*TraceTree, error) {
 	ps := ParserState{
 		grammar: g,
 		input:   input,
 	}
 	initPos := Position{Line: 1, Col: 1, Offset: 0}
-	startRule, ok := ps.grammar.rules[startRuleName]
+	startRule, ok := ps.grammar.rules[StartRuleName]
 	if !ok {
-		return nil, fmt.Errorf("nonexistent start rule: %s", startRuleName)
+		return nil, fmt.Errorf("nonexistent start rule: %s", StartRuleName)
 	}
 	traceTree, err := ps.callRule(startRule, initPos, cursor)
 	if err != nil {
@@ -140,7 +143,7 @@ func (ps *ParserState) runRule(cursor int) (*TraceTree, *ParseError) {
 		for itemIdx, item := range tRule.items {
 			trace.AtItemIdx = itemIdx
 			itemTrace, err := ps.callRule(item, frame.pos, cursor-advancement)
-			advancement += itemTrace.Length()
+			advancement += itemTrace.GetSpan().Length()
 			trace.EndPos = itemTrace.EndPos
 			trace.ItemTraces[itemIdx] = itemTrace
 			if err != nil {

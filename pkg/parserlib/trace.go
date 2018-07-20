@@ -140,8 +140,11 @@ func (tt *TraceTree) OptWhitespaceSurroundRes() *TraceTree {
 	return whitespaceSeq.ItemTraces[1]
 }
 
-func (tt *TraceTree) Length() int {
-	return tt.EndPos.Offset - tt.StartPos.Offset
+func (tt *TraceTree) GetSpan() SourceSpan {
+	return SourceSpan{
+		From: tt.StartPos,
+		To:   tt.EndPos,
+	}
 }
 
 const (
