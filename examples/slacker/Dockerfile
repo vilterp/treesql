@@ -2,9 +2,9 @@ FROM node:6.10
 
 COPY . slacker
 WORKDIR slacker
-RUN npm install
-RUN npm run build
+RUN yarn --no-progress
+RUN yarn build
 
-RUN npm install -g http-server
+RUN yarn global add http-server
 
 CMD http-server build -p $PORT -d false
