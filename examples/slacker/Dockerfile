@@ -7,6 +7,4 @@ RUN npm run build
 
 RUN npm install -g http-server
 
-EXPOSE 8080
-
-CMD http-server build -p 8080 -d false
+CMD http-server build -p $PORT -d false
