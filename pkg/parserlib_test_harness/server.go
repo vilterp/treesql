@@ -30,10 +30,10 @@ func NewServer(port string, gram *parserlib.Grammar, startRule string) {
 
 	http.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
 		log.Println("/index.html")
-		http.ServeFile(w, r, "package/parserlib_test_harness/build/index.html")
+		http.ServeFile(w, r, "pkg/parserlib_test_harness/build/index.html")
 	})
 
-	fileServer := http.FileServer(http.Dir("package/parserlib_test_harness/build/static"))
+	fileServer := http.FileServer(http.Dir("pkg/parserlib_test_harness/build/static"))
 	http.Handle("/static/", http.StripPrefix("/static/", fileServer))
 
 	// Serve grammar and completions.

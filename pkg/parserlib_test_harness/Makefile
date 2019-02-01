@@ -1,7 +1,4 @@
-all: ui server
-
-server:
-	go build server.go
+all: ui
 
 ui:
 	yarn build
@@ -9,4 +6,4 @@ ui:
 deps:
 	yarn
 
-.PHONY: ui server deps
+.PHONY: ui deps

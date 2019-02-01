@@ -1,7 +1,10 @@
 all: treesql-server webui treesql-shell
 
 start:
-	go run server/server.go
+	go run cmd/server/server.go
+
+shell:
+	go run cmd/shell/shell.go
 
 start-dev-server:
 	cd webui && PORT=9001 npm run start

@@ -4,10 +4,9 @@ import (
 	"encoding/json"
 	"flag"
 	"fmt"
+	"log"
 	"os"
 	"strings"
-
-	"log"
 
 	"github.com/chzyer/readline"
 	"github.com/robertkrimen/isatty"
