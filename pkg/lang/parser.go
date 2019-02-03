@@ -2,7 +2,6 @@ package lang
 
 import (
 	"fmt"
-
 	"strconv"
 
 	p "github.com/vilterp/treesql/pkg/parserlib"

@@ -39,7 +39,7 @@ func TestParser(t *testing.T) {
 	}
 
 	for idx, testCase := range cases {
-		resExpr, err := Parse(testCase)
+		resExpr, err := Parse(testCase, 0)
 		if err != nil {
 			t.Errorf("case %d: `%s` err: %v", idx, testCase, err)
 			continue

@@ -29,18 +29,15 @@ type ParserStackFrame struct {
 	rule Rule
 }
 
-// TODO: find way around this (need to have ref at bottom of trace tree)
-const StartRuleName = "__start__"
-
-func (g *Grammar) Parse(input string, cursor int) (*TraceTree, error) {
+func (g *Grammar) Parse(startRuleName string, input string, cursor int) (*TraceTree, error) {
 	ps := ParserState{
 		grammar: g,
 		input:   input,
 	}
 	initPos := Position{Line: 1, Col: 1, Offset: 0}
-	startRule, ok := ps.grammar.rules[StartRuleName]
+	startRule, ok := ps.grammar.rules[startRuleName]
 	if !ok {
-		return nil, fmt.Errorf("nonexistent start rule: %s", StartRuleName)
+		return nil, fmt.Errorf("nonexistent start rule: %s", startRuleName)
 	}
 	traceTree, err := ps.callRule(startRule, initPos, cursor)
 	if err != nil {
