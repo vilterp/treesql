@@ -13,7 +13,6 @@ func init() {
 }
 
 var grammarRules = map[string]p.Rule{
-	p.StartRuleName: p.Ref("select"),
 	"select": p.Sequence([]p.Rule{
 		p.Choice([]p.Rule{
 			p.Keyword("ONE"),

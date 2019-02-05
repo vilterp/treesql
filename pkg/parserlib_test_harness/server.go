@@ -93,7 +93,7 @@ func (s *server) handleCompletions(w http.ResponseWriter, r *http.Request) {
 	var resp completionsResponse
 
 	// Parse it.
-	trace, err := s.language.Grammar.Parse(cr.Input, cr.CursorPos)
+	trace, err := s.language.Grammar.Parse("select", cr.Input, cr.CursorPos)
 	resp.Trace = trace
 	if err != nil {
 		resp.Err = err.Error()

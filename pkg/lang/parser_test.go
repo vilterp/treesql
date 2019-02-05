@@ -27,7 +27,7 @@ func TestParser(t *testing.T) {
 		// lambda
 		// TODO: pretty-printer not printing types, so we can't parse
 		// 'em here
-		//`(): int => 2`,
+		`(): int => 2`,
 		//`(): int => plus(foo, bar)`,
 		//`(foo: int, bar: int): int => plus(foo, bar)`,
 		// TODO: handle type aliases... ugh

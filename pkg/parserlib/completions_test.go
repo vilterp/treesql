@@ -79,7 +79,11 @@ func TestCompletions(t *testing.T) {
 		//},
 	}
 	for caseIdx, testCase := range cases {
-		completions, err := testCase.grammar.GetCompletions(testCase.rule, testCase.input, 0)
+		tree, err := testCase.grammar.Parse(testCase.rule, testCase.input, 0)
+		if err != nil {
+			t.Fatal(err)
+		}
+		completions, err := tree.GetCompletions()
 		if err != nil {
 			t.Fatal(err)
 		}

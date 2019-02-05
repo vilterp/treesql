@@ -1,7 +1,9 @@
-package parserlib
+package treesql_lang
 
 import (
 	"testing"
+
+	"github.com/vilterp/treesql/pkg/parserlib"
 )
 
 // So, what does the parser actually return?
@@ -12,10 +14,7 @@ import (
 
 func TestParse(t *testing.T) {
 	// TODO: DRY this up
-	tsg, err := TestTreeSQLGrammar()
-	if err != nil {
-		t.Fatal(err)
-	}
+	tsg := Grammar
 
 	cases := []struct {
 		rule  string
@@ -78,7 +77,7 @@ MANY 09notatable {col}
 		},
 	}
 	for caseIdx, testCase := range cases {
-		_, err := tsg.Parse(testCase.rule, testCase.input)
+		_, err := tsg.Parse(testCase.rule, testCase.input, 0)
 		// TODO: I love you traces; will get back to you when I do completion
 		if err == nil {
 			if testCase.error != "" {
@@ -87,7 +86,7 @@ MANY 09notatable {col}
 			continue
 		}
 		switch parseErr := err.(type) {
-		case *ParseError:
+		case *parserlib.ParseError:
 			inContext := parseErr.ShowInContext()
 			if inContext != testCase.error {
 				t.Errorf(`case %d: expected err "%s"; got "%s"`, caseIdx, testCase.error, inContext)
@@ -101,10 +100,7 @@ MANY 09notatable {col}
 }
 
 func BenchmarkParse(b *testing.B) {
-	tsg, err := TestTreeSQLGrammar()
-	if err != nil {
-		b.Fatal(err)
-	}
+	tsg := Grammar
 
 	b.ResetTimer()
 	for i := 0; i < b.N; i++ {
@@ -115,7 +111,7 @@ func BenchmarkParse(b *testing.B) {
 		id,
 		body
 	}
-}`)
+}`, 0)
 		if err != nil {
 			b.Fatal(err)
 		}
