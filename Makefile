@@ -7,17 +7,17 @@ start-dev-server:
 	cd webui && PORT=9001 npm run start
 
 deps:
-	godep restore
+	go mod download
 	cd webui && npm install
 
 webui:
 	cd webui && npm run build
 
 treesql-server:
-	godep go build -v -o treesql-server cmd/server/server.go
+	go build -v -o treesql-server cmd/server/server.go
 
 treesql-shell:
-	godep go build -v -o treesql-shell cmd/shell/shell.go
+	go build -v -o treesql-shell cmd/shell/shell.go
 
 clean:
 	rm -r treesql-server
