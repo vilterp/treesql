@@ -6,6 +6,7 @@ COPY . .
 RUN go mod download
 
 RUN make treesql-server
+RUN make test
 
 EXPOSE 9000
 VOLUME ["/data"]
