@@ -1,4 +1,4 @@
-# TreeSQL [![Build Status](https://travis-ci.org/vilterp/treesql.svg?branch=master)](https://travis-ci.org/vilterp/treesql)
+# TreeSQL
 
 ![logo](logo.svg)
 
