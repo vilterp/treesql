@@ -3,7 +3,7 @@ FROM golang:1.12
 WORKDIR /src
 
 COPY . .
-RUN make deps
+RUN go mod download
 
 RUN make treesql-server
 
