@@ -33,13 +33,17 @@ type Query struct {
 	isOne     bool
 	span      p.SourceSpan
 
-	selections []Selection
+	selections []*Selection
 }
 
 var _ p.PSINode = &Query{}
 
 func (q *Query) GetChildren() []p.PSINode {
-	return []p.PSINode{}
+	out := make([]p.PSINode, len(q.selections))
+	for i, sel := range q.selections {
+		out[i] = sel
+	}
+	return out
 }
 
 func (q *Query) GetName() string {

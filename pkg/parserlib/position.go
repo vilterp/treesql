@@ -15,7 +15,7 @@ func (pos *Position) String() string {
 	return fmt.Sprintf("line %d, col %d", pos.Line, pos.Col)
 }
 
-func (pos *Position) CompactString() string {
+func (pos Position) CompactString() string {
 	return fmt.Sprintf("%d:%d", pos.Line, pos.Col)
 }
 
