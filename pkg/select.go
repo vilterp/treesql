@@ -48,7 +48,11 @@ func (db *Database) validateSelect(query *Select, tableAbove *string) error {
 	}
 	// do columns exist / are subqueries valid?
 	// TODO: dedup
-	for _, selection := range query.Selections {
+	for _, starOrSelection := range query.Selections {
+		if starOrSelection.Star {
+			XXXX
+		}
+		selection := starOrSelection.Selection
 		if selection.SubSelect != nil {
 			err := db.validateSelect(selection.SubSelect, &query.Table)
 			if err != nil {

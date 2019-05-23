@@ -1,4 +1,4 @@
-package treesql
+package parse
 
 import (
 	"github.com/alecthomas/participle"
@@ -57,17 +57,22 @@ type Update struct {
 }
 
 type Select struct {
-	Many       bool         `( @"MANY"`
-	One        bool         `| @"ONE" )`
-	Table      string       `@Ident`
-	Where      *Where       `[ "WHERE" @@ ]`
-	Selections []*Selection `"{" @@ { "," @@ } "}"` // TODO: * for all columns
-	Live       bool         `[ @"LIVE" ]`           // would put this at the beginning but it seems to cause indeterminancy
+	Many       bool               `( @"MANY"`
+	One        bool               `| @"ONE" )`
+	Table      string             `@Ident`
+	Where      *Where             `[ "WHERE" @@ ]`
+	Selections []*SelectionOrStar `"{" @@ { "," @@ } "}"` // TODO: * for all columns
+	Live       bool               `[ @"LIVE" ]`           // would put this at the beginning but it seems to cause indeterminancy
 }
 
 type Where struct {
 	ColumnName string `@Ident "="`
 	Value      string `@String`
+}
+
+type SelectionOrStar struct {
+	Star      bool       `"*"`
+	Selection *Selection "| @@"
 }
 
 type Selection struct {

@@ -1,4 +1,4 @@
-package treesql
+package parse
 
 import (
 	"bytes"
@@ -63,10 +63,15 @@ func (n *Select) Format() string {
 		buf.WriteString(fmt.Sprintf(`%#v`, n.Where.Value))
 	}
 	buf.WriteString(" { ")
-	for idx, selection := range n.Selections {
+	for idx, starOrSelection := range n.Selections {
 		if idx > 0 {
 			buf.WriteString(", ")
 		}
+		if starOrSelection.Star {
+			buf.WriteString("*")
+			continue
+		}
+		selection := starOrSelection.Selection
 		buf.WriteString(selection.Name)
 		if selection.SubSelect != nil {
 			buf.WriteString(": ")

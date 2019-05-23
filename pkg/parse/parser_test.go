@@ -1,4 +1,4 @@
-package treesql
+package parse
 
 import (
 	"testing"
