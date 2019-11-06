@@ -1,12 +1,10 @@
-FROM golang:1.12
+FROM avcosystems/golang-node:1.13.0
 
 WORKDIR /src
 
 COPY . .
-RUN go mod download
-
-RUN make treesql-server
-RUN make test
+RUN make deps
+RUN make all
 
 EXPOSE 9000
 VOLUME ["/data"]
