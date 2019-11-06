@@ -1,0 +1,45 @@
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: treesql
+spec:
+  selector:
+    matchLabels:
+      app: treesql # has to match .spec.template.metadata.labels
+  serviceName: "treesql"
+  replicas: 1 # by default is 1
+  template:
+    metadata:
+      labels:
+        app: treesql # has to match .spec.selector.matchLabels
+    spec:
+      containers:
+        - name: treesql
+          image: vilterp/treesql
+          ports:
+            - containerPort: 9000
+              name: web
+          volumeMounts:
+            - name: data
+              mountPath: /data
+  volumeClaimTemplates:
+    - metadata:
+        name: data
+      spec:
+        # storageClassName: "my-storage-class"
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10G
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: treesql
+spec:
+  type: LoadBalancer
+  ports:
+    - port: 9000
+  selector:
+    app: treesql
