@@ -2,8 +2,12 @@ package lang
 
 import (
 	"fmt"
+	"hash/fnv"
 	"sort"
+	"strconv"
+	"strings"
 
+	"github.com/vilterp/treesql/pkg/lang/typecheck"
 	pp "github.com/vilterp/treesql/pkg/prettyprint"
 )
 
@@ -11,6 +15,18 @@ type Expr interface {
 	Evaluate(*interpreter) (Value, error)
 	GetType(*TypeScope) (Type, error)
 	Format() pp.Doc
+	Hashable() HashableExpr
+}
+
+type HashableExpr string
+
+func (e HashableExpr) Hash() typecheck.Hash {
+	h := fnv.New64()
+	_, err := h.Write([]byte(e))
+	if err != nil {
+		panic(err)
+	}
+	return typecheck.Hash(h.Sum64())
 }
 
 // Int
@@ -37,12 +53,17 @@ func (e *EIntLit) GetType(*TypeScope) (Type, error) {
 	return TInt, nil
 }
 
+func (e *EIntLit) Hashable() HashableExpr {
+	return HashableExpr(e.Format().String())
+}
+
 // String
 
 type EStringLit string
 
-var eEmptyStr = EStringLit("")
 var _ Expr = &eEmptyStr
+
+var eEmptyStr = EStringLit("")
 
 func NewStringLit(s string) *EStringLit {
 	val := EStringLit(s)
@@ -54,11 +75,15 @@ func (e *EStringLit) Evaluate(_ *interpreter) (Value, error) {
 }
 
 func (e *EStringLit) Format() pp.Doc {
-	return pp.Textf("%#v", *e)
+	return pp.Text(strconv.Quote(string(*e)))
 }
 
 func (e *EStringLit) GetType(*TypeScope) (Type, error) {
 	return TString, nil
+}
+
+func (e *EStringLit) Hashable() HashableExpr {
+	return HashableExpr(strconv.Quote(string(*e)))
 }
 
 // Var
@@ -87,6 +112,10 @@ func (e *EVar) GetType(scope *TypeScope) (Type, error) {
 		return nil, err
 	}
 	return typ, nil
+}
+
+func (e *EVar) Hashable() HashableExpr {
+	return HashableExpr(e.name)
 }
 
 // Record
@@ -126,17 +155,8 @@ func (rl *ERecordLit) Format() pp.Doc {
 		return pp.Text("{}")
 	}
 
-	// Sort keys
-	keys := make([]string, len(rl.exprs))
-	idx := 0
-	for k := range rl.exprs {
-		keys[idx] = k
-		idx++
-	}
-	sort.Strings(keys)
-
 	kvDocs := make([]pp.Doc, len(rl.exprs))
-	for idx, key := range keys {
+	for idx, key := range rl.sortedKeys() {
 		kvDocs[idx] = pp.Seq([]pp.Doc{
 			pp.Text(key),
 			pp.Text(": "),
@@ -150,6 +170,18 @@ func (rl *ERecordLit) Format() pp.Doc {
 		pp.Newline,
 		pp.Text("}"),
 	})
+}
+
+func (rl *ERecordLit) sortedKeys() []string {
+	// Sort keys
+	keys := make([]string, len(rl.exprs))
+	idx := 0
+	for k := range rl.exprs {
+		keys[idx] = k
+		idx++
+	}
+	sort.Strings(keys)
+	return keys
 }
 
 func (rl *ERecordLit) GetType(scope *TypeScope) (Type, error) {
@@ -168,6 +200,16 @@ func (rl *ERecordLit) GetType(scope *TypeScope) (Type, error) {
 	}, nil
 }
 
+func (rl *ERecordLit) Hashable() HashableExpr {
+	var docs []string
+	for _, key := range rl.sortedKeys() {
+		val := rl.exprs[key]
+		docs = append(docs, fmt.Sprintf(`"%s":%v`, key, val.Hashable().Hash()))
+	}
+	strs := strings.Join(docs, ",")
+	return HashableExpr(fmt.Sprintf("{%s}", strs))
+}
+
 // Lambda
 
 type Param struct {
@@ -182,6 +224,14 @@ type ELambda struct {
 }
 
 var _ Expr = &ELambda{}
+
+func NewELambda(params paramList, body Expr, retType Type) *ELambda {
+	return &ELambda{
+		params:  params,
+		body:    body,
+		retType: retType,
+	}
+}
 
 func (l *ELambda) Evaluate(interp *interpreter) (Value, error) {
 	parentTypeScope := interp.stackTop.scope.toTypeScope()
@@ -224,12 +274,11 @@ func (l *ELambda) GetType(s *TypeScope) (Type, error) {
 	}, nil
 }
 
-func NewELambda(params paramList, body Expr, retType Type) *ELambda {
-	return &ELambda{
-		params:  params,
-		body:    body,
-		retType: retType,
-	}
+func (l *ELambda) Hashable() HashableExpr {
+	return HashableExpr(fmt.Sprintf(
+		"(%s) => %s",
+		l.params.Format().String(), l.body.Hashable(),
+	))
 }
 
 // Func Call
@@ -238,6 +287,8 @@ type EFuncCall struct {
 	funcName string
 	args     []Expr
 }
+
+var _ Expr = &EFuncCall{}
 
 // TODO: remove all these constructors once a parser exists
 func NewFuncCall(name string, args []Expr) *EFuncCall {
@@ -328,6 +379,15 @@ func (fc *EFuncCall) GetType(scope *TypeScope) (Type, error) {
 	return subsType, err
 }
 
+func (fc *EFuncCall) Hashable() HashableExpr {
+	argDocs := make([]string, len(fc.args))
+	for idx, arg := range fc.args {
+		argDocs[idx] = fmt.Sprintf("%d", arg.Hashable().Hash())
+	}
+
+	return HashableExpr(fmt.Sprintf("%s(%s)", fc.funcName, strings.Join(argDocs, ",")))
+}
+
 // Member Access
 
 type EMemberAccess struct {
@@ -387,6 +447,9 @@ func (ma *EMemberAccess) GetType(scope *TypeScope) (Type, error) {
 	}
 }
 
+func (ma *EMemberAccess) Hashable() HashableExpr {
+	return HashableExpr(fmt.Sprintf("%v.%s", ma.record.Hashable(), ma.member))
+}
+
 // TODO: Let binding
-// TODO: if
 // TODO: case (ayyyy)

@@ -19,7 +19,7 @@ require (
 	github.com/prometheus/common v0.0.0-20171104095907-e3fb1a1acd76 // indirect
 	github.com/prometheus/procfs v0.0.0-20171017214025-a6e9df898b13 // indirect
 	github.com/robertkrimen/isatty v0.0.0-20130325233602-e10c441e3f8c
-	github.com/stretchr/testify v1.3.0 // indirect
+	github.com/stretchr/testify v1.3.0
 	golang.org/x/exp v0.0.0-20170423001816-239d448f23a0 // indirect
 	golang.org/x/sync v0.0.0-20190412183630-56d357773e84 // indirect
 	golang.org/x/sys v0.0.0-20180224232135-f6cff0780e54 // indirect
