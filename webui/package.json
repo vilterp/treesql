@@ -4,7 +4,7 @@
   "private": true,
   "dependencies": {
     "classnames": "^2.2.5",
-    "lodash": "^4.17.4",
+    "lodash": "^4.17.21",
     "object-path-immutable": "^0.5.1",
     "react": "^15.5.4",
     "react-autocomplete": "^1.5.1",
