@@ -12,6 +12,23 @@ Currently uses [BoltDB](https://github.com/boltdb/bolt) as a storage layer.
 
 [Docker Hub](https://hub.docker.com/r/vilterp/treesql/)
 
+## Syntax
+
+```sql
+MANY blog_posts {
+  id,
+  title,
+  body,
+  comments: MANY comments {
+    id,
+    author: ONE users {
+      name
+    },
+    body
+  }
+}
+```
+
 ## Example
 
 ```
