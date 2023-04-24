@@ -4,23 +4,26 @@ package treesql
 // this should pretty much be the same API as TreeSQLClient.js
 
 import (
-	"errors"
-
+	"fmt"
 	"log"
 
+	"encoding/json"
+
 	"github.com/gorilla/websocket"
+	"github.com/pkg/errors"
 )
 
 type Client struct {
-	WebSocketConn    *websocket.Conn
+	webSocketConn    *websocket.Conn
 	URL              string
-	NextStatementID  int
-	StatementsToSend chan *StatementRequest
-	IncomingMessages chan *ChannelMessage
-	Channels         map[int]*ClientChannel
+	nextStatementID  int
+	statementsToSend chan *statementRequest
+	incomingMessages chan *BasicChannelMessage
+	channels         map[int]*ClientChannel
+	ServerClosed     chan bool
 }
 
-type StatementRequest struct {
+type statementRequest struct {
 	Statement  string
 	ResultChan chan *ClientChannel
 }
@@ -31,12 +34,13 @@ func NewClient(url string) (*Client, error) {
 		return nil, err
 	}
 	clientConn := &Client{
-		NextStatementID:  0,
-		WebSocketConn:    conn,
+		nextStatementID:  0,
+		webSocketConn:    conn,
 		URL:              url,
-		StatementsToSend: make(chan *StatementRequest),
-		IncomingMessages: make(chan *ChannelMessage),
-		Channels:         map[int]*ClientChannel{},
+		statementsToSend: make(chan *statementRequest),
+		incomingMessages: make(chan *BasicChannelMessage),
+		channels:         map[int]*ClientChannel{},
+		ServerClosed:     make(chan bool),
 	}
 	go clientConn.handleStatements()
 	go clientConn.handleIncoming()
@@ -44,44 +48,74 @@ func NewClient(url string) (*Client, error) {
 }
 
 func (conn *Client) Close() error {
-	return conn.WebSocketConn.Close()
+	return conn.webSocketConn.Close()
 	// idk if it should also do something to the channels
 }
 
 func (conn *Client) handleStatements() {
 	for {
 		select {
-		case request := <-conn.StatementsToSend:
+		case request := <-conn.statementsToSend:
 			channel := &ClientChannel{
 				Conn:        conn,
-				StatementID: conn.NextStatementID,
+				StatementID: conn.nextStatementID,
 				Statement:   request.Statement,
-				Updates:     make(chan *MessageToClient),
+				Updates:     make(chan *BasicMessageToClient),
 			}
-			conn.NextStatementID++
-			conn.Channels[channel.StatementID] = channel
+			conn.nextStatementID++
+			conn.channels[channel.StatementID] = channel
 			request.ResultChan <- channel
-			conn.WebSocketConn.WriteMessage(websocket.TextMessage, []byte(request.Statement))
+			conn.webSocketConn.WriteMessage(websocket.TextMessage, []byte(request.Statement))
 
-		case incomingMsg := <-conn.IncomingMessages:
-			channel := conn.Channels[incomingMsg.StatementID]
+		case incomingMsg := <-conn.incomingMessages:
+			if incomingMsg == nil {
+				for _, channel := range conn.channels {
+					close(channel.Updates)
+				}
+				return
+			}
+			channel := conn.channels[incomingMsg.StatementID]
 			channel.Updates <- incomingMsg.Message
 		}
 	}
 }
 
+// TODO: actually parse Values
+type BasicChannelMessage struct {
+	StatementID int
+	Message     *BasicMessageToClient
+}
+
+type BasicMessageToClient struct {
+	Type         MessageToClientType `json:"type"`
+	ErrorMessage *string             `json:"error,omitempty"`
+	AckMessage   *string             `json:"ack,omitempty"`
+	// data
+	InitialResultMessage *basicInitialResult `json:"initial_result,omitempty"`
+}
+
+type basicInitialResult struct {
+	Type  string
+	Value interface{}
+}
+
 func (conn *Client) handleIncoming() {
-	defer conn.WebSocketConn.Close()
+	defer conn.webSocketConn.Close()
 	for {
-		parsedMessage := &ChannelMessage{}
-		err := conn.WebSocketConn.ReadJSON(&parsedMessage)
+		parsedMessage := &BasicChannelMessage{}
+		_, rawMsg, err := conn.webSocketConn.ReadMessage()
+		json.Unmarshal(rawMsg, parsedMessage)
+
 		if err != nil {
-			log.Println("error in handleIncoming:", err)
+			log.Println("error in handleIncoming: ReadJSON:", err)
+			close(conn.incomingMessages)
+			conn.ServerClosed <- true
+			return
 			// uh... should probably recover gracefully from this, but
 			// idk how to return an error from a goroutine. how would its
 			// supervisor (???) handle it? I want erlang lol
 		}
-		conn.IncomingMessages <- parsedMessage
+		conn.incomingMessages <- parsedMessage
 	}
 }
 
@@ -89,47 +123,52 @@ type ClientChannel struct {
 	Conn        *Client
 	StatementID int
 	Statement   string
-	Updates     chan *MessageToClient
+	Updates     chan *BasicMessageToClient
 }
 
-func (conn *Client) Statement(statement string) *ClientChannel {
+func (conn *Client) RunStatement(statement string) *ClientChannel {
 	resultChan := make(chan *ClientChannel)
-	conn.StatementsToSend <- &StatementRequest{
+	conn.statementsToSend <- &statementRequest{
 		ResultChan: resultChan,
 		Statement:  statement,
 	}
 	return <-resultChan
 }
 
-func (conn *Client) LiveQuery(query string) (*InitialResult, *ClientChannel, error) {
-	channel := conn.Statement(query)
+func (conn *Client) LiveQuery(query string) (*basicInitialResult, *ClientChannel, error) {
+	channel := conn.RunStatement(query)
 	update := <-channel.Updates
 	if update.ErrorMessage != nil {
 		return nil, nil, errors.New(*update.ErrorMessage)
-	} else if update.InitialResultMessage != nil {
+	}
+	if update.InitialResultMessage != nil {
 		return update.InitialResultMessage, channel, nil
 	}
-	return nil, nil, errors.New("query result neither error nor initial result")
+	return nil, nil, fmt.Errorf("query result neither error nor initial result")
 }
 
-func (conn *Client) Query(query string) (*InitialResult, error) {
-	resultChan := conn.Statement(query)
+func (conn *Client) Query(query string) (*basicInitialResult, error) {
+	resultChan := conn.RunStatement(query)
 	update := <-resultChan.Updates
+	if update == nil {
+		return nil, fmt.Errorf("update is nil")
+	}
 	if update.ErrorMessage != nil {
 		return nil, errors.New(*update.ErrorMessage)
-	} else if update.InitialResultMessage != nil {
+	}
+	if update.InitialResultMessage != nil {
 		return update.InitialResultMessage, nil
 	}
-	return nil, errors.New("query result neither error nor initial result")
+	return nil, fmt.Errorf("query result neither error nor initial result")
 }
 
 func (conn *Client) Exec(statement string) (string, error) {
-	resultChan := conn.Statement(statement)
+	resultChan := conn.RunStatement(statement)
 	update := <-resultChan.Updates
 	if update.ErrorMessage != nil {
 		return "", errors.New(*update.ErrorMessage)
 	} else if update.AckMessage != nil {
 		return *update.AckMessage, nil
 	}
-	return "", errors.New("exec result neither error nor ack")
+	return "", fmt.Errorf("exec result neither error nor ack")
 }

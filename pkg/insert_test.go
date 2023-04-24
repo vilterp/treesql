@@ -3,7 +3,7 @@ package treesql
 import "testing"
 
 func TestInsert(t *testing.T) {
-	runSimpleTestScript(t, []simpleTestStmt{
+	tsr := runSimpleTestScript(t, []simpleTestStmt{
 		{
 			stmt: "CREATETABLE blog_posts (id string PRIMARYKEY, body string)",
 			ack:  "CREATE TABLE",
@@ -27,4 +27,5 @@ func TestInsert(t *testing.T) {
 			error: "validation error: table blog_posts has 2 columns, but insert statement provided 3",
 		},
 	})
+	tsr.Close()
 }

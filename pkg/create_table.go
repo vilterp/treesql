@@ -1,25 +1,25 @@
 package treesql
 
 import (
-	"encoding/binary"
 	"fmt"
 
 	"github.com/boltdb/bolt"
 	"github.com/pkg/errors"
+	"github.com/vilterp/treesql/pkg/lang"
 	clog "github.com/vilterp/treesql/pkg/log"
 )
 
 func (db *Database) validateCreateTable(create *CreateTable) error {
 	// does table already exist?
-	_, ok := db.Schema.Tables[create.Name]
+	_, ok := db.schema.tables[create.Name]
 	if ok {
-		return &TableAlreadyExists{TableName: create.Name}
+		return &tableAlreadyExists{TableName: create.Name}
 	}
 	// types are real
 	for _, column := range create.Columns {
-		knownType := column.TypeName == "string" || column.TypeName == "int"
-		if !knownType {
-			return &NonexistentType{TypeName: column.TypeName}
+		_, err := lang.ParseType(column.TypeName)
+		if err != nil {
+			return &nonexistentType{TypeName: column.TypeName}
 		}
 	}
 	// only one primary key
@@ -30,15 +30,15 @@ func (db *Database) validateCreateTable(create *CreateTable) error {
 		}
 	}
 	if primaryKeyCount != 1 {
-		return &WrongNoPrimaryKey{Count: primaryKeyCount}
+		return &wrongNoPrimaryKey{Count: primaryKeyCount}
 	}
 	// referenced table exists
 	// TODO: column same type as primary key
 	for _, column := range create.Columns {
 		if column.References != nil {
-			_, tableExists := db.Schema.Tables[*column.References]
+			_, tableExists := db.schema.tables[*column.References]
 			if !tableExists {
-				return &NoSuchTable{TableName: *column.References}
+				return &noSuchTable{TableName: *column.References}
 			}
 		}
 	}
@@ -46,74 +46,73 @@ func (db *Database) validateCreateTable(create *CreateTable) error {
 	return nil
 }
 
-func (conn *Connection) ExecuteCreateTable(create *CreateTable, channel *Channel) error {
-	// find primary key
-	var primaryKey string
-	for _, column := range create.Columns {
-		if column.PrimaryKey {
-			primaryKey = column.Name
-			break
-		}
+func (conn *connection) executeCreateTable(create *CreateTable, channel *channel) error {
+	tableDesc, err := conn.database.buildTableDescriptor(create)
+	if err != nil {
+		return err
 	}
-	columnRecords := make([]*Record, len(create.Columns))
-	updateErr := conn.Database.BoltDB.Update(func(tx *bolt.Tx) error {
-		tableSpec := conn.Database.AddTable(create.Name, primaryKey, make([]*ColumnDescriptor, len(create.Columns)))
+	tableRecord := tableDesc.toRecord(conn.database)
+	columnRecords := make([]*record, len(create.Columns))
+	updateErr := conn.database.boltDB.Update(func(tx *bolt.Tx) error {
+		// TODO: give ids to tables; create bucket from that
 		// create bucket for new table
-		tx.CreateBucket([]byte(create.Name))
-		// add to in-memory schema
-		// write record to __tables__
-		tablesBucket := tx.Bucket([]byte("__tables__"))
-		tableRecord := tableSpec.ToRecord(conn.Database)
-		tablePutErr := tablesBucket.Put([]byte(create.Name), tableRecord.ToBytes())
-		if tablePutErr != nil {
-			return tablePutErr
+		tableBucket, err := tx.CreateBucket([]byte(create.Name))
+		if err != nil {
+			return err
 		}
-		// write to __columns__
-		for idx, parsedColumn := range create.Columns {
-			// extract reference
-			var reference *ColumnReference
-			if parsedColumn.References != nil {
-				reference = &ColumnReference{
-					TableName: *parsedColumn.References,
+		// create a bucket for each index
+		// primary key, and each column that references another table
+		for _, col := range tableDesc.columns {
+			if col.referencesColumn != nil || tableDesc.primaryKey == col.name {
+				// TODO: factor this out to an encoding file
+				// TODO: non-unique indexes for foreign key columns
+				_, err := tableBucket.CreateBucket(encodeInteger(int32(col.id)))
+				if err != nil {
+					return err
 				}
 			}
-			// build column spec
-			columnSpec := &ColumnDescriptor{
-				ID:               conn.Database.Schema.NextColumnID,
-				Name:             parsedColumn.Name,
-				ReferencesColumn: reference,
-				Type:             NameToType[parsedColumn.TypeName],
+		}
+		// write record to __tables__
+		tablesBucket := tx.Bucket([]byte("__tables__"))
+		tableBytes, err := tableRecord.ToBytes()
+		if err != nil {
+			return err
+		}
+		if err := tablesBucket.Put([]byte(create.Name), tableBytes); err != nil {
+			return err
+		}
+		// write column descriptors to __columns__
+		for idx, columnDesc := range tableDesc.columns {
+			// serialize descriptor
+			columnRecord := columnDesc.toRecord(create.Name, conn.database)
+			value, err := columnRecord.ToBytes()
+			if err != nil {
+				return err
 			}
-			conn.Database.Schema.NextColumnID++
-			// put column spec in in-memory schema copy
-			// TODO: synchronize access to this mutable shared data structure!!
-			tableSpec.Columns[idx] = columnSpec
-			// write record to __columns__
-			columnRecord := columnSpec.ToRecord(create.Name, conn.Database)
+			// write to bucket
 			columnsBucket := tx.Bucket([]byte("__columns__"))
-			key := []byte(fmt.Sprintf("%d", columnSpec.ID))
-			value := columnRecord.ToBytes()
-			columnPutErr := columnsBucket.Put(key, value)
-			if columnPutErr != nil {
-				return columnPutErr
+			key := []byte(fmt.Sprintf("%d", columnDesc.id))
+			if err := columnsBucket.Put(key, value); err != nil {
+				return err
 			}
 			columnRecords[idx] = columnRecord
 		}
-		// push live query messages
-		conn.Database.PushTableEvent(channel, "__tables__", nil, tableRecord)
-		for _, columnRecord := range columnRecords {
-			conn.Database.PushTableEvent(channel, "__columns__", nil, columnRecord)
-		}
 		// write next column id sequence
-		nextColumnIDBytes := make([]byte, 4)
-		binary.BigEndian.PutUint32(nextColumnIDBytes, uint32(conn.Database.Schema.NextColumnID))
+		nextColumnIDBytes := encodeInteger(int32(conn.database.schema.nextColumnID))
 		tx.Bucket([]byte("__sequences__")).Put([]byte("__next_column_id__"), nextColumnIDBytes)
 		return nil
 	})
 	if updateErr != nil {
 		return errors.Wrap(updateErr, "creating table")
 	}
+	// add to in-memory schema
+	conn.database.addTableDescriptor(tableDesc)
+	// push live query messages
+	conn.database.pushTableEvent(channel, "__tables__", nil, tableRecord)
+	for _, columnRecord := range columnRecords {
+		conn.database.pushTableEvent(channel, "__columns__", nil, columnRecord)
+	}
 	clog.Println(channel, "created table", create.Name)
-	channel.WriteAckMessage("CREATE TABLE")
+	channel.writeAckMessage("CREATE TABLE")
 	return nil
 }

@@ -6,7 +6,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus"
 )
 
-type Metrics struct {
+type metrics struct {
 	registry *prometheus.Registry
 
 	// Counters
@@ -29,15 +29,15 @@ type Metrics struct {
 	lookupLatency prometheus.Summary
 }
 
-func NewMetrics(db *Database) *Metrics {
-	m := &Metrics{
+func newMetrics(db *Database) *metrics {
+	m := &metrics{
 		nextConnectionID: prometheus.NewCounterFunc(
 			prometheus.CounterOpts{
 				Name: "next_connection_id",
 				Help: "number of connections to this server over its lifetime",
 			},
 			func() float64 {
-				return float64(db.NextConnectionID)
+				return float64(db.nextConnectionID)
 			},
 		),
 		openConnections: prometheus.NewGaugeFunc(
@@ -46,7 +46,7 @@ func NewMetrics(db *Database) *Metrics {
 				Help: "number of connections currently open",
 			},
 			func() float64 {
-				return float64(len(db.Connections))
+				return float64(len(db.connections))
 			},
 		),
 		openChannels: prometheus.NewGaugeFunc(
@@ -55,12 +55,12 @@ func NewMetrics(db *Database) *Metrics {
 				Help: "number of channels currently open across all connections",
 			},
 			func() float64 {
-				// TODO: synchronize access to db.Connections...
+				// TODO: synchronize access to db.connections...
 				// TODO: make this not O(connections) somehow...
 				// but I also don't want two sources of truth
 				count := 0
-				for _, conn := range db.Connections {
-					count += len(conn.Channels)
+				for _, conn := range db.connections {
+					count += len(conn.channels)
 				}
 				return float64(count)
 			},
@@ -73,11 +73,11 @@ func NewMetrics(db *Database) *Metrics {
 			func() float64 {
 				// TODO: synchronize access to listeners
 				count := 0
-				for _, table := range db.Schema.Tables {
-					table.LiveQueryInfo.mu.RLock()
-					defer table.LiveQueryInfo.mu.RUnlock()
+				for _, table := range db.schema.tables {
+					table.liveQueryInfo.mu.RLock()
+					defer table.liveQueryInfo.mu.RUnlock()
 
-					for _, listenerList := range table.LiveQueryInfo.mu.RecordListeners {
+					for _, listenerList := range table.liveQueryInfo.mu.RecordListeners {
 						count += listenerList.numListeners
 					}
 				}
@@ -92,13 +92,13 @@ func NewMetrics(db *Database) *Metrics {
 			func() float64 {
 				// TODO: synchronize access to listeners
 				count := 0
-				for _, table := range db.Schema.Tables {
-					table.LiveQueryInfo.mu.RLock()
-					defer table.LiveQueryInfo.mu.RUnlock()
+				for _, table := range db.schema.tables {
+					table.liveQueryInfo.mu.RLock()
+					defer table.liveQueryInfo.mu.RUnlock()
 
-					for _, listenersForCol := range table.LiveQueryInfo.mu.TableListeners {
+					for _, listenersForCol := range table.liveQueryInfo.mu.TableListeners {
 						for _, listeners := range listenersForCol {
-							count += listeners.NumListeners()
+							count += listeners.getNumListeners()
 						}
 					}
 				}
@@ -113,11 +113,11 @@ func NewMetrics(db *Database) *Metrics {
 			func() float64 {
 				// TODO: synchronize access to listeners
 				count := 0
-				for _, table := range db.Schema.Tables {
-					table.LiveQueryInfo.mu.RLock()
-					defer table.LiveQueryInfo.mu.RUnlock()
+				for _, table := range db.schema.tables {
+					table.liveQueryInfo.mu.RLock()
+					defer table.liveQueryInfo.mu.RUnlock()
 
-					count += table.LiveQueryInfo.mu.WholeTableListeners.NumListeners()
+					count += table.liveQueryInfo.mu.WholeTableListeners.getNumListeners()
 				}
 				return float64(count)
 			},

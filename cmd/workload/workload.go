@@ -4,7 +4,6 @@ import (
 	"flag"
 	"fmt"
 	"log"
-
 	"math/rand"
 
 	"github.com/pkg/errors"

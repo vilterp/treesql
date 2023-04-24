@@ -7,6 +7,8 @@ import (
 	"net/http/httptest"
 	"os"
 	"testing"
+
+	"github.com/vilterp/treesql/pkg/util"
 )
 
 type testServer struct {
@@ -57,22 +59,32 @@ type simpleTestStmt struct {
 	initialResult string
 }
 
+type testServerRef struct {
+	server *testServer
+	client *Client
+}
+
+func (tsr *testServerRef) Close() {
+	tsr.server.close()
+	tsr.client.Close()
+}
+
 // runSimpleTestScript spins up a test server and runs statements on it,
 // checking each result. It doesn't support live queries; only initial results
 // are checked.
-func runSimpleTestScript(t *testing.T, cases []simpleTestStmt) {
+func runSimpleTestScript(t *testing.T, cases []simpleTestStmt) *testServerRef {
 	server, client, err := NewTestServer()
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer client.Close()
-	defer server.close()
 
 	for idx, testCase := range cases {
 		// Run a statement.
 		if testCase.stmt != "" {
 			result, err := client.Exec(testCase.stmt)
-			assertError(t, idx, testCase.error, err)
+			if util.AssertError(t, idx, testCase.error, err) {
+				continue
+			}
 			if result != testCase.ack {
 				t.Fatalf(`case %d: expected ack "%s"; got "%s"`, idx, testCase.ack, result)
 			}
@@ -81,25 +93,18 @@ func runSimpleTestScript(t *testing.T, cases []simpleTestStmt) {
 		// Run a query.
 		if testCase.query != "" {
 			res, err := client.Query(testCase.query)
-			assertError(t, idx, testCase.error, err)
-			indented, _ := json.MarshalIndent(res.Data, "", "  ")
+			if util.AssertError(t, idx, testCase.error, err) {
+				continue
+			}
+			indented, _ := json.MarshalIndent(res.Value, "", "  ")
 			if string(indented) != testCase.initialResult {
-				t.Fatalf("expected:\n%sgot:\n%s", testCase.initialResult, indented)
+				t.Fatalf("case %d: expected:\n\n%s\n\ngot:\n\n%s", idx, testCase.initialResult, indented)
 			}
 		}
 	}
-}
 
-func assertError(t *testing.T, caseIdx int, expected string, err error) {
-	if err != nil {
-		if expected == "" {
-			t.Fatalf(`case %d: expected success; got error "%s"`, caseIdx, err.Error())
-		}
-		if err.Error() != expected {
-			t.Fatalf(`case %d: expected error "%s"; got "%s"`, caseIdx, expected, err.Error())
-		}
-	}
-	if err == nil && expected != "" {
-		t.Fatalf(`case %d: expected error "%s"; got success`, caseIdx, expected)
+	return &testServerRef{
+		server: server,
+		client: client,
 	}
 }

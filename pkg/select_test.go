@@ -7,7 +7,7 @@ import (
 )
 
 func TestSelect(t *testing.T) {
-	runSimpleTestScript(t, []simpleTestStmt{
+	tsr := runSimpleTestScript(t, []simpleTestStmt{
 		// Create blog post schema.
 		{
 			stmt: `
@@ -49,19 +49,33 @@ func TestSelect(t *testing.T) {
 			stmt: `INSERT INTO comments VALUES ("2", "1", "so creative")`,
 			ack:  "INSERT 1",
 		},
+		//{
+		//	stmt: `CREATE TABLE empty (id string PRIMARYKEY)`
+		//}
 		// Test select.
-		// TODO: sort output so we don't have indeterminant map iteration flakiness.
 		{
-			query: `
-				MANY blog_posts {
-					id,
-					title,
-					comments: MANY comments {
-						id,
-						body
-					}
-				}
-			`,
+			query: `MANY blog_posts { id, title }`,
+			initialResult: `[
+  {
+    "id": "0",
+    "title": "hello world"
+  },
+  {
+    "id": "1",
+    "title": "hello again world"
+  }
+]`,
+		},
+		{
+			query: "MANY blog_posts WHERE id = '1' { title }",
+			initialResult: `[
+  {
+    "title": "hello again world"
+  }
+]`,
+		},
+		{
+			query: "MANY blog_posts { id, title, comments: MANY comments { id, body } }",
 			initialResult: `[
   {
     "comments": [
@@ -89,6 +103,8 @@ func TestSelect(t *testing.T) {
   }
 ]`,
 		},
+		// TODO: test validation errors
+
 		{
 			query: `MANY blog_posts WHERE id = "0" { title }`,
 			initialResult: `[
@@ -98,6 +114,7 @@ func TestSelect(t *testing.T) {
 ]`,
 		},
 	})
+	tsr.Close()
 }
 
 func BenchmarkSelect(t *testing.B) {
